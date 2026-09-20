@@ -206,16 +206,16 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
         <div className={`relative z-10 ${
           isTvPlayerMode
-            ? 'pl-12 pr-8 py-3'
-            : 'pl-3 sm:pl-6 md:pl-10 lg:pl-12 pr-0 py-2 sm:py-2.5 lg:py-1.5'
+            ? 'pl-12 pr-12 py-3'
+            : 'pl-3 sm:pl-6 md:pl-10 lg:pl-12 pr-3 sm:pr-6 md:pr-10 lg:pr-12 py-2 sm:py-2.5 lg:py-2'
         } flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
             isTvPlayerMode
-              ? 'w-auto max-w-[420px] h-[120px]'
+              ? 'w-[320px] max-w-[340px] h-[110px]'
               : isVertical
               ? 'w-auto max-w-[280px] h-14 sm:h-18'
-              : 'w-auto max-w-[360px] h-14 sm:h-18 md:h-22 lg:h-26'
+              : 'w-auto max-w-[300px] h-14 sm:h-18 md:h-20 lg:h-24'
           }`}>
             {campaign.showClientLogo !== false && (
               isBelissima ? (
@@ -256,32 +256,37 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
           {/* Top Center: Campaign Title & Validity - Centralizado com precisão matemática */}
           {!isVertical && (
-            <div className={`flex-1 flex flex-col items-center justify-center text-center px-4 min-w-0 relative ${
-              isTvPlayerMode ? 'translate-y-2' : 'translate-y-1.5 sm:translate-y-2 md:translate-y-2.5 lg:translate-y-3 px-2 sm:px-4 md:px-6'
-            }`}>
+            <div className={`flex-1 flex flex-col items-center justify-center text-center px-4 min-w-0`}>
               <h1 className={`${
                 isTvPlayerMode
-                  ? 'text-[36px]'
-                  : 'text-[14px] sm:text-[18px] md:text-[22px] lg:text-[28px] xl:text-[34px]'
-              } font-black uppercase tracking-normal text-amber-400 drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] w-full text-center leading-tight whitespace-nowrap overflow-hidden text-ellipsis`}>
+                  ? 'text-[42px] leading-tight tracking-tight'
+                  : 'text-[15px] sm:text-[20px] md:text-[24px] lg:text-[30px] xl:text-[36px] leading-tight'
+              } font-black uppercase text-amber-400 drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full text-center whitespace-nowrap overflow-hidden text-ellipsis`}>
                 {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
               </h1>
               <p className={`${
                 isTvPlayerMode
-                  ? 'text-[15px] mt-1.5'
-                  : 'text-[8px] sm:text-[10px] md:text-xs mt-1'
-              } text-neutral-200 flex items-center justify-center gap-1.5 font-medium drop-shadow-sm max-w-full leading-none`}>
-                <Calendar className={`${isTvPlayerMode ? 'w-4 h-4' : 'w-2.5 h-2.5 sm:w-3 sm:h-3'} text-amber-400 shrink-0`} />
+                  ? 'text-[17px] mt-1'
+                  : 'text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5'
+              } text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none`}>
+                <Calendar className={`${isTvPlayerMode ? 'w-4.5 h-4.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-amber-400 shrink-0`} />
                 <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
               </p>
             </div>
+          )}
+
+          {/* Right Symmetrical Spacer so Campaign Title is centered across the screen */}
+          {!isVertical && (
+            <div className={`shrink-0 pointer-events-none hidden md:block ${
+              isTvPlayerMode ? 'w-[320px] max-w-[340px]' : 'w-auto max-w-[300px] h-14'
+            }`} />
           )}
         </div>
 
         {/* CENTER CONTENT: Perfectly Proportioned - Nunca cortado pelo cabeçalho ou rodapé */}
         <div className={`relative z-10 flex-1 min-h-0 ${
           isTvPlayerMode
-            ? 'px-12 py-3 gap-8'
+            ? 'px-14 py-2 gap-10'
             : 'px-3 sm:px-6 md:px-10 py-1 sm:py-2 gap-2 sm:gap-6'
         } flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
           
@@ -290,46 +295,46 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             isVertical 
               ? 'items-center text-center max-w-full' 
               : isTvPlayerMode 
-              ? 'items-start text-left w-[50%] max-w-[50%] h-[88%] max-h-[88%] shrink-0' 
-              : 'items-start text-left max-w-[48%] sm:max-w-[46%] h-[86%] max-h-[86%]'
+              ? 'items-start text-left w-[47%] max-w-[47%] h-[84%] max-h-[84%] shrink-0' 
+              : 'items-start text-left max-w-[46%] h-[84%] max-h-[84%]'
           }`}>
-            {/* Top Block: Title com respiro ampliado em relação ao logo */}
+            {/* Top Block: Title & Promotional Badge */}
             <div className={`flex flex-col items-start w-full shrink-0 ${
-              isVertical ? 'pt-2 sm:pt-3' : isTvPlayerMode ? 'pt-12' : 'pt-7 sm:pt-10 md:pt-13 lg:pt-16'
+              isVertical ? 'pt-2' : isTvPlayerMode ? 'pt-2' : 'pt-1 sm:pt-2'
             }`}>
               {/* Product Title */}
               <h2 className={`${
                 isTvPlayerMode
-                  ? 'text-[42px] leading-[1.12]'
+                  ? 'text-[48px] xl:text-[52px] leading-[1.12]'
                   : isVertical
-                  ? 'text-[13px] sm:text-[16px] md:text-[19px]'
-                  : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[24px] xl:text-[28px]'
-              } font-black text-white tracking-tight drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] font-sans break-words`}>
+                  ? 'text-[14px] sm:text-[17px] md:text-[20px]'
+                  : 'text-[14px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[30px] leading-[1.15]'
+              } font-black text-white tracking-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] font-sans break-words`}>
                 {product.title}
               </h2>
 
-              {/* Promotional Badge com espaçamento equilibrado */}
-              <div className={`${isTvPlayerMode ? 'mt-4' : 'mt-2.5 sm:mt-3.5 md:mt-4'}`}>
+              {/* Promotional Badge */}
+              <div className={`${isTvPlayerMode ? 'mt-3.5' : 'mt-2 sm:mt-2.5'}`}>
                 <span className={`inline-flex items-center ${
                   isTvPlayerMode
-                    ? 'px-3.5 py-1 rounded-lg text-sm'
-                    : 'px-2 py-0.5 sm:px-3 sm:py-1 rounded-md text-[9px] sm:text-xs'
-                } bg-[#3e684d] text-[#cbf4d8] border border-[#528d69]/40 font-extrabold uppercase tracking-wider shadow-sm`}>
+                    ? 'px-4 py-1.5 rounded-xl text-base'
+                    : 'px-2.5 py-1 rounded-md text-[10px] sm:text-xs'
+                } bg-[#3e684d] text-[#cbf4d8] border border-[#528d69]/50 font-black uppercase tracking-wider shadow-md`}>
                   {product.badge || 'OFERTA DO DIA'}
                 </span>
               </div>
             </div>
 
-            {/* Bottom Block: Regular Price & Main Supermarket Price Tag fixos e sempre alinhados à base do card */}
+            {/* Bottom Block: Regular Price & Supermarket Price Box */}
             <div className={`mt-auto flex flex-col items-start w-full ${
-              isTvPlayerMode ? 'pt-4' : 'pt-2 sm:pt-3 md:pt-4'
+              isTvPlayerMode ? 'pt-4' : 'pt-2 sm:pt-3'
             } shrink-0`}>
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div className={`text-white/85 ${
                   isTvPlayerMode
-                    ? 'text-base font-bold mb-1.5'
-                    : 'text-[10px] sm:text-xs md:text-sm font-semibold mb-0.5 sm:mb-1'
+                    ? 'text-xl font-bold mb-2'
+                    : 'text-[11px] sm:text-xs md:text-sm font-semibold mb-1'
                 } tracking-tight drop-shadow`}>
                   De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
@@ -339,19 +344,19 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               <div className="inline-flex items-center">
                 <div className={`bg-[#ea580c] bg-gradient-to-b from-[#f97316] via-[#ea580c] to-[#c2410c] text-white ${
                   isTvPlayerMode
-                    ? 'rounded-2xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-3'
-                    : 'rounded-lg sm:rounded-xl md:rounded-2xl p-1.5 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1 sm:gap-2'
+                    ? 'rounded-2xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.7)] border-2 border-white/30 gap-3.5'
+                    : 'rounded-xl md:rounded-2xl p-2 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1.5 sm:gap-2'
                 } flex items-center transition-transform hover:scale-[1.02] origin-bottom-left`}>
                   
                   {/* Left: "POR R$" */}
                   <div className="flex flex-col justify-start self-start pt-0.5 leading-none">
                     <span className={`${
-                      isTvPlayerMode ? 'text-[11px]' : 'text-[7px] sm:text-[9px] md:text-[11px]'
-                    } font-black uppercase tracking-wider text-white/90`}>
+                      isTvPlayerMode ? 'text-xs' : 'text-[8px] sm:text-[9px] md:text-[10px]'
+                    } font-black uppercase tracking-wider text-white/95`}>
                       POR
                     </span>
                     <span className={`${
-                      isTvPlayerMode ? 'text-base font-black mt-0.5' : 'text-[9px] sm:text-xs md:text-sm font-black mt-0.5'
+                      isTvPlayerMode ? 'text-xl font-black mt-0.5' : 'text-[11px] sm:text-xs md:text-sm font-black mt-0.5'
                     }`}>
                       R$
                     </span>
@@ -359,7 +364,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                   {/* Big Integer Number */}
                   <div className={`${
-                    isTvPlayerMode ? 'text-[96px]' : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl'
+                    isTvPlayerMode ? 'text-[108px]' : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl'
                   } font-black leading-none tracking-tighter drop-shadow-sm font-sans`}>
                     {intPrice}
                   </div>
@@ -367,12 +372,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   {/* Right: ",99" and "2L" / unit */}
                   <div className="flex flex-col justify-start self-start pt-0.5 leading-none pl-0.5">
                     <span className={`${
-                      isTvPlayerMode ? 'text-4xl' : 'text-lg sm:text-xl md:text-2xl lg:text-3xl'
+                      isTvPlayerMode ? 'text-5xl' : 'text-lg sm:text-xl md:text-2xl lg:text-3xl'
                     } font-black leading-none`}>
                       ,{centsPrice}
                     </span>
                     <span className={`${
-                      isTvPlayerMode ? 'text-sm mt-1' : 'text-[8px] sm:text-[10px] md:text-xs mt-0.5'
+                      isTvPlayerMode ? 'text-base mt-1.5' : 'text-[8px] sm:text-[10px] md:text-xs mt-0.5'
                     } font-black uppercase tracking-wider text-white/95`}>
                       {product.unit || '2L'}
                     </span>
@@ -516,8 +521,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         isVertical
                           ? 'w-full max-w-[364px] sm:max-w-[442px] aspect-[4/3]'
                           : isTvPlayerMode
-                          ? 'h-[88%] max-h-[88%] aspect-[4/3] w-auto shrink-0'
-                          : 'h-[86%] max-h-[86%] aspect-[4/3] w-auto max-w-[48vw] shrink-0'
+                          ? 'w-full max-w-[880px] max-h-[660px] aspect-[4/3] shrink-0'
+                          : 'h-[84%] max-h-[84%] aspect-[4/3] w-auto max-w-[46vw] shrink-0'
                       } ${
                         isAmbient
                           ? 'bg-neutral-950 border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.9)] ring-1 ring-white/30'
@@ -583,14 +588,14 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           transition={{ repeat: Infinity, duration: 4 }}
                           className={`absolute ${
                             isTvPlayerMode
-                              ? 'w-22 h-22 -top-5 -right-5 border-3'
+                              ? 'w-24 h-24 -top-6 -right-6 border-[3.5px]'
                               : 'w-8 h-8 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-[3px]'
-                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_12px_26px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none`}
+                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_14px_30px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none`}
                         >
                           <span
                             className={`${
                               isTvPlayerMode
-                                ? 'text-[10px] font-black'
+                                ? 'text-[11px] font-black'
                                 : 'text-[6px] sm:text-[8px] md:text-[9px] font-black'
                             } uppercase tracking-wider text-white/95 drop-shadow-sm`}
                           >
@@ -599,7 +604,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           <span
                             className={`${
                               isTvPlayerMode
-                                ? 'text-lg font-black mt-0.5'
+                                ? 'text-2xl font-black mt-0.5'
                                 : 'text-[10px] sm:text-xs md:text-sm font-black mt-0.5'
                             } text-white drop-shadow-sm`}
                           >
@@ -706,12 +711,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           {/* Ticker Tier */}
           {campaign.showMarqueeTicker && (
             <div className={`${
-              isTvPlayerMode ? 'py-2 px-8 gap-3' : 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3'
+              isTvPlayerMode ? 'py-2.5 px-12 gap-3.5' : 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3'
             } flex items-center`}>
               {/* Red INFORME Button */}
               <div className={`flex items-center ${
                 isTvPlayerMode
-                  ? 'gap-1.5 text-sm px-3.5 py-1 rounded-md'
+                  ? 'gap-2 text-sm px-4 py-1.5 rounded-lg'
                   : 'gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-md'
               } font-black bg-[#d90429] text-white shadow-md shrink-0`}>
                 <Volume2 className={`${isTvPlayerMode ? 'w-4 h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} animate-pulse`} />
@@ -721,7 +726,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               {/* Marquee Text with Yellow Stars */}
               <div className="overflow-hidden whitespace-nowrap flex-1">
                 <div className={`animate-marquee ${
-                  isTvPlayerMode ? 'text-base' : 'text-[10px] sm:text-xs md:text-sm'
+                  isTvPlayerMode ? 'text-lg' : 'text-[10px] sm:text-xs md:text-sm'
                 } font-black text-neutral-100 uppercase tracking-wide`}>
                   {campaign.tickerText || '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ NOSSO APLICATIVO É BOM DEMAIS! ★★ OFERTAS VÁLIDAS PARA TODAS AS FILIAIS DA BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★'}
                 </div>
@@ -732,7 +737,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           {/* Sub-Footer Legal Notice & Signature Link */}
           <div className={`${
             isTvPlayerMode
-              ? 'px-8 py-1 text-[11px]'
+              ? 'px-12 py-1.5 text-xs'
               : 'px-3 sm:px-6 py-0.5 sm:py-1 text-[8px] sm:text-[9px] md:text-[10px]'
           } bg-black text-neutral-400 flex items-center justify-between border-t border-neutral-900`}>
             <span className="truncate max-w-[80%]">

@@ -35,35 +35,6 @@ button[disabled] {
   cursor: not-allowed !important;
 }
 
-/* Suporte a animação de marquee/letreiro */
-@keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
-}
-
-.animate-marquee {
-  display: inline-block;
-  white-space: nowrap;
-  animation: marquee 20s linear infinite;
-}
-
-/* Garante a mãozinha (cursor: pointer) em todos os botões e controles interativos em todo o sistema */
-button,
-[role="button"],
-input[type="button"],
-input[type="submit"],
-input[type="reset"],
-input[type="checkbox"],
-input[type="radio"],
-select {
-  cursor: pointer !important;
-}
-
-button:disabled,
-[role="button"][aria-disabled="true"],
-button[disabled] {
-  cursor: not-allowed !important;
-}
 
 /* Regras de Alta Definição para Modo TV Indoor & Telas Grandes */
 .tv-screen-active {

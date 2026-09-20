@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, 
   Maximize2, 
@@ -154,10 +154,21 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
   }, [isOpen]);
 
   // Filter out products that have hidden === true so they are skipped in TV rotation
-  const playableIndices = campaign.products
-    ? campaign.products.map((p, idx) => (!p.hidden ? idx : -1)).filter((idx) => idx !== -1)
-    : [0];
-  const effectivePlayable = playableIndices.length > 0 ? playableIndices : [0];
+  const effectivePlayable = useMemo(() => {
+    if (!campaign.products || campaign.products.length === 0) return [0];
+    const indices = campaign.products
+      .map((p, idx) => (!p.hidden ? idx : -1))
+      .filter((idx) => idx !== -1);
+    return indices.length > 0 ? indices : [0];
+  }, [campaign.products]);
+
+  // Serialized key to avoid unnecessary timer resets
+  const effectivePlayableKey = useMemo(() => effectivePlayable.join(','), [effectivePlayable]);
+
+  const effectivePlayableRef = useRef<number[]>(effectivePlayable);
+  useEffect(() => {
+    effectivePlayableRef.current = effectivePlayable;
+  }, [effectivePlayable]);
 
   // If current product becomes hidden or is not in playable list, safely switch to the first visible product
   useEffect(() => {
@@ -165,33 +176,44 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
       setCurrentIndex(effectivePlayable[0]);
       setProgress(0);
     }
-  }, [effectivePlayable, currentIndex]);
+  }, [effectivePlayableKey, currentIndex]);
 
   // Auto-play timer (cycles strictly through visible/unhidden products)
   useEffect(() => {
-    if (!isOpen || !isPlaying || effectivePlayable.length <= 1) return;
+    if (!isOpen || !isPlaying) {
+      setProgress(0);
+      return;
+    }
+
+    const playable = effectivePlayableRef.current;
+    if (!playable || playable.length <= 1) {
+      setProgress(0);
+      return;
+    }
 
     const duration = (campaign.slideDuration || 6) * 1000;
     const intervalTime = 100;
-    let elapsed = 0;
+    const startTime = Date.now();
 
     const interval = setInterval(() => {
-      elapsed += intervalTime;
-      setProgress((elapsed / duration) * 100);
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, (elapsed / duration) * 100);
+      setProgress(pct);
 
       if (elapsed >= duration) {
-        elapsed = 0;
         setProgress(0);
         setCurrentIndex((prev) => {
-          const currentPos = effectivePlayable.indexOf(prev);
-          const nextPos = (currentPos + 1) % effectivePlayable.length;
-          return effectivePlayable[nextPos];
+          const list = effectivePlayableRef.current;
+          if (!list || list.length === 0) return 0;
+          const currentPos = list.indexOf(prev);
+          const nextPos = (currentPos + 1) % list.length;
+          return list[nextPos];
         });
       }
     }, intervalTime);
 
     return () => clearInterval(interval);
-  }, [isOpen, isPlaying, effectivePlayable, campaign.slideDuration, currentIndex]);
+  }, [isOpen, isPlaying, campaign.slideDuration, currentIndex, effectivePlayableKey]);
 
   // Fullscreen state listener
   useEffect(() => {
@@ -230,17 +252,21 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
       }
       if (e.key === 'ArrowRight') {
         setCurrentIndex((prev) => {
-          const currentPos = effectivePlayable.indexOf(prev);
-          const nextPos = (currentPos + 1) % effectivePlayable.length;
-          return effectivePlayable[nextPos];
+          const list = effectivePlayableRef.current;
+          if (!list || list.length === 0) return 0;
+          const currentPos = list.indexOf(prev);
+          const nextPos = (currentPos + 1) % list.length;
+          return list[nextPos];
         });
         setProgress(0);
       }
       if (e.key === 'ArrowLeft') {
         setCurrentIndex((prev) => {
-          const currentPos = effectivePlayable.indexOf(prev);
-          const prevPos = (currentPos - 1 + effectivePlayable.length) % effectivePlayable.length;
-          return effectivePlayable[prevPos];
+          const list = effectivePlayableRef.current;
+          if (!list || list.length === 0) return 0;
+          const currentPos = list.indexOf(prev);
+          const prevPos = (currentPos - 1 + list.length) % list.length;
+          return list[prevPos];
         });
         setProgress(0);
       }
