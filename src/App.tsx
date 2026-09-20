@@ -19,6 +19,13 @@ import { ModalConfiguracoesCampanha } from './components/ModalConfiguracoesCampa
 import { CLIENTES_PREDEFINIDOS } from './data/bancoClientes';
 import { ClientProfile } from './tiposGeradorBanner';
 import { Sparkles, Tv, Smartphone, Square, Newspaper, Layers, Play, Download, Eye, Store, Image as ImageIcon } from 'lucide-react';
+import {
+  loadCampaignFromCloud,
+  saveCampaignToCloud,
+  subscribeToCloudCampaign,
+  loadClientsFromCloud,
+  saveClientsToCloud,
+} from './services/cloudCampaignSync';
 
 const INITIAL_PRODUCTS: ProductItem[] = [
   {
@@ -31,7 +38,8 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     originalPrice: '38,90',
     discountPercentage: 15,
     badge: 'SUPER OFERTA',
-    imageUrl: 'https://images.openfoodfacts.org/images/products/789/608/901/1470/front_pt.3.full.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1509785307050-d4066910ec1e?w=1200&auto=format&fit=crop&q=85',
+    imageDisplayMode: 'ambient',
     isHero: true,
   },
   {
@@ -57,7 +65,8 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     originalPrice: '7,99',
     discountPercentage: 19,
     badge: 'GELADA',
-    imageUrl: 'https://images.openfoodfacts.org/images/products/871/200/004/7942/front_pt.3.full.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=1200&auto=format&fit=crop&q=85',
+    imageDisplayMode: 'ambient',
   },
   {
     id: 'prod-ype-neutro-500ml',
@@ -69,7 +78,8 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     originalPrice: '2,89',
     discountPercentage: 24,
     badge: 'ECONOMIA',
-    imageUrl: 'https://images.openfoodfacts.org/images/products/789/609/890/0253/front_pt.4.full.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=1200&auto=format&fit=crop&q=85',
+    imageDisplayMode: 'ambient',
   },
   {
     id: 'prod-leite-piracanjuba-1l',
@@ -81,7 +91,8 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     originalPrice: '5,99',
     discountPercentage: 22,
     badge: 'PREÇO BAIXO',
-    imageUrl: 'https://images.openfoodfacts.org/images/products/789/821/515/0018/front_pt.8.full.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=1200&auto=format&fit=crop&q=85',
+    imageDisplayMode: 'ambient',
   },
   {
     id: 'prod-feijao-camil-1kg',
@@ -93,7 +104,8 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     originalPrice: '9,20',
     discountPercentage: 18,
     badge: 'DA TERRA',
-    imageUrl: 'https://images.openfoodfacts.org/images/products/789/600/671/1117/front_pt.3.full.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1551462147-ff29053bfc14?w=1200&auto=format&fit=crop&q=85',
+    imageDisplayMode: 'ambient',
   },
 ];
 
@@ -143,13 +155,72 @@ export default function App() {
     return DEFAULT_CAMPAIGN;
   });
 
-  // Persistência automática no localStorage a cada alteração na campanha
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'syncing' | 'saved' | 'idle'>('saved');
+
+  // 1. Carregamento inicial da Nuvem (Firebase Firestore)
   useEffect(() => {
-    try {
-      localStorage.setItem('playcomunique_campanha', JSON.stringify(campaign));
-    } catch (e) {
-      console.error('Erro ao salvar campanha no localStorage:', e);
-    }
+    let isMounted = true;
+    (async () => {
+      setCloudSyncStatus('syncing');
+      const cloudCampaign = await loadCampaignFromCloud();
+      if (cloudCampaign && isMounted) {
+        setCampaign((prev) => ({
+          ...prev,
+          ...cloudCampaign,
+          clientLogoUrl:
+            cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1'
+              ? (cloudCampaign.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
+              : cloudCampaign.clientLogoUrl,
+        }));
+      }
+      setCloudSyncStatus('saved');
+    })();
+
+    // Carrega clientes da nuvem
+    loadClientsFromCloud().then((cloudClients) => {
+      if (cloudClients && cloudClients.length > 0 && isMounted) {
+        setClients(cloudClients);
+      }
+    });
+
+    // Ouve alterações em tempo real do Firestore para que múltiplos computadores e TVs sincronizem
+    const unsubscribe = subscribeToCloudCampaign((updatedCampaign) => {
+      if (isMounted && updatedCampaign) {
+        setCampaign((prev) => {
+          if ((updatedCampaign as any)._syncTimestamp !== (prev as any)._syncTimestamp) {
+            return {
+              ...prev,
+              ...updatedCampaign,
+            };
+          }
+          return prev;
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // 2. Persistência contínua na Nuvem (Firebase) + Backup Local
+  useEffect(() => {
+    setCloudSyncStatus('syncing');
+    const timer = setTimeout(() => {
+      saveCampaignToCloud(campaign).then((success) => {
+        if (success) {
+          setCloudSyncStatus('saved');
+        }
+      });
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(campaign));
+      } catch (e) {
+        // Safe catch se ultrapassar limite de 5MB do navegador
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
   }, [campaign]);
 
   // Saved clients list with local storage persistence
@@ -300,6 +371,7 @@ export default function App() {
         activeThemeId={campaign.themeId}
         showClientLogo={campaign.showClientLogo !== false}
         onToggleShowLogo={() => setCampaign((p) => ({ ...p, showClientLogo: !p.showClientLogo }))}
+        cloudSyncStatus={cloudSyncStatus}
       />
 
       {/* Main Workspace Layout */}
@@ -380,8 +452,9 @@ export default function App() {
               currentProductIndex={campaign.activeProductIndex}
               onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
               onUpdateProductImage={(productId, newImageUrl) => {
-                handleUpdateProduct(campaign.activeProductIndex, { imageUrl: newImageUrl });
+                handleUpdateProduct(campaign.activeProductIndex, { imageUrl: newImageUrl, imageDisplayMode: 'ambient' });
               }}
+              onUpdateProductItem={(idx, updated) => handleUpdateProduct(idx, updated)}
             />
           )}
         </div>

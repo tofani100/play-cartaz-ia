@@ -10,10 +10,13 @@ import {
   Tag,
   Star,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  SlidersHorizontal
 } from 'lucide-react';
 import { ProductItem, CuratedProduct } from '../tiposGeradorBanner';
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
+import { handleImageError } from '../utils/imageFallback';
 
 interface PainelEditorProdutosProps {
   products: ProductItem[];
@@ -42,6 +45,8 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   const [catalogSearch, setCatalogSearch] = useState<string>('');
   const [catalogCategory, setCatalogCategory] = useState<string>('all');
   const [isSearchingRealImage, setIsSearchingRealImage] = useState<boolean>(false);
+  const [isGeneratingAiImage, setIsGeneratingAiImage] = useState<boolean>(false);
+  const [isPromptCopied, setIsPromptCopied] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearchRealImage = async () => {
@@ -65,6 +70,60 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       console.warn('Erro ao buscar foto real:', err);
     } finally {
       setIsSearchingRealImage(false);
+    }
+  };
+
+  const handleGenerateAiCommercialImage = async () => {
+    if (!activeProduct || isGeneratingAiImage) return;
+    setIsGeneratingAiImage(true);
+    try {
+      const res = await fetch('/api/gemini/generate-commercial-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: activeProduct.title,
+          brand: activeProduct.brand,
+          category: activeProduct.category,
+          unit: activeProduct.unit,
+          aspectRatio: '4:3',
+        }),
+      });
+      const data = await res.json();
+      if (data && data.success && data.imageUrl) {
+        onUpdateProduct(currentProductIndex, {
+          imageUrl: data.imageUrl,
+          imageDisplayMode: 'ambient',
+          aiPromptUsed: data.promptUsed,
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao gerar banner comercial com IA:', err);
+    } finally {
+      setIsGeneratingAiImage(false);
+    }
+  };
+
+  const handleCopyGeminiPrompt = async () => {
+    if (!activeProduct) return;
+    try {
+      const res = await fetch('/api/gemini/build-commercial-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: activeProduct.title,
+          brand: activeProduct.brand,
+          category: activeProduct.category,
+          unit: activeProduct.unit,
+        }),
+      });
+      const data = await res.json();
+      if (data && data.success && data.geminiWebPrompt) {
+        await navigator.clipboard.writeText(data.geminiWebPrompt);
+        setIsPromptCopied(true);
+        setTimeout(() => setIsPromptCopied(false), 3000);
+      }
+    } catch (err) {
+      console.error('Erro ao copiar prompt:', err);
     }
   };
 
@@ -200,6 +259,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 <img
                   src={item.imageUrl}
                   alt={item.title}
+                  onError={(e) => handleImageError(e, item.title, item.category)}
                   className="w-10 h-10 object-contain rounded-lg bg-neutral-900 border border-neutral-800 p-0.5 shrink-0"
                   referrerPolicy="no-referrer"
                 />
@@ -390,6 +450,60 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               >
                 <ImageIcon className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* AI Image Generation & Marketing Prompt Toolbar */}
+            <div className="mt-2.5 pt-2 border-t border-neutral-800 space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  disabled={isGeneratingAiImage}
+                  onClick={handleGenerateAiCommercialImage}
+                  className="w-full py-1.5 px-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-[11px] rounded-lg shadow flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  title="Gerar banner comercial ambientado com IA (Gemini / Imagen)"
+                >
+                  {isGeneratingAiImage ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 fill-black" />
+                  )}
+                  <span>{isGeneratingAiImage ? 'Gerando Cena...' : 'Gerar Arte IA ✨'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyGeminiPrompt}
+                  className="w-full py-1.5 px-2 bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-[11px] rounded-lg border border-neutral-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  title="Copiar prompt profissional pronto para colar no Gemini Pro Web"
+                >
+                  {isPromptCopied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isPromptCopied ? 'Prompt Copiado!' : 'Prompt Gemini Pro'}</span>
+                </button>
+              </div>
+
+              {/* Display Mode Toggle */}
+              <div className="flex items-center justify-between bg-neutral-900 px-2.5 py-1.5 rounded-lg border border-neutral-800">
+                <span className="text-[10px] text-neutral-400 font-bold">Estilo do Card:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMode = activeProduct.imageDisplayMode === 'contain' ? 'ambient' : 'contain';
+                    onUpdateProduct(currentProductIndex, { imageDisplayMode: nextMode });
+                  }}
+                  className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                >
+                  <SlidersHorizontal className="w-3 h-3 text-neutral-400" />
+                  <span>
+                    {activeProduct.imageDisplayMode === 'contain'
+                      ? 'Packshot Recortado (Branco)'
+                      : 'Ambientado (Full-Bleed TV) ✨'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

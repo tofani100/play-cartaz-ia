@@ -11,7 +11,8 @@ import {
   Wand2,
   Upload,
   Camera,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Copy,
 } from 'lucide-react';
 import { ProductItem } from '../tiposGeradorBanner';
 import { buscarMelhorImagemProduto } from '../data/bancoProdutosComerciais';
@@ -50,6 +51,9 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
   } | null>(null);
   const [editingImageIdx, setEditingImageIdx] = useState<number | null>(null);
   const [customImageUrlInput, setCustomImageUrlInput] = useState<string>('');
+  const [generatingIdx, setGeneratingIdx] = useState<number | null>(null);
+  const [isGeneratingAll, setIsGeneratingAll] = useState<boolean>(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -152,6 +156,77 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
     setCustomImageUrlInput('');
   };
 
+  const handleGenerateSingleItemAiImage = async (idx: number) => {
+    if (!parsedResult || !parsedResult.items[idx]) return;
+    const item = parsedResult.items[idx];
+    setGeneratingIdx(idx);
+    try {
+      const res = await fetch('/api/gemini/generate-commercial-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: item.title,
+          brand: item.brand,
+          category: item.category,
+          unit: item.unit,
+          businessSegment: segment,
+          aspectRatio: '4:3',
+        }),
+      });
+      const data = await res.json();
+      if (data && data.success && data.imageUrl) {
+        const updatedItems = [...parsedResult.items];
+        updatedItems[idx] = {
+          ...updatedItems[idx],
+          imageUrl: data.imageUrl,
+          imageDisplayMode: 'ambient',
+          aiPromptUsed: data.promptUsed,
+        };
+        setParsedResult({ ...parsedResult, items: updatedItems });
+      }
+    } catch (err) {
+      console.error('Erro ao gerar imagem IA para item:', err);
+    } finally {
+      setGeneratingIdx(null);
+    }
+  };
+
+  const handleGenerateAllAiImages = async () => {
+    if (!parsedResult || !parsedResult.items) return;
+    setIsGeneratingAll(true);
+    try {
+      for (let i = 0; i < parsedResult.items.length; i++) {
+        await handleGenerateSingleItemAiImage(i);
+      }
+    } finally {
+      setIsGeneratingAll(false);
+    }
+  };
+
+  const handleCopyItemPrompt = async (item: any, idx: number) => {
+    try {
+      const res = await fetch('/api/gemini/build-commercial-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: item.title,
+          brand: item.brand,
+          category: item.category,
+          unit: item.unit,
+          businessSegment: segment,
+        }),
+      });
+      const data = await res.json();
+      if (data && data.success && data.geminiWebPrompt) {
+        await navigator.clipboard.writeText(data.geminiWebPrompt);
+        setCopiedIdx(idx);
+        setTimeout(() => setCopiedIdx(null), 3000);
+      }
+    } catch (err) {
+      console.error('Erro ao copiar prompt:', err);
+    }
+  };
+
   const handleConfirmImport = () => {
     if (!parsedResult || !parsedResult.items) return;
 
@@ -170,6 +245,7 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
         badge: item.badge || 'OFERTA',
         imageUrl: imgUrl,
         packagingStyle: item.packagingStyle,
+        imageDisplayMode: 'ambient',
         isHero: idx === 0,
       };
     });
@@ -276,10 +352,31 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                 </button>
               </div>
 
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-neutral-300">
-                  {parsedResult.items.length} Produtos identificados e corrigidos:
-                </span>
+              <div className="space-y-3">
+                {/* Header Bar com Botão Mestre de Geração em Lote */}
+                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-bold text-neutral-200">
+                      {parsedResult.items.length} Produtos identificados e higienizados:
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isGeneratingAll}
+                    onClick={handleGenerateAllAiImages}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-[11px] rounded-lg shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                    title="Gerar automaticamente fotografias comerciais ambientadas para todos os produtos"
+                  >
+                    {isGeneratingAll ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 fill-black" />
+                    )}
+                    <span>{isGeneratingAll ? 'Gerando Imagens com IA...' : '🪄 Gerar Banners IA para Todos'}</span>
+                  </button>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {parsedResult.items.map((item: any, idx: number) => {
@@ -288,14 +385,14 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                     return (
                       <div
                         key={idx}
-                        className="p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl flex items-center gap-3 relative group"
+                        className="p-3 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 rounded-xl flex items-start gap-3 relative group transition-colors"
                       >
                         {/* Imagem do Produto com Botão de Troca e Upload */}
-                        <div className="relative shrink-0">
+                        <div className="relative shrink-0 mt-0.5">
                           <img
                             src={currentImg}
                             alt={item.title}
-                            className="w-14 h-14 rounded-lg object-contain bg-neutral-900 border border-neutral-800 p-1"
+                            className="w-16 h-16 rounded-lg object-cover bg-neutral-900 border border-neutral-800 shadow-sm"
                             referrerPolicy="no-referrer"
                           />
                           <button
@@ -304,7 +401,7 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                               setEditingImageIdx(idx);
                               setCustomImageUrlInput(currentImg.startsWith('data:') ? '' : currentImg);
                             }}
-                            className="absolute inset-0 rounded-lg bg-black/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-[9px] font-bold text-amber-400 transition-opacity"
+                            className="absolute inset-0 rounded-lg bg-black/75 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-[9px] font-bold text-amber-400 transition-opacity cursor-pointer"
                             title="Trocar Foto da Embalagem"
                           >
                             <Camera className="w-3.5 h-3.5 mb-0.5" />
@@ -319,7 +416,9 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                             </span>
                             <span className="text-[10px] text-neutral-400 truncate">{item.category}</span>
                           </div>
-                          <h5 className="text-xs font-bold text-white truncate mt-0.5">{item.title}</h5>
+                          <h5 className="text-xs font-bold text-white truncate mt-0.5" title={item.title}>
+                            {item.title}
+                          </h5>
                           <div className="flex items-baseline gap-2 mt-0.5">
                             <span className="text-xs font-black text-amber-400">R$ {item.price}</span>
                             <span className="text-[10px] text-neutral-400">/{item.unit}</span>
@@ -329,17 +428,36 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                               </span>
                             )}
                           </div>
-                          <div className="mt-1 flex items-center gap-2">
+
+                          {/* Quick AI Commercial Image Controls */}
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => {
-                                setEditingImageIdx(idx);
-                                setCustomImageUrlInput(currentImg.startsWith('data:') ? '' : currentImg);
-                              }}
-                              className="text-[10px] text-amber-400/90 hover:text-amber-300 flex items-center gap-1 underline underline-offset-2"
+                              disabled={generatingIdx === idx}
+                              onClick={() => handleGenerateSingleItemAiImage(idx)}
+                              className="px-2 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-bold border border-amber-500/40 flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                              title="Gerar foto comercial ambientada para este produto"
                             >
-                              <Camera className="w-2.5 h-2.5" />
-                              Foto real / Upload
+                              {generatingIdx === idx ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Sparkles className="w-3 h-3 text-amber-400" />
+                              )}
+                              <span>{generatingIdx === idx ? 'Gerando...' : 'Gerar Imagem IA ✨'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleCopyItemPrompt(item, idx)}
+                              className="px-2 py-1 rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[10px] font-semibold border border-neutral-700 flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Copiar prompt profissional para colar no Gemini Pro Web"
+                            >
+                              {copiedIdx === idx ? (
+                                <Check className="w-3 h-3 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                              <span>{copiedIdx === idx ? 'Copiado!' : 'Prompt Gemini'}</span>
                             </button>
                           </div>
                         </div>
@@ -354,8 +472,8 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                     <div className="bg-neutral-900 border border-neutral-700 rounded-xl max-w-md w-full p-4 shadow-2xl space-y-3">
                       <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
                         <h4 className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                          <Camera className="w-4 h-4 text-amber-400" />
-                          Foto Real do Produto #{editingImageIdx + 1}
+                          <Sparkles className="w-4 h-4 text-amber-400" />
+                          Arte Comercial do Produto #{editingImageIdx + 1}
                         </h4>
                         <button
                           onClick={() => setEditingImageIdx(null)}
@@ -365,18 +483,57 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                         </button>
                       </div>
 
-                      <p className="text-xs text-neutral-300">
+                      <p className="text-xs text-neutral-300 font-bold truncate">
                         {parsedResult.items[editingImageIdx]?.title}
                       </p>
 
-                      <div className="flex items-center justify-center py-2 bg-neutral-950 rounded-lg border border-neutral-800">
+                      <div className="flex items-center justify-center py-2 bg-neutral-950 rounded-lg border border-neutral-800 overflow-hidden">
                         <img
                           src={parsedResult.items[editingImageIdx]?.imageUrl}
                           alt="Pré-visualização"
-                          className="max-h-28 object-contain"
+                          className="max-h-40 w-full object-cover rounded"
                           referrerPolicy="no-referrer"
                         />
                       </div>
+
+                      {/* Opção 1: Gerar com IA Diretamente */}
+                      <button
+                        type="button"
+                        disabled={generatingIdx === editingImageIdx}
+                        onClick={async () => {
+                          await handleGenerateSingleItemAiImage(editingImageIdx);
+                        }}
+                        className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+                      >
+                        {generatingIdx === editingImageIdx ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5 fill-black" />
+                        )}
+                        <span>
+                          {generatingIdx === editingImageIdx
+                            ? 'Criando Fotografia Comercial...'
+                            : 'Gerar Banner Ambientado com IA ✨'}
+                        </span>
+                      </button>
+
+                      {/* Opção 2: Copiar Prompt para Gemini Web */}
+                      <button
+                        type="button"
+                        onClick={() => handleCopyItemPrompt(parsedResult.items[editingImageIdx], editingImageIdx)}
+                        className="w-full py-2 px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-neutral-700 cursor-pointer"
+                      >
+                        {copiedIdx === editingImageIdx ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                        <span>
+                          {copiedIdx === editingImageIdx
+                            ? 'Prompt Copiado!'
+                            : 'Copiar Prompt Mestre de Marketing (Gemini Pro)'}
+                        </span>
+                      </button>
 
                       {/* Opção 1: Enviar Arquivo Real do PC ou Celular */}
                       <div>

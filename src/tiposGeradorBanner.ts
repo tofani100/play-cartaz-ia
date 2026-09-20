@@ -43,6 +43,8 @@ export interface ProductItem {
   searchKey?: string;
   packagingStyle?: string;
   isHero?: boolean; // Highlighted item on tabloid
+  imageDisplayMode?: 'ambient' | 'contain'; // 'ambient' for cinematic commercial full-bleed, 'contain' for classic cutout packshot
+  aiPromptUsed?: string;
 }
 
 export interface BannerCampaign {

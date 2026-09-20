@@ -1,22 +1,47 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { parseLocalRetailList } from './src/utils/retailNlpParser';
+import { buildCommercialProductPrompts, getProductAmbienceDetails } from './src/utils/commercialPromptEngine';
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
+
+// Dedicated directories for physical persistence
+const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
+const DATA_DIR = path.join(process.cwd(), 'data');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Serve uploaded images statically
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Lazy GoogleGenAI initialization
 let aiClient: GoogleGenAI | null = null;
-function getAi(): GoogleGenAI {
+function getAi(customKey?: string): GoogleGenAI {
+  const apiKey = customKey || process.env.GEMINI_API_KEY;
+  if (customKey) {
+    return new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
     aiClient = new GoogleGenAI({
       apiKey: apiKey || '',
       httpOptions: {
@@ -221,6 +246,285 @@ Retorne em JSON:
   } catch (err: any) {
     console.error('Error suggesting headline:', err);
     res.status(500).json({ error: 'Erro ao gerar slogans', details: err?.message });
+  }
+});
+
+// Curated High-Definition Commercial Ambient Photography Presets (Fallback Visual de Alta Fidelidade)
+function getCuratedAmbientImage(title: string, brand?: string, category?: string): string {
+  const text = `${title} ${brand || ''} ${category || ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (text.includes('cafe') || text.includes('cappuccino')) {
+    return 'https://images.unsplash.com/photo-1509785307050-d4066910ec1e?w=1200&auto=format&fit=crop&q=85';
+  }
+  if (text.includes('picanha') || text.includes('carne') || text.includes('churrasco') || text.includes('bovino') || text.includes('friboi')) {
+    return 'https://images.unsplash.com/photo-1558030006-450675393462?w=1200&auto=format&fit=crop&q=85';
+  }
+  if (text.includes('cerveja') || text.includes('heineken') || text.includes('chopp')) {
+    return 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=1200&auto=format&fit=crop&q=85';
+  }
+  if (text.includes('coca') || text.includes('refrigerante') || text.includes('refri')) {
+    return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=1200&auto=format&fit=crop&q=85';
+  }
+  if (text.includes('arroz') || text.includes('feijao') || text.includes('feijão') || text.includes('grão')) {
+    return 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=1200&auto=format&fit=crop&q=85';
+  }
+  if (text.includes('fruta') || text.includes('maca') || text.includes('banana') || text.includes('laranja') || text.includes('horti') || text.includes('legume')) {
+    return 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=1200&auto=format&fit=crop&q=85';
+  }
+  if (text.includes('leite') || text.includes('queijo') || text.includes('pao') || text.includes('pão') || text.includes('padaria')) {
+    return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=1200&auto=format&fit=crop&q=85';
+  }
+  if (text.includes('sabao') || text.includes('limpeza') || text.includes('detergente') || text.includes('omo') || text.includes('ype')) {
+    return 'https://images.unsplash.com/photo-1585421514738-01798e348b17?w=1200&auto=format&fit=crop&q=85';
+  }
+  return 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&auto=format&fit=crop&q=85';
+}
+
+// Endpoint: Build Marketing Commercial Prompt for Product
+app.post('/api/gemini/build-commercial-prompt', (req, res) => {
+  const { title, brand, category, unit, businessSegment } = req.body;
+  if (!title || typeof title !== 'string') {
+    return res.status(400).json({ error: 'Título do produto é obrigatório.' });
+  }
+
+  const prompts = buildCommercialProductPrompts({
+    title,
+    brand,
+    category,
+    unit,
+    businessSegment,
+  });
+
+  return res.json({
+    success: true,
+    ...prompts,
+  });
+});
+
+// Endpoint: Generate Ambient Commercial Image for Product using IA
+app.post('/api/gemini/generate-commercial-image', async (req, res) => {
+  const { title, brand, category, unit, businessSegment, customPrompt, aspectRatio, apiKey: clientApiKey } = req.body;
+
+  if (!title || typeof title !== 'string') {
+    return res.status(400).json({ error: 'Título do produto é obrigatório.' });
+  }
+
+  const prompts = buildCommercialProductPrompts({
+    title,
+    brand,
+    category,
+    unit,
+    businessSegment,
+  });
+
+  const promptToUse = customPrompt && typeof customPrompt === 'string' && customPrompt.trim()
+    ? customPrompt.trim()
+    : prompts.aiModelPrompt;
+
+  const activeKey = clientApiKey || process.env.GEMINI_API_KEY;
+
+  if (activeKey) {
+    try {
+      const ai = getAi(activeKey);
+      console.log('[Imagen Generation] Solicitando imagem comercial para:', title);
+
+      let imageBytes: string | undefined;
+
+      try {
+        const response = await withTimeout(
+          ai.models.generateImages({
+            model: 'imagen-3.0-generate-002',
+            prompt: promptToUse,
+            config: {
+              numberOfImages: 1,
+              aspectRatio: (aspectRatio as any) || '4:3',
+              outputMimeType: 'image/jpeg',
+            },
+          }),
+          30000
+        );
+        imageBytes = response?.generatedImages?.[0]?.image?.imageBytes;
+      } catch (err1: any) {
+        console.warn('[Imagen Generation] Tentando fallback com imagen-3.0:', err1?.message);
+        try {
+          const fallbackRes = await withTimeout(
+            ai.models.generateImages({
+              model: 'imagen-3.0',
+              prompt: promptToUse,
+              config: {
+                numberOfImages: 1,
+                aspectRatio: (aspectRatio as any) || '4:3',
+                outputMimeType: 'image/jpeg',
+              },
+            }),
+            30000
+          );
+          imageBytes = fallbackRes?.generatedImages?.[0]?.image?.imageBytes;
+        } catch (err2: any) {
+          console.warn('[Imagen Generation] Fallback secundário falhou:', err2?.message);
+        }
+      }
+
+      if (imageBytes) {
+        const filename = `ambient-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
+        const filepath = path.join(UPLOADS_DIR, filename);
+        try {
+          fs.writeFileSync(filepath, Buffer.from(imageBytes, 'base64'));
+          return res.json({
+            success: true,
+            imageUrl: `/uploads/${filename}`,
+            promptUsed: promptToUse,
+            geminiWebPrompt: prompts.geminiWebPrompt,
+            ambienceArchetype: prompts.ambienceArchetype,
+            engine: 'imagen-3.0',
+          });
+        } catch (writeErr) {
+          return res.json({
+            success: true,
+            imageUrl: `data:image/jpeg;base64,${imageBytes}`,
+            promptUsed: promptToUse,
+            geminiWebPrompt: prompts.geminiWebPrompt,
+            ambienceArchetype: prompts.ambienceArchetype,
+            engine: 'imagen-3.0',
+          });
+        }
+      }
+    } catch (apiErr: any) {
+      console.error('[Imagen API Error]:', apiErr?.message);
+    }
+  }
+
+  // Fallback de alta fidelidade visual
+  const fallbackUrl = getCuratedAmbientImage(title, brand, category);
+  return res.json({
+    success: true,
+    imageUrl: fallbackUrl,
+    promptUsed: promptToUse,
+    geminiWebPrompt: prompts.geminiWebPrompt,
+    ambienceArchetype: prompts.ambienceArchetype,
+    engine: 'ambient-curated-preset',
+    notice: activeKey
+      ? 'A API de imagem não retornou bytes válidos; utilizado preset fotográfico ambientado.'
+      : 'Sem chave GEMINI_API_KEY no .env. Você pode copiar o prompt pronto e colar no seu Gemini Pro com 1 clique!',
+  });
+});
+
+// Endpoint: Upload image (converts base64 dataUrl to persistent static file on disk)
+app.post('/api/upload-image', (req, res) => {
+  try {
+    const { dataUrl, filename: customName } = req.body;
+    if (!dataUrl || typeof dataUrl !== 'string') {
+      return res.status(400).json({ error: 'dataUrl é obrigatório' });
+    }
+
+    if (!dataUrl.startsWith('data:image')) {
+      // Se já for uma URL externa ou /uploads, retorna ela mesma
+      return res.json({ success: true, imageUrl: dataUrl });
+    }
+
+    const matches = dataUrl.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ error: 'Formato de imagem inválido' });
+    }
+
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const base64Data = matches[2];
+    const filename = customName
+      ? `${customName.replace(/[^a-zA-Z0-9_-]/g, '')}-${Date.now()}.${ext}`
+      : `img-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+    const filepath = path.join(UPLOADS_DIR, filename);
+    fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+
+    return res.json({
+      success: true,
+      imageUrl: `/uploads/${filename}`,
+    });
+  } catch (err: any) {
+    console.error('Erro ao salvar upload de imagem:', err);
+    return res.status(500).json({ error: 'Erro ao salvar imagem no servidor', details: err?.message });
+  }
+});
+
+// Endpoint: Persist Campaign to disk
+app.post('/api/campaign', (req, res) => {
+  try {
+    const campaign = req.body;
+    if (!campaign || typeof campaign !== 'object') {
+      return res.status(400).json({ error: 'Dados da campanha inválidos' });
+    }
+
+    // Se houver produtos com imagens em base64, salva no disco e substitui por /uploads/...
+    if (Array.isArray(campaign.products)) {
+      campaign.products = campaign.products.map((prod: any, idx: number) => {
+        if (prod.imageUrl && typeof prod.imageUrl === 'string' && prod.imageUrl.startsWith('data:image')) {
+          try {
+            const matches = prod.imageUrl.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+            if (matches) {
+              const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+              const filename = `prod-${idx}-${Date.now()}.${ext}`;
+              const filepath = path.join(UPLOADS_DIR, filename);
+              fs.writeFileSync(filepath, Buffer.from(matches[2], 'base64'));
+              return { ...prod, imageUrl: `/uploads/${filename}` };
+            }
+          } catch (e) {
+            console.warn(`Aviso ao converter imagem base64 do produto ${idx}:`, e);
+          }
+        }
+        return prod;
+      });
+    }
+
+    const campaignFile = path.join(DATA_DIR, 'campaign.json');
+    fs.writeFileSync(campaignFile, JSON.stringify(campaign, null, 2), 'utf8');
+
+    return res.json({ success: true, message: 'Campanha salva com sucesso no disco!', data: campaign });
+  } catch (err: any) {
+    console.error('Erro ao salvar campanha no disco:', err);
+    return res.status(500).json({ error: 'Erro ao salvar campanha', details: err?.message });
+  }
+});
+
+// Endpoint: Load Campaign from disk
+app.get('/api/campaign', (req, res) => {
+  try {
+    const campaignFile = path.join(DATA_DIR, 'campaign.json');
+    if (fs.existsSync(campaignFile)) {
+      const data = fs.readFileSync(campaignFile, 'utf8');
+      return res.json({ success: true, data: JSON.parse(data) });
+    }
+    return res.json({ success: false, message: 'Nenhuma campanha salva no disco ainda' });
+  } catch (err: any) {
+    console.error('Erro ao carregar campanha do disco:', err);
+    return res.status(500).json({ error: 'Erro ao carregar campanha', details: err?.message });
+  }
+});
+
+// Endpoint: Persist Clients to disk
+app.post('/api/clients', (req, res) => {
+  try {
+    const clients = req.body;
+    const clientsFile = path.join(DATA_DIR, 'clients.json');
+    fs.writeFileSync(clientsFile, JSON.stringify(clients, null, 2), 'utf8');
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Erro ao salvar clientes', details: err?.message });
+  }
+});
+
+// Endpoint: Load Clients from disk
+app.get('/api/clients', (req, res) => {
+  try {
+    const clientsFile = path.join(DATA_DIR, 'clients.json');
+    if (fs.existsSync(clientsFile)) {
+      const data = fs.readFileSync(clientsFile, 'utf8');
+      return res.json({ success: true, data: JSON.parse(data) });
+    }
+    return res.json({ success: false });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Erro ao carregar clientes', details: err?.message });
   }
 });
 

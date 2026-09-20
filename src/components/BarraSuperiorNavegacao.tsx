@@ -28,6 +28,7 @@ interface BarraSuperiorProps {
   activeThemeId: ThemePresetId;
   showClientLogo?: boolean;
   onToggleShowLogo?: () => void;
+  cloudSyncStatus?: 'syncing' | 'saved' | 'idle';
 }
 
 export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
@@ -42,6 +43,7 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
   onClientNameChange,
   showClientLogo = true,
   onToggleShowLogo,
+  cloudSyncStatus = 'saved',
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-4 py-2.5">
@@ -223,6 +225,20 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
             <Download className="w-3.5 h-3.5" />
             <span>Exportar</span>
           </button>
+
+          {/* Cloud Sync Status Indicator */}
+          <div
+            id="badge-cloud-sync"
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors select-none ${
+              cloudSyncStatus === 'syncing'
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse'
+                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+            }`}
+            title="Sincronização em Nuvem ativa (Firebase Firestore - cartaz-ia-playcomunique)"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'syncing' ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
+            <span>{cloudSyncStatus === 'syncing' ? 'Salvando na Nuvem...' : 'Nuvem Conectada ☁️'}</span>
+          </div>
 
           {/* Badge de Versão Amarelo Ouro solicitado pelo usuário */}
           <div

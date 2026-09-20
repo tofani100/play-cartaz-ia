@@ -11,10 +11,15 @@ import {
   CheckCircle2,
   Sparkles,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  Copy,
+  Check,
+  SlidersHorizontal,
+  Wand2
 } from 'lucide-react';
 import { BannerCampaign, ProductItem, ThemeColors } from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
+import { handleImageError } from '../utils/imageFallback';
 
 interface VisualizadorBannerTVProps {
   campaign: BannerCampaign;
@@ -23,6 +28,7 @@ interface VisualizadorBannerTVProps {
   onSelectProductIndex: (index: number) => void;
   isTvPlayerMode?: boolean;
   onUpdateProductImage?: (productId: string, newImageUrl: string) => void;
+  onUpdateProductItem?: (index: number, updated: Partial<ProductItem>) => void;
 }
 
 export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
@@ -32,8 +38,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   onSelectProductIndex,
   isTvPlayerMode = false,
   onUpdateProductImage,
+  onUpdateProductItem,
 }) => {
   const [isSearchingRealImage, setIsSearchingRealImage] = useState(false);
+  const [isGeneratingAiImage, setIsGeneratingAiImage] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
   const cardFileInputRef = useRef<HTMLInputElement>(null);
 
   const product: ProductItem = campaign.products[currentProductIndex] || {
@@ -277,170 +287,373 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 className="relative w-full h-full flex items-center justify-center p-1"
               >
                 {/* Standardized Mini Banner Container - Proporção 4:3 Idêntica e Padronizada para Todos os Produtos */}
-                <div
-                  id={`mini-banner-card-${product.id}`}
-                  className={`group relative ${
-                    isVertical
-                      ? 'w-full max-w-[364px] sm:max-w-[442px] aspect-[4/3]'
-                      : isTvPlayerMode
-                      ? 'h-[86%] max-h-[86%] aspect-[4/3] w-auto max-w-[48vw] shrink-0'
-                      : 'w-full max-w-[235px] sm:max-w-[312px] md:max-w-[442px] lg:max-w-[600px] xl:max-w-[728px] aspect-[4/3] max-h-[68vh] sm:max-h-[74vh] shrink-0'
-                  } bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] ${
-                    isTvPlayerMode
-                      ? 'rounded-2xl md:rounded-3xl p-1.5 sm:p-2 md:p-3 shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-2 border-white/80'
-                      : 'rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-2 shadow-[0_22px_50px_rgba(0,0,0,0.8)] border-2 border-white/70'
-                  } flex flex-col items-center justify-between overflow-hidden select-none`}
-                >
-                  {/* Subtle Studio Spotlight Glow Effect */}
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white/80 to-slate-100/60 pointer-events-none" />
+                {/* Standardized Mini Banner Container - Suporte Duplo: Modo Ambientado Full-Bleed (Print 1) ou Packshot Tradicional (Print 2) */}
+                {(() => {
+                  const isAmbient = product.imageDisplayMode !== 'contain';
 
-                  {/* MINI BANNER: Top Header Strip */}
-                  <div className="relative z-10 w-full flex items-center justify-between px-2 sm:px-3 pt-1 pb-1">
-                    {/* Real Product Verified Badge */}
-                    <div className="flex items-center gap-1.5 bg-neutral-900/90 text-amber-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-sm border border-neutral-700/80">
-                      <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
-                      <span className="text-[7px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-wider">
-                        FOTO REAL DO PRODUTO
-                      </span>
-                    </div>
+                  const handleGenerateAiCommercialImage = async () => {
+                    setIsGeneratingAiImage(true);
+                    setToastMessage('Gerando fotografia comercial ambientada com IA...');
+                    try {
+                      const res = await fetch('/api/gemini/generate-commercial-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          title: product.title,
+                          brand: product.brand,
+                          category: product.category,
+                          unit: product.unit,
+                          businessSegment: campaign.segment,
+                          aspectRatio: isVertical ? '9:16' : '4:3',
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data && data.success && data.imageUrl) {
+                        if (onUpdateProductImage) {
+                          onUpdateProductImage(product.id, data.imageUrl);
+                        }
+                        if (onUpdateProductItem) {
+                          onUpdateProductItem(currentProductIndex, {
+                            imageUrl: data.imageUrl,
+                            imageDisplayMode: 'ambient',
+                            aiPromptUsed: data.promptUsed,
+                          });
+                        }
+                        setToastMessage('✨ Imagem comercial ambientada gerada com sucesso!');
+                        setTimeout(() => setToastMessage(null), 4000);
+                      } else {
+                        throw new Error(data?.error || 'Não foi possível gerar a imagem.');
+                      }
+                    } catch (err: any) {
+                      setToastMessage(`⚠️ ${err?.message || 'Erro ao gerar imagem'}`);
+                      setTimeout(() => setToastMessage(null), 4000);
+                    } finally {
+                      setIsGeneratingAiImage(false);
+                    }
+                  };
 
-                    {/* Category or Brand Tag */}
-                    <div className="hidden sm:flex items-center gap-1 text-[8px] md:text-[10px] font-bold text-neutral-600 uppercase bg-neutral-100/80 px-2 py-0.5 rounded-md border border-neutral-200/80">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                      <span>{product.brand || product.category || 'Varejo Oficial'}</span>
-                    </div>
-                  </div>
+                  const handleCopyGeminiPrompt = async () => {
+                    try {
+                      const res = await fetch('/api/gemini/build-commercial-prompt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          title: product.title,
+                          brand: product.brand,
+                          category: product.category,
+                          unit: product.unit,
+                          businessSegment: campaign.segment,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data && data.success && data.geminiWebPrompt) {
+                        await navigator.clipboard.writeText(data.geminiWebPrompt);
+                        setIsCopied(true);
+                        setToastMessage('📋 Prompt copiado! Cole no seu Gemini Pro (web) para criar a arte.');
+                        setTimeout(() => {
+                          setIsCopied(false);
+                          setToastMessage(null);
+                        }, 4000);
+                      }
+                    } catch (err) {
+                      setToastMessage('⚠️ Erro ao copiar prompt.');
+                      setTimeout(() => setToastMessage(null), 3000);
+                    }
+                  };
 
-                  {/* MINI BANNER: Main Stage (Real Packshot Display with Contact Floor Shadow) */}
-                  <div className="relative z-10 w-full flex-1 flex items-center justify-center p-2 sm:p-3 md:p-4 overflow-hidden">
-                    {/* Realistic Grounding Ellipse Contact Shadow */}
-                    <div className="absolute bottom-2 sm:bottom-3 w-3/5 h-3 sm:h-5 bg-black/25 rounded-full blur-md pointer-events-none" />
-
-                    {/* Real Packaging Photograph - Never Cut Off, 100% Visible */}
-                    <img
-                      src={product.imageUrl}
-                      alt={product.title}
-                      className="relative z-10 max-h-full max-w-full object-contain object-center drop-shadow-[0_12px_20px_rgba(0,0,0,0.35)] transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
-                      referrerPolicy="no-referrer"
-                      loading="eager"
-                    />
-                  </div>
-
-                  {/* MINI BANNER: Bottom Specifications Ribbon */}
-                  <div className="relative z-10 w-full bg-neutral-950/90 backdrop-blur-sm text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center justify-between border border-neutral-800 shadow-sm mt-0.5">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold truncate text-neutral-200">
-                        {product.title}
-                      </span>
-                    </div>
-                    <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-wider text-amber-400 shrink-0 ml-1 bg-amber-400/15 px-1.5 py-0.5 rounded border border-amber-400/30">
-                      {product.unit || 'Embalagem Original'}
-                    </span>
-                  </div>
-
-                  {/* Top-Right Circular Discount Starburst / Stamp Badge */}
-                  {product.discountPercentage && product.discountPercentage > 0 && (
-                    <motion.div
-                      animate={{ rotate: [0, 4, -4, 0] }}
-                      transition={{ repeat: Infinity, duration: 4 }}
-                      className={`absolute ${
-                        isTvPlayerMode
-                          ? 'w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-3'
-                          : 'w-8 h-8 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-[3px]'
-                      } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_10px_24px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center text-center leading-none`}
-                    >
-                      <span
-                        className={`${
-                          isTvPlayerMode
-                            ? 'text-[7px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-black'
-                            : 'text-[6px] sm:text-[8px] md:text-[9px] font-black'
-                        } uppercase tracking-wider text-white/95`}
-                      >
-                        OFERTAÇO
-                      </span>
-                      <span
-                        className={`${
-                          isTvPlayerMode
-                            ? 'text-xs sm:text-sm md:text-base lg:text-lg font-black mt-0.5'
-                            : 'text-[10px] sm:text-xs md:text-sm font-black mt-0.5'
-                        } text-white`}
-                      >
-                        -{product.discountPercentage}%
-                      </span>
-                    </motion.div>
-                  )}
-
-                  {/* Edit Controls Toolbar Overlay (Apenas no Modo Painel, Oculto no TV Player Fullscreen) */}
-                  {!isTvPlayerMode && onUpdateProductImage && (
-                    <div className="absolute inset-x-0 bottom-0 p-2 z-20 bg-black/85 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
-                      <input
-                        ref={cardFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              if (event.target?.result) {
-                                onUpdateProductImage(product.id, event.target.result as string);
+                  const handleCardPaste = (e: React.ClipboardEvent) => {
+                    const items = e.clipboardData?.items;
+                    if (!items) return;
+                    for (let i = 0; i < items.length; i++) {
+                      if (items[i].type.indexOf('image') !== -1) {
+                        const blob = items[i].getAsFile();
+                        if (blob) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            if (event.target?.result && onUpdateProductImage) {
+                              onUpdateProductImage(product.id, event.target.result as string);
+                              if (onUpdateProductItem) {
+                                onUpdateProductItem(currentProductIndex, {
+                                  imageUrl: event.target.result as string,
+                                  imageDisplayMode: 'ambient',
+                                });
                               }
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-
-                      <button
-                        type="button"
-                        disabled={isSearchingRealImage}
-                        onClick={async () => {
-                          setIsSearchingRealImage(true);
-                          try {
-                            const res = await fetch('/api/products/search-real-image', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                query: `${product.title} ${product.brand || ''}`.trim(),
-                                brand: product.brand,
-                                category: product.category,
-                              }),
-                            });
-                            const data = await res.json();
-                            if (data && data.success && data.imageUrl) {
-                              onUpdateProductImage(product.id, data.imageUrl);
+                              setToastMessage('✅ Imagem colada com sucesso da área de transferência!');
+                              setTimeout(() => setToastMessage(null), 3500);
                             }
-                          } catch (err) {
-                            console.warn('Erro ao buscar foto real:', err);
-                          } finally {
-                            setIsSearchingRealImage(false);
-                          }
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[11px] rounded-lg shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                        title="Buscar foto real da embalagem oficial no Google / Varejo"
-                      >
-                        {isSearchingRealImage ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Search className="w-3.5 h-3.5" />
-                        )}
-                        <span>{isSearchingRealImage ? 'Buscando Foto...' : 'Buscar Foto Real na Web'}</span>
-                      </button>
+                          };
+                          reader.readAsDataURL(blob);
+                          return;
+                        }
+                      }
+                    }
+                    const text = e.clipboardData?.getData('text');
+                    if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image/'))) {
+                      if (onUpdateProductImage) {
+                        onUpdateProductImage(product.id, text.trim());
+                        if (onUpdateProductItem) {
+                          onUpdateProductItem(currentProductIndex, {
+                            imageUrl: text.trim(),
+                            imageDisplayMode: 'ambient',
+                          });
+                        }
+                        setToastMessage('✅ Link da imagem colado com sucesso!');
+                        setTimeout(() => setToastMessage(null), 3500);
+                      }
+                    }
+                  };
 
-                      <button
-                        type="button"
-                        onClick={() => cardFileInputRef.current?.click()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-[11px] rounded-lg border border-neutral-700 transition-colors cursor-pointer"
-                        title="Enviar foto do produto do seu celular ou computador"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Trocar Foto</span>
-                      </button>
+                  return (
+                    <div
+                      id={`mini-banner-card-${product.id}`}
+                      onPaste={handleCardPaste}
+                      tabIndex={0}
+                      className={`group relative ${
+                        isVertical
+                          ? 'w-full max-w-[364px] sm:max-w-[442px] aspect-[4/3]'
+                          : isTvPlayerMode
+                          ? 'h-[86%] max-h-[86%] aspect-[4/3] w-auto max-w-[48vw] shrink-0'
+                          : 'w-full max-w-[235px] sm:max-w-[312px] md:max-w-[442px] lg:max-w-[600px] xl:max-w-[728px] aspect-[4/3] max-h-[68vh] sm:max-h-[74vh] shrink-0'
+                      } ${
+                        isAmbient
+                          ? 'bg-neutral-950 border-2 border-white/90 shadow-[0_25px_60px_rgba(0,0,0,0.9)] ring-1 ring-white/20'
+                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-2 border-white/80 shadow-[0_22px_50px_rgba(0,0,0,0.8)]'
+                      } ${
+                        isTvPlayerMode
+                          ? 'rounded-2xl md:rounded-3xl p-1.5 sm:p-2 md:p-3'
+                          : 'rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-2'
+                      } flex flex-col items-center justify-between overflow-hidden select-none outline-none focus:ring-2 focus:ring-amber-400`}
+                    >
+                      {/* Toast Notification */}
+                      <AnimatePresence>
+                        {toastMessage && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute top-3 inset-x-3 z-50 bg-black/90 backdrop-blur-md text-amber-300 border border-amber-500/40 text-[10px] sm:text-xs py-1.5 px-3 rounded-xl shadow-2xl text-center font-bold flex items-center justify-center gap-1.5 pointer-events-none"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                            <span>{toastMessage}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* MODE 1: AMBIENT FULL-BLEED (Estilo Fotografia Comercial de TV - Print 1) */}
+                      {isAmbient ? (
+                        <>
+                          {/* Ambient Photography Background Layer - Full Bleed */}
+                          <img
+                            src={product.imageUrl}
+                            alt={product.title}
+                            onError={(e) => handleImageError(e, product.title, product.category)}
+                            className="absolute inset-0 w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 pointer-events-none"
+                            referrerPolicy="no-referrer"
+                            loading="eager"
+                          />
+
+                          {/* Cinematic Dark Vignette & Readability Gradients */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-transparent to-black/85 pointer-events-none" />
+
+                          {/* Ambient Stage Glow */}
+                          <div className="absolute inset-0 shadow-[inset_0_0_50px_rgba(0,0,0,0.6)] pointer-events-none" />
+
+                          {/* Top Header Floating Strip */}
+                          <div className="relative z-10 w-full flex items-center justify-between px-2 sm:px-3 pt-1 pb-1">
+                            <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md text-amber-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-md border border-white/20">
+                              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                              <span className="text-[7px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-wider">
+                                ARTE AMBIENTADA IA
+                              </span>
+                            </div>
+
+                            <div className="hidden sm:flex items-center gap-1 text-[8px] md:text-[10px] font-bold text-white uppercase bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/20 shadow-md">
+                              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                              <span>{product.brand || product.category || 'Varejo Oficial'}</span>
+                            </div>
+                          </div>
+
+                          {/* Middle Space: Clean Commercial Visual Staging (No text overlay inside the photo) */}
+                          <div className="relative z-10 w-full flex-1" />
+
+                          {/* Bottom Floating Specifications Ribbon */}
+                          <div className="relative z-10 w-full bg-black/85 backdrop-blur-md text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center justify-between border border-white/25 shadow-xl mt-0.5">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                              <span className="text-[8px] sm:text-[9px] md:text-[10px] font-extrabold truncate text-white drop-shadow-sm">
+                                {product.title}
+                              </span>
+                            </div>
+                            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-wider text-amber-300 shrink-0 ml-1 bg-amber-400/20 px-1.5 py-0.5 rounded border border-amber-400/35">
+                              {product.unit || 'Oferta'}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        /* MODE 2: CLASSIC WHITE STUDIO CUTOUT PACKSHOT */
+                        <>
+                          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white/80 to-slate-100/60 pointer-events-none" />
+
+                          <div className="relative z-10 w-full flex items-center justify-between px-2 sm:px-3 pt-1 pb-1">
+                            <div className="flex items-center gap-1.5 bg-neutral-900/90 text-amber-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-sm border border-neutral-700/80">
+                              <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
+                              <span className="text-[7px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-wider">
+                                PACKSHOT ISOLADO
+                              </span>
+                            </div>
+
+                            <div className="hidden sm:flex items-center gap-1 text-[8px] md:text-[10px] font-bold text-neutral-600 uppercase bg-neutral-100/80 px-2 py-0.5 rounded-md border border-neutral-200/80">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                              <span>{product.brand || product.category || 'Varejo Oficial'}</span>
+                            </div>
+                          </div>
+
+                          <div className="relative z-10 w-full flex-1 flex items-center justify-center p-2 sm:p-3 md:p-4 overflow-hidden">
+                            <div className="absolute bottom-2 sm:bottom-3 w-3/5 h-3 sm:h-5 bg-black/25 rounded-full blur-md pointer-events-none" />
+                            <img
+                              src={product.imageUrl}
+                              alt={product.title}
+                              onError={(e) => handleImageError(e, product.title, product.category)}
+                              className="relative z-10 max-h-full max-w-full object-contain object-center drop-shadow-[0_12px_20px_rgba(0,0,0,0.35)] transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
+                              referrerPolicy="no-referrer"
+                              loading="eager"
+                            />
+                          </div>
+
+                          <div className="relative z-10 w-full bg-neutral-950/90 backdrop-blur-sm text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center justify-between border border-neutral-800 shadow-sm mt-0.5">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                              <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold truncate text-neutral-200">
+                                {product.title}
+                              </span>
+                            </div>
+                            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-wider text-amber-400 shrink-0 ml-1 bg-amber-400/15 px-1.5 py-0.5 rounded border border-amber-400/30">
+                              {product.unit || 'Embalagem Original'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Top-Right Circular Discount Starburst / Stamp Badge */}
+                      {product.discountPercentage && product.discountPercentage > 0 && (
+                        <motion.div
+                          animate={{ rotate: [0, 4, -4, 0] }}
+                          transition={{ repeat: Infinity, duration: 4 }}
+                          className={`absolute ${
+                            isTvPlayerMode
+                              ? 'w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-3'
+                              : 'w-8 h-8 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-[3px]'
+                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_10px_24px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center text-center leading-none`}
+                        >
+                          <span
+                            className={`${
+                              isTvPlayerMode
+                                ? 'text-[7px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-black'
+                                : 'text-[6px] sm:text-[8px] md:text-[9px] font-black'
+                            } uppercase tracking-wider text-white/95`}
+                          >
+                            OFERTAÇO
+                          </span>
+                          <span
+                            className={`${
+                              isTvPlayerMode
+                                ? 'text-xs sm:text-sm md:text-base lg:text-lg font-black mt-0.5'
+                                : 'text-[10px] sm:text-xs md:text-sm font-black mt-0.5'
+                            } text-white`}
+                          >
+                            -{product.discountPercentage}%
+                          </span>
+                        </motion.div>
+                      )}
+
+                      {/* Edit Controls Toolbar Overlay (Apenas no Modo Painel, Oculto no TV Player Fullscreen) */}
+                      {!isTvPlayerMode && (
+                        <div className="absolute inset-x-0 bottom-0 p-2 z-20 bg-black/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-wrap items-center justify-center gap-1.5">
+                          <input
+                            ref={cardFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  if (event.target?.result && onUpdateProductImage) {
+                                    onUpdateProductImage(product.id, event.target.result as string);
+                                    if (onUpdateProductItem) {
+                                      onUpdateProductItem(currentProductIndex, {
+                                        imageUrl: event.target.result as string,
+                                        imageDisplayMode: 'ambient',
+                                      });
+                                    }
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+
+                          {/* 1. Botão Mestre: Gerar Cena Ambientada com IA */}
+                          <button
+                            type="button"
+                            disabled={isGeneratingAiImage}
+                            onClick={handleGenerateAiCommercialImage}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-extrabold text-[11px] rounded-lg shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                            title="Gerar banner comercial ambientado com IA (Gemini / Imagen)"
+                          >
+                            {isGeneratingAiImage ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-3.5 h-3.5 fill-black" />
+                            )}
+                            <span>{isGeneratingAiImage ? 'Criando Cena...' : 'Gerar Arte IA ✨'}</span>
+                          </button>
+
+                          {/* 2. Botão: Copiar Prompt Mestre para o Gemini Web */}
+                          <button
+                            type="button"
+                            onClick={handleCopyGeminiPrompt}
+                            className="flex items-center gap-1 px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-[10px] rounded-lg border border-neutral-700 transition-colors cursor-pointer"
+                            title="Copiar prompt profissional pronto para colar no seu Gemini Pro (Web)"
+                          >
+                            {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{isCopied ? 'Copiado!' : 'Prompt Gemini'}</span>
+                          </button>
+
+                          {/* 3. Alternar Modo: Ambientado vs Recorte */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextMode = isAmbient ? 'contain' : 'ambient';
+                              if (onUpdateProductItem) {
+                                onUpdateProductItem(currentProductIndex, { imageDisplayMode: nextMode });
+                              } else {
+                                product.imageDisplayMode = nextMode;
+                              }
+                            }}
+                            className="flex items-center gap-1 px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-[10px] rounded-lg border border-neutral-700 transition-colors cursor-pointer"
+                            title="Alternar entre modo Ambientado (Cinema/TV) ou Packshot Isolado (Recorte)"
+                          >
+                            <SlidersHorizontal className="w-3 h-3 text-neutral-400" />
+                            <span>{isAmbient ? 'Ambientado' : 'Recorte'}</span>
+                          </button>
+
+                          {/* 4. Enviar Arquivo Local */}
+                          <button
+                            type="button"
+                            onClick={() => cardFileInputRef.current?.click()}
+                            className="flex items-center gap-1 px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-[10px] rounded-lg border border-neutral-700 transition-colors cursor-pointer"
+                            title="Carregar foto ou pressione Ctrl+V no card para colar"
+                          >
+                            <Upload className="w-3 h-3 text-amber-400" />
+                            <span>Upload / Ctrl+V</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </motion.div>
             </AnimatePresence>
           </div>
