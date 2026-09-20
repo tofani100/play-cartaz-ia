@@ -212,11 +212,11 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-bold text-white">Vídeo HD Oficial para TV & Redes (MP4)</h4>
                     <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300">
-                      Full HD 1080p • Fiel ao Banner
+                      Full HD 1080p • 15s Comercial TV • Fiel 100%
                     </span>
                   </div>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Gera arquivo de vídeo MP4 100% idêntico ao banner da TV, com letreiro em movimento, selo giratório, logo oficial e transição de ofertas.
+                    Gera arquivo de vídeo MP4 com duração completa de 15 segundos (padrão de TV Indoor e pen drive), 100% idêntico ao banner da sua tela, com logo oficial e transição de ofertas.
                   </p>
                 </div>
               </div>

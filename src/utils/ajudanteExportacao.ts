@@ -73,6 +73,7 @@ async function captureDomElementImage(el: HTMLElement): Promise<HTMLImageElement
  * Generates an MP4/WebM video that is a 100% FAITHFUL COPY of what is displayed on the screen.
  * Captures the actual rendered DOM banner frame-by-frame across all products in the campaign,
  * guaranteeing identical fonts, identical logo proportions, identical prices and zero artificial shadows.
+ * Features a full TV commercial duration (minimum 15 seconds) so the video is complete and does not cut short.
  */
 export async function gerarVideoAnimadoBanner(
   campaign: BannerCampaign,
@@ -97,7 +98,7 @@ export async function gerarVideoAnimadoBanner(
 
       for (let i = 0; i < totalProducts; i++) {
         if (onProgress) {
-          onProgress(Math.round(5 + (i / totalProducts) * 35));
+          onProgress(Math.round(5 + (i / totalProducts) * 30));
         }
 
         // If multi-product, switch index and wait for React & animations to settle
@@ -135,8 +136,22 @@ export async function gerarVideoAnimadoBanner(
         throw new Error('Não foi possível inicializar contexto 2D para gravação de vídeo.');
       }
 
-      // Timing: 5.0s per product, minimum 6.0s for single product loop
-      const perProductSec = totalProducts === 1 ? 6.0 : slideDurationSec;
+      // 3. BROADCAST DURATION: Minimum 15.0 seconds complete TV commercial loop
+      // 1 product  = 15s complete commercial
+      // 2 products = 16s total (8s each)
+      // 3 products = 18s total (6s each)
+      // 4+ products = 5s each
+      let perProductSec = 6.0;
+      if (totalProducts === 1) {
+        perProductSec = 15.0;
+      } else if (totalProducts === 2) {
+        perProductSec = 8.0;
+      } else if (totalProducts === 3) {
+        perProductSec = 6.0;
+      } else {
+        perProductSec = Math.max(5.0, slideDurationSec);
+      }
+
       const totalDurationSec = totalProducts * perProductSec;
       const totalDurationMs = totalDurationSec * 1000;
 
@@ -171,15 +186,18 @@ export async function gerarVideoAnimadoBanner(
 
       const startTime = performance.now();
       let animFrameId: number;
+      let isStopping = false;
 
-      // 3. FRAME RENDERING LOOP (Direct 1:1 pixel reproduction + smooth broadcast transitions)
+      // 4. FRAME RENDERING LOOP (Direct 1:1 pixel reproduction + smooth broadcast transitions)
       const drawFrame = (currentTime: number) => {
+        if (isStopping) return;
+
         const elapsedMs = currentTime - startTime;
         const progress = Math.min(1, elapsedMs / totalDurationMs);
         const t = elapsedMs / 1000;
 
         if (onProgress) {
-          onProgress(Math.round(40 + progress * 60));
+          onProgress(Math.round(30 + progress * 70));
         }
 
         // Current product index
@@ -189,16 +207,16 @@ export async function gerarVideoAnimadoBanner(
         );
         const currentSnap = snapshots[currentIdx];
 
-        // Transition logic between products (0.6s smooth crossfade)
+        // Transition logic between products (0.7s smooth crossfade)
         const timeInSlideMs = elapsedMs % (perProductSec * 1000);
-        const transitionDurationMs = 600;
+        const transitionDurationMs = 700;
         const transitionStartMs = perProductSec * 1000 - transitionDurationMs;
         const isTransitioning = snapshots.length > 1 && timeInSlideMs >= transitionStartMs;
         const nextIdx = (currentIdx + 1) % snapshots.length;
         const nextSnap = snapshots[nextIdx];
 
         // Subtle broadcast breathing motion (less than 1% zoom, keeps all proportions 100% exact)
-        const zoom = 1.0 + Math.sin(t * 0.6) * 0.006;
+        const zoom = 1.0 + Math.sin(t * 0.5) * 0.005;
         const zW = canvasWidth * zoom;
         const zH = canvasHeight * zoom;
         const zX = (canvasWidth - zW) / 2;
@@ -224,7 +242,29 @@ export async function gerarVideoAnimadoBanner(
         if (elapsedMs < totalDurationMs) {
           animFrameId = requestAnimationFrame(drawFrame);
         } else {
-          recorder.stop();
+          // Finish recording safely with buffer drain
+          isStopping = true;
+          cancelAnimationFrame(animFrameId);
+
+          setTimeout(() => {
+            try {
+              if (recorder.state === 'recording') {
+                recorder.requestData();
+              }
+            } catch (e) {
+              console.warn('requestData error:', e);
+            }
+
+            setTimeout(() => {
+              try {
+                if (recorder.state === 'recording') {
+                  recorder.stop();
+                }
+              } catch (e) {
+                console.warn('recorder.stop error:', e);
+              }
+            }, 300);
+          }, 200);
         }
       };
 

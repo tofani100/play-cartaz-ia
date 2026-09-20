@@ -199,17 +199,17 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
             isTvPlayerMode
-              ? 'w-[145px] sm:w-[205px] md:w-[260px] lg:w-[320px] xl:w-[350px]'
+              ? 'w-auto max-w-[420px] h-18 sm:h-22 md:h-26 lg:h-30 xl:h-32'
               : isVertical
-              ? 'w-[145px] sm:w-[205px]'
-              : 'w-[115px] sm:w-[160px] md:w-[230px] lg:w-[290px]'
+              ? 'w-auto max-w-[280px] h-14 sm:h-18'
+              : 'w-auto max-w-[360px] h-14 sm:h-18 md:h-22 lg:h-26'
           }`}>
             {campaign.showClientLogo !== false && (
               isBelissima ? (
                 <img
                   src="/logos/belissima-casa-di-frutas.png"
                   alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                  className={`${isTvPlayerMode ? 'h-10 sm:h-14 md:h-18 lg:h-22 xl:h-24 max-h-[10vh]' : isVertical ? 'h-10 sm:h-14' : 'h-8 sm:h-11 md:h-16 lg:h-20'} scale-[2] origin-top-left w-auto object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] select-none shrink-0 pointer-events-none transition-transform duration-200`}
+                  className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] select-none shrink-0 pointer-events-none"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     const target = e.currentTarget;
@@ -222,7 +222,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 <img
                   src={campaign.clientLogoUrl}
                   alt={campaign.clientName || 'Logo Oficial'}
-                  className={`${isTvPlayerMode ? 'h-10 sm:h-14 md:h-18 lg:h-22 xl:h-24 max-h-[10vh]' : isVertical ? 'h-10 sm:h-14' : 'h-8 sm:h-11 md:h-16 lg:h-20'} scale-[2] origin-top-left w-auto object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] select-none shrink-0 transition-transform duration-200`}
+                  className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] select-none shrink-0 pointer-events-none"
                   referrerPolicy="no-referrer"
                 />
               ) : (
