@@ -90,9 +90,23 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
     };
   }, [isOpen]);
 
-  // Auto-play timer
+  // Filter out products that have hidden === true so they are skipped in TV rotation
+  const playableIndices = campaign.products
+    ? campaign.products.map((p, idx) => (!p.hidden ? idx : -1)).filter((idx) => idx !== -1)
+    : [0];
+  const effectivePlayable = playableIndices.length > 0 ? playableIndices : [0];
+
+  // If current product becomes hidden or is not in playable list, safely switch to the first visible product
   useEffect(() => {
-    if (!isOpen || !isPlaying || campaign.products.length <= 1) return;
+    if (!effectivePlayable.includes(currentIndex)) {
+      setCurrentIndex(effectivePlayable[0]);
+      setProgress(0);
+    }
+  }, [effectivePlayable, currentIndex]);
+
+  // Auto-play timer (cycles strictly through visible/unhidden products)
+  useEffect(() => {
+    if (!isOpen || !isPlaying || effectivePlayable.length <= 1) return;
 
     const duration = (campaign.slideDuration || 6) * 1000;
     const intervalTime = 100;
@@ -105,12 +119,16 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
       if (elapsed >= duration) {
         elapsed = 0;
         setProgress(0);
-        setCurrentIndex((prev) => (prev + 1) % campaign.products.length);
+        setCurrentIndex((prev) => {
+          const currentPos = effectivePlayable.indexOf(prev);
+          const nextPos = (currentPos + 1) % effectivePlayable.length;
+          return effectivePlayable[nextPos];
+        });
       }
     }, intervalTime);
 
     return () => clearInterval(interval);
-  }, [isOpen, isPlaying, campaign.products.length, campaign.slideDuration, currentIndex]);
+  }, [isOpen, isPlaying, effectivePlayable, campaign.slideDuration, currentIndex]);
 
   // Fullscreen state listener
   useEffect(() => {
@@ -148,11 +166,19 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
         setIsPlaying((p) => !p);
       }
       if (e.key === 'ArrowRight') {
-        setCurrentIndex((p) => (p + 1) % campaign.products.length);
+        setCurrentIndex((prev) => {
+          const currentPos = effectivePlayable.indexOf(prev);
+          const nextPos = (currentPos + 1) % effectivePlayable.length;
+          return effectivePlayable[nextPos];
+        });
         setProgress(0);
       }
       if (e.key === 'ArrowLeft') {
-        setCurrentIndex((p) => (p - 1 + campaign.products.length) % campaign.products.length);
+        setCurrentIndex((prev) => {
+          const currentPos = effectivePlayable.indexOf(prev);
+          const prevPos = (currentPos - 1 + effectivePlayable.length) % effectivePlayable.length;
+          return effectivePlayable[prevPos];
+        });
         setProgress(0);
       }
       if (e.key === 'f' || e.key === 'F') {
@@ -162,7 +188,7 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, campaign.products.length, onClose]);
+  }, [isOpen, effectivePlayable, onClose]);
 
   if (!isOpen) return null;
 

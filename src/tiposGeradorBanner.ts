@@ -45,6 +45,7 @@ export interface ProductItem {
   isHero?: boolean; // Highlighted item on tabloid
   imageDisplayMode?: 'ambient' | 'contain'; // 'ambient' for cinematic commercial full-bleed, 'contain' for classic cutout packshot
   aiPromptUsed?: string;
+  hidden?: boolean; // Oculto da rotação na playlist da TV sem deletar
 }
 
 export interface BannerCampaign {

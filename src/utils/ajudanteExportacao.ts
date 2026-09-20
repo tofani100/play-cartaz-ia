@@ -91,8 +91,13 @@ export async function gerarVideoAnimadoBanner(
         throw new Error('Banner de TV (#tv-banner-capture) não encontrado no DOM.');
       }
 
-      const products = campaign.products && campaign.products.length > 0 ? campaign.products : [1];
-      const totalProducts = products.length;
+      // Filter only active (non-hidden) products for the commercial video rotation
+      const allProducts = campaign.products && campaign.products.length > 0 ? campaign.products : [];
+      const visibleIndices = allProducts
+        .map((p, idx) => (!p.hidden ? idx : -1))
+        .filter((idx) => idx !== -1);
+      const targetIndices = visibleIndices.length > 0 ? visibleIndices : (allProducts.length > 0 ? [0] : [0]);
+      const totalProductsToRender = targetIndices.length;
       const originalIndex = campaign.activeProductIndex || 0;
 
       // 1. STANDARD BROADCAST DIMENSIONS (strictly even numbers to ensure 100% video encoder compatibility)
@@ -109,17 +114,18 @@ export async function gerarVideoAnimadoBanner(
         canvasHeight = 1350;
       }
 
-      // 2. CAPTURE DOM SNAPSHOTS: 100% exact copy of each product in the campaign
+      // 2. CAPTURE DOM SNAPSHOTS: 100% exact copy of each visible product in the campaign
       const snapshots: HTMLImageElement[] = [];
 
-      for (let i = 0; i < totalProducts; i++) {
+      for (let i = 0; i < totalProductsToRender; i++) {
+        const prodIndex = targetIndices[i];
         if (onProgress) {
-          onProgress(Math.round(5 + (i / totalProducts) * 20));
+          onProgress(Math.round(5 + (i / totalProductsToRender) * 20));
         }
 
         // If multi-product, switch index and wait for React & animations to settle
-        if (onSelectProductIndex && totalProducts > 1) {
-          onSelectProductIndex(i);
+        if (onSelectProductIndex && totalProductsToRender > 1) {
+          onSelectProductIndex(prodIndex);
           await new Promise((r) => setTimeout(r, 450));
         } else {
           await new Promise((r) => setTimeout(r, 80));
@@ -131,7 +137,7 @@ export async function gerarVideoAnimadoBanner(
       }
 
       // Restore active product index in editor
-      if (onSelectProductIndex && totalProducts > 1) {
+      if (onSelectProductIndex && totalProductsToRender > 1) {
         onSelectProductIndex(originalIndex);
       }
 

@@ -12,11 +12,16 @@ import {
   Upload,
   RefreshCw,
   Copy,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Eye,
+  EyeOff,
+  Download,
+  Loader2
 } from 'lucide-react';
 import { ProductItem, CuratedProduct } from '../tiposGeradorBanner';
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
 import { handleImageError } from '../utils/imageFallback';
+import { downloadElementAsPng } from '../utils/ajudanteExportacao';
 
 interface PainelEditorProdutosProps {
   products: ProductItem[];
@@ -47,7 +52,32 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   const [isSearchingRealImage, setIsSearchingRealImage] = useState<boolean>(false);
   const [isGeneratingAiImage, setIsGeneratingAiImage] = useState<boolean>(false);
   const [isPromptCopied, setIsPromptCopied] = useState<boolean>(false);
+  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadIndividualBanner = async (idx: number) => {
+    setDownloadingIndex(idx);
+    try {
+      // 1. Alterna o banner principal para este produto específico
+      onSelectProductIndex(idx);
+      // 2. Aguarda transição do DOM e renderização dos elementos visuais
+      await new Promise((r) => setTimeout(r, 280));
+      // 3. Executa o download em alta resolução via html-to-image
+      const targetProd = products[idx];
+      const cleanTitle = (targetProd?.title || `produto-${idx + 1}`)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '-')
+        .slice(0, 35);
+      const filename = `banner-${cleanTitle}-${Date.now()}.png`;
+      await downloadElementAsPng('tv-banner-capture', filename);
+    } catch (err) {
+      console.error('Erro ao baixar banner individual do produto:', err);
+    } finally {
+      setDownloadingIndex(null);
+    }
+  };
 
   const handleSearchRealImage = async () => {
     if (!activeProduct || isSearchingRealImage) return;
@@ -250,6 +280,8 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               key={item.id}
               onClick={() => onSelectProductIndex(idx)}
               className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                item.hidden ? 'opacity-65 border-dashed border-neutral-800 bg-neutral-950/30' : ''
+              } ${
                 isSelected
                   ? 'border-amber-400 bg-neutral-800/90 ring-1 ring-amber-400/30'
                   : 'border-neutral-800 bg-neutral-950/60 hover:border-neutral-700'
@@ -264,30 +296,81 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   referrerPolicy="no-referrer"
                 />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300">
                       {item.badge || 'OFERTA'}
                     </span>
+                    {item.hidden && (
+                      <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Oculto na TV
+                      </span>
+                    )}
                     <span className="text-[10px] text-neutral-400 truncate">{item.category}</span>
                   </div>
-                  <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
+                  <h4 className={`text-xs font-bold truncate ${item.hidden ? 'text-neutral-400 line-through' : 'text-white'}`}>
+                    {item.title}
+                  </h4>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="text-right leading-tight">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="text-right leading-tight pr-1">
                   <div className="text-xs font-black text-amber-400">R$ {item.price}</div>
                   <div className="text-[9px] text-neutral-400">/{item.unit}</div>
                 </div>
 
+                {/* Botão: Baixar Banner Individual Só Deste Produto */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownloadIndividualBanner(idx);
+                  }}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
+                  title={`Baixar banner individual de "${item.title}" (PNG)`}
+                >
+                  {downloadingIndex === idx ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                </button>
+
+                {/* Botão: Ocultar / Exibir na Playlist da TV */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdateProduct(idx, { hidden: !item.hidden });
+                  }}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    item.hidden
+                      ? 'text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30'
+                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                  }`}
+                  title={
+                    item.hidden
+                      ? 'Item OCULTO na TV. Clique para reativar na playlist.'
+                      : 'Item VISÍVEL na TV. Clique para ocultar da rotação sem deletar.'
+                  }
+                >
+                  {item.hidden ? (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5" />
+                  )}
+                </button>
+
+                {/* Botão: Deletar */}
                 {products.length > 1 && (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onRemoveProduct(idx);
                     }}
-                    className="p-1 rounded text-neutral-500 hover:text-red-400 hover:bg-neutral-800 transition-colors"
-                    title="Remover produto"
+                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-neutral-800 transition-colors"
+                    title="Remover produto da lista"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -502,6 +585,68 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                       ? 'Packshot Recortado (Branco)'
                       : 'Ambientado (Full-Bleed TV) ✨'}
                   </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Individual Product Action Toolbar (Download Banner & TV Visibility) */}
+            <div className="mt-3 pt-3 border-t border-neutral-800 flex flex-col gap-2">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 flex items-center justify-between">
+                <span>Ações Individuais deste Item:</span>
+                {activeProduct.hidden && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 font-bold border border-amber-500/40">
+                    Oculto na TV
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Baixar Banner Individual Só Deste Produto */}
+                <button
+                  type="button"
+                  disabled={downloadingIndex === currentProductIndex}
+                  onClick={() => handleDownloadIndividualBanner(currentProductIndex)}
+                  className="w-full py-2 px-3 bg-neutral-800 hover:bg-neutral-700 text-amber-400 hover:text-amber-300 font-extrabold text-xs rounded-xl border border-neutral-700 hover:border-amber-500/50 flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  title="Baixar imagem deste banner individual em alta resolução (PNG)"
+                >
+                  {downloadingIndex === currentProductIndex ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  ) : (
+                    <Download className="w-4 h-4 text-amber-400" />
+                  )}
+                  <span>
+                    {downloadingIndex === currentProductIndex
+                      ? 'Gerando PNG...'
+                      : 'Baixar Banner Deste Item (PNG)'}
+                  </span>
+                </button>
+
+                {/* Ocultar / Exibir na Playlist da TV */}
+                <button
+                  type="button"
+                  onClick={() => onUpdateProduct(currentProductIndex, { hidden: !activeProduct.hidden })}
+                  className={`w-full py-2 px-3 font-extrabold text-xs rounded-xl border flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer ${
+                    activeProduct.hidden
+                      ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/50'
+                      : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
+                  }`}
+                  title={
+                    activeProduct.hidden
+                      ? 'Reativar produto na rotação da TV'
+                      : 'Ocultar da TV sem deletar da lista de ofertas'
+                  }
+                >
+                  {activeProduct.hidden ? (
+                    <>
+                      <Eye className="w-4 h-4 text-amber-400" />
+                      <span>Reativar na TV (Está Oculto)</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="w-4 h-4 text-neutral-400" />
+                      <span>Ocultar da Playlist da TV</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

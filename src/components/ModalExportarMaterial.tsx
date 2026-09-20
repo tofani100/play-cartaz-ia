@@ -39,6 +39,8 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
   const [isExportingImage, setIsExportingImage] = useState<boolean>(false);
   const [isExportingVideo, setIsExportingVideo] = useState<boolean>(false);
   const [videoProgress, setVideoProgress] = useState<number>(0);
+  const [isExportingAllBanners, setIsExportingAllBanners] = useState<boolean>(false);
+  const [exportAllProgress, setExportAllProgress] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [generatedVideo, setGeneratedVideo] = useState<VideoExportResult | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -69,6 +71,46 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
       console.error(e);
     } finally {
       setIsExportingImage(false);
+    }
+  };
+
+  const handleDownloadAllIndividualBanners = async () => {
+    if (!campaign.products || campaign.products.length === 0) return;
+    setIsExportingAllBanners(true);
+    const originalIndex = campaign.activeProductIndex || 0;
+    try {
+      // Non-hidden products
+      const productsToExport = campaign.products
+        .map((p, idx) => (!p.hidden ? idx : -1))
+        .filter((idx) => idx !== -1);
+      const targetIndices = productsToExport.length > 0 ? productsToExport : [0];
+
+      for (let i = 0; i < targetIndices.length; i++) {
+        const idx = targetIndices[i];
+        setExportAllProgress(`${i + 1}/${targetIndices.length}`);
+        if (onSelectProductIndex) {
+          onSelectProductIndex(idx);
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const item = campaign.products[idx];
+        const cleanTitle = (item?.title || `produto-${idx + 1}`)
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]/g, '-')
+          .slice(0, 30);
+        const filename = `banner-${cleanTitle}-${idx + 1}.png`;
+        await downloadElementAsPng('tv-banner-capture', filename);
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    } catch (err) {
+      console.error('Erro ao exportar lote de banners individuais:', err);
+    } finally {
+      if (onSelectProductIndex) {
+        onSelectProductIndex(originalIndex);
+      }
+      setIsExportingAllBanners(false);
+      setExportAllProgress('');
     }
   };
 
@@ -184,27 +226,51 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
           </div>
 
           {/* Format 2: High Resolution PNG Image */}
-          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between gap-4">
+          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
                 <ImageIcon className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Imagem HD Estática (PNG / JPEG)</h4>
+                <h4 className="text-sm font-bold text-white">Banners em Imagem HD (PNG / Alta Definição)</h4>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Ideal para postar no Feed do Instagram, Facebook e grupos de ofertas do WhatsApp.
+                  Baixe o banner exibido na tela ou salve todos os banners individuais de cada produto para postar no WhatsApp e Instagram.
                 </p>
               </div>
             </div>
 
-            <button
-              onClick={handleDownloadPng}
-              disabled={isExportingImage}
-              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all shrink-0"
-            >
-              {isExportingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              <span>Baixar PNG</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
+              <button
+                onClick={handleDownloadPng}
+                disabled={isExportingImage}
+                className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                title="Baixar banner do produto atualmente selecionado"
+              >
+                {isExportingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" /> : <Download className="w-3.5 h-3.5" />}
+                <span>{isExportingImage ? 'Baixando...' : 'Baixar Banner Atual'}</span>
+              </button>
+
+              {campaign.products && campaign.products.length > 1 && (
+                <button
+                  onClick={handleDownloadAllIndividualBanners}
+                  disabled={isExportingAllBanners}
+                  className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow cursor-pointer disabled:opacity-50"
+                  title="Baixar todos os banners individuais de cada produto de uma vez"
+                >
+                  {isExportingAllBanners ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                      <span>Salvando {exportAllProgress}</span>
+                    </>
+                  ) : (
+                    <>
+                      <FolderDown className="w-3.5 h-3.5 text-black" />
+                      <span>Baixar Todos Individuais</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Format 3: Animated Video (WebM / MP4) */}
