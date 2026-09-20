@@ -458,6 +458,7 @@ export default function App() {
         campaign={campaign}
         theme={activeTheme}
         onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
+        onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
       />
 
       <ModalGestaoClientes

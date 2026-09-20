@@ -24,6 +24,7 @@ interface ModalExportarMaterialProps {
   campaign: BannerCampaign;
   theme?: ThemeColors;
   onOpenTvPlayer: () => void;
+  onSelectProductIndex?: (index: number) => void;
 }
 
 export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
@@ -32,6 +33,7 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
   campaign,
   theme,
   onOpenTvPlayer,
+  onSelectProductIndex,
 }) => {
   const [isExportingImage, setIsExportingImage] = useState<boolean>(false);
   const [isExportingVideo, setIsExportingVideo] = useState<boolean>(false);
@@ -82,8 +84,9 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
       const result = await gerarVideoAnimadoBanner(
         campaign,
         activeTheme,
-        4.5,
-        (progress) => setVideoProgress(progress)
+        5.0,
+        (progress) => setVideoProgress(progress),
+        onSelectProductIndex
       );
 
       setGeneratedVideo(result);
