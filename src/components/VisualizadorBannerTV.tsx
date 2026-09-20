@@ -422,7 +422,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         isTvPlayerMode
                           ? 'rounded-2xl md:rounded-3xl p-1.5 sm:p-2 md:p-3'
                           : 'rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-2'
-                      } flex flex-col items-center justify-between overflow-hidden select-none outline-none focus:ring-2 focus:ring-amber-400`}
+                      } flex flex-col items-center justify-between overflow-visible select-none outline-none focus:ring-2 focus:ring-amber-400`}
                     >
                       {/* Toast Notification */}
                       <AnimatePresence>
@@ -439,118 +439,56 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         )}
                       </AnimatePresence>
 
-                      {/* MODE 1: AMBIENT FULL-BLEED (Estilo Fotografia Comercial de TV - Print 1) */}
+                      {/* MODE 1: AMBIENT FULL-BLEED (Fotografia Comercial Ambientada Limpa de Alta Definição) */}
                       {isAmbient ? (
-                        <>
+                        <div className={`absolute inset-0 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-xl sm:rounded-2xl md:rounded-3xl'} overflow-hidden pointer-events-none`}>
                           {/* Ambient Photography Background Layer - Full Bleed */}
                           <img
                             src={product.imageUrl}
                             alt={product.title}
                             onError={(e) => handleImageError(e, product.title, product.category)}
-                            className="absolute inset-0 w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 pointer-events-none"
+                            className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 pointer-events-none"
                             referrerPolicy="no-referrer"
                             loading="eager"
                           />
 
-                          {/* Cinematic Dark Vignette & Readability Gradients */}
-                          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-transparent to-black/85 pointer-events-none" />
-
-                          {/* Ambient Stage Glow */}
-                          <div className="absolute inset-0 shadow-[inset_0_0_50px_rgba(0,0,0,0.6)] pointer-events-none" />
-
-                          {/* Top Header Floating Strip */}
-                          <div className="relative z-10 w-full flex items-center justify-between px-2 sm:px-3 pt-1 pb-1">
-                            <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md text-amber-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-md border border-white/20">
-                              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0 animate-pulse" />
-                              <span className="text-[7px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-wider">
-                                ARTE AMBIENTADA IA
-                              </span>
-                            </div>
-
-                            <div className="hidden sm:flex items-center gap-1 text-[8px] md:text-[10px] font-bold text-white uppercase bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/20 shadow-md">
-                              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                              <span>{product.brand || product.category || 'Varejo Oficial'}</span>
-                            </div>
-                          </div>
-
-                          {/* Middle Space: Clean Commercial Visual Staging (No text overlay inside the photo) */}
-                          <div className="relative z-10 w-full flex-1" />
-
-                          {/* Bottom Floating Specifications Ribbon */}
-                          <div className="relative z-10 w-full bg-black/85 backdrop-blur-md text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center justify-between border border-white/25 shadow-xl mt-0.5">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
-                              <span className="text-[8px] sm:text-[9px] md:text-[10px] font-extrabold truncate text-white drop-shadow-sm">
-                                {product.title}
-                              </span>
-                            </div>
-                            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-wider text-amber-300 shrink-0 ml-1 bg-amber-400/20 px-1.5 py-0.5 rounded border border-amber-400/35">
-                              {product.unit || 'Oferta'}
-                            </span>
-                          </div>
-                        </>
+                          {/* Ambient Stage Glow & Soft Vignette */}
+                          <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)] pointer-events-none" />
+                        </div>
                       ) : (
                         /* MODE 2: CLASSIC WHITE STUDIO CUTOUT PACKSHOT */
-                        <>
+                        <div className={`absolute inset-0 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-xl sm:rounded-2xl md:rounded-3xl'} overflow-hidden flex items-center justify-center p-2 sm:p-3 md:p-4 pointer-events-none`}>
                           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white/80 to-slate-100/60 pointer-events-none" />
 
-                          <div className="relative z-10 w-full flex items-center justify-between px-2 sm:px-3 pt-1 pb-1">
-                            <div className="flex items-center gap-1.5 bg-neutral-900/90 text-amber-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-sm border border-neutral-700/80">
-                              <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
-                              <span className="text-[7px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-wider">
-                                PACKSHOT ISOLADO
-                              </span>
-                            </div>
-
-                            <div className="hidden sm:flex items-center gap-1 text-[8px] md:text-[10px] font-bold text-neutral-600 uppercase bg-neutral-100/80 px-2 py-0.5 rounded-md border border-neutral-200/80">
-                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                              <span>{product.brand || product.category || 'Varejo Oficial'}</span>
-                            </div>
-                          </div>
-
-                          <div className="relative z-10 w-full flex-1 flex items-center justify-center p-2 sm:p-3 md:p-4 overflow-hidden">
-                            <div className="absolute bottom-2 sm:bottom-3 w-3/5 h-3 sm:h-5 bg-black/25 rounded-full blur-md pointer-events-none" />
-                            <img
-                              src={product.imageUrl}
-                              alt={product.title}
-                              onError={(e) => handleImageError(e, product.title, product.category)}
-                              className="relative z-10 max-h-full max-w-full object-contain object-center drop-shadow-[0_12px_20px_rgba(0,0,0,0.35)] transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
-                              referrerPolicy="no-referrer"
-                              loading="eager"
-                            />
-                          </div>
-
-                          <div className="relative z-10 w-full bg-neutral-950/90 backdrop-blur-sm text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center justify-between border border-neutral-800 shadow-sm mt-0.5">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
-                              <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold truncate text-neutral-200">
-                                {product.title}
-                              </span>
-                            </div>
-                            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-wider text-amber-400 shrink-0 ml-1 bg-amber-400/15 px-1.5 py-0.5 rounded border border-amber-400/30">
-                              {product.unit || 'Embalagem Original'}
-                            </span>
-                          </div>
-                        </>
+                          <div className="absolute bottom-2 sm:bottom-3 w-3/5 h-3 sm:h-5 bg-black/25 rounded-full blur-md pointer-events-none" />
+                          <img
+                            src={product.imageUrl}
+                            alt={product.title}
+                            onError={(e) => handleImageError(e, product.title, product.category)}
+                            className="relative z-10 max-h-full max-w-full object-contain object-center drop-shadow-[0_12px_20px_rgba(0,0,0,0.35)] transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
+                            referrerPolicy="no-referrer"
+                            loading="eager"
+                          />
+                        </div>
                       )}
 
-                      {/* Top-Right Circular Discount Starburst / Stamp Badge */}
+                      {/* Top-Right Circular Discount Starburst / Stamp Badge - Carimbo Externo Sobreposto */}
                       {product.discountPercentage && product.discountPercentage > 0 && (
                         <motion.div
                           animate={{ rotate: [0, 4, -4, 0] }}
                           transition={{ repeat: Infinity, duration: 4 }}
                           className={`absolute ${
                             isTvPlayerMode
-                              ? 'w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-3'
+                              ? 'w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 -top-2.5 -right-2.5 sm:-top-3.5 sm:-right-3.5 md:-top-4 md:-right-4 lg:-top-5 lg:-right-5 border-2 sm:border-3'
                               : 'w-8 h-8 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-[3px]'
-                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_10px_24px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center text-center leading-none`}
+                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_12px_26px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none`}
                         >
                           <span
                             className={`${
                               isTvPlayerMode
                                 ? 'text-[7px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-black'
                                 : 'text-[6px] sm:text-[8px] md:text-[9px] font-black'
-                            } uppercase tracking-wider text-white/95`}
+                            } uppercase tracking-wider text-white/95 drop-shadow-sm`}
                           >
                             OFERTAÇO
                           </span>
@@ -559,7 +497,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                               isTvPlayerMode
                                 ? 'text-xs sm:text-sm md:text-base lg:text-lg font-black mt-0.5'
                                 : 'text-[10px] sm:text-xs md:text-sm font-black mt-0.5'
-                            } text-white`}
+                            } text-white drop-shadow-sm`}
                           >
                             -{product.discountPercentage}%
                           </span>
@@ -568,7 +506,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                       {/* Edit Controls Toolbar Overlay (Apenas no Modo Painel, Oculto no TV Player Fullscreen) */}
                       {!isTvPlayerMode && (
-                        <div className="absolute inset-x-0 bottom-0 p-2 z-20 bg-black/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-wrap items-center justify-center gap-1.5">
+                        <div className="absolute inset-x-0 bottom-0 p-2 z-20 bg-black/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-wrap items-center justify-center gap-1.5 rounded-b-xl sm:rounded-b-2xl md:rounded-b-3xl">
                           <input
                             ref={cardFileInputRef}
                             type="file"
