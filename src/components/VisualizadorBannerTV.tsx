@@ -226,59 +226,70 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         <div className={`relative z-10 flex-1 min-h-0 ${isTvPlayerMode ? 'px-4 sm:px-8 md:px-12 py-1.5 sm:py-2 md:py-3 gap-4 sm:gap-6 md:gap-8' : 'px-3 sm:px-6 md:px-10 py-1 sm:py-2 gap-2 sm:gap-6'} flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
-          <div className={`flex flex-col justify-center min-w-0 ${isVertical ? 'items-center text-center max-w-full' : isTvPlayerMode ? 'items-start text-left max-w-[50%] shrink-0' : 'items-start text-left max-w-[48%] sm:max-w-[46%]'}`}>
-            
-            {/* Product Title */}
-            <h2 className={`${isTvPlayerMode ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[44px]' : isVertical ? 'text-[13px] sm:text-[16px] md:text-[19px]' : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[24px] xl:text-[28px]'} font-black text-white leading-[1.12] tracking-tight drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] font-sans break-words`}>
-              {product.title}
-            </h2>
+          <div className={`flex flex-col justify-between min-w-0 ${
+            isVertical 
+              ? 'items-center text-center max-w-full' 
+              : isTvPlayerMode 
+              ? 'items-start text-left max-w-[50%] h-[86%] max-h-[86%] shrink-0' 
+              : 'items-start text-left max-w-[48%] sm:max-w-[46%] h-[86%] max-h-[86%]'
+          }`}>
+            {/* Top Block: Title & Packaging Subtitle (Posição fixa no topo, sem oscilação) */}
+            <div className="flex flex-col items-start w-full shrink-0">
+              {/* Product Title */}
+              <h2 className={`${isTvPlayerMode ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[44px]' : isVertical ? 'text-[13px] sm:text-[16px] md:text-[19px]' : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[24px] xl:text-[28px]'} font-black text-white leading-[1.12] tracking-tight drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] font-sans break-words`}>
+                {product.title}
+              </h2>
 
-            {/* Packaging / Commercial Unit Subtitle */}
-            <p className={`${isTvPlayerMode ? 'text-xs sm:text-sm md:text-base lg:text-lg font-semibold mt-0.5 sm:mt-1' : 'text-[10px] sm:text-xs md:text-sm mt-0.5'} text-neutral-200 font-medium drop-shadow-sm opacity-95`}>
-              Embalagem comercial {product.unit || '2L'}
-            </p>
+              {/* Packaging / Commercial Unit Subtitle */}
+              <p className={`${isTvPlayerMode ? 'text-xs sm:text-sm md:text-base lg:text-lg font-semibold mt-0.5 sm:mt-1' : 'text-[10px] sm:text-xs md:text-sm mt-0.5'} text-neutral-200 font-medium drop-shadow-sm opacity-95`}>
+                Embalagem comercial {product.unit || '2L'}
+              </p>
 
-            {/* Soft Green "OFERTA DO DIA" Badge */}
-            <div className={`${isTvPlayerMode ? 'mt-1.5 sm:mt-2' : 'mt-1 sm:mt-1.5'}`}>
-              <span className={`inline-flex items-center ${isTvPlayerMode ? 'px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs md:text-sm' : 'px-2 py-0.5 sm:px-3 sm:py-1 rounded-md text-[9px] sm:text-xs'} bg-[#3e684d] text-[#cbf4d8] border border-[#528d69]/40 font-extrabold uppercase tracking-wider shadow-sm`}>
-                {product.badge || 'OFERTA DO DIA'}
-              </span>
+              {/* Promotional Badge com espaçamento equilibrado em relação à sub-descrição */}
+              <div className={`${isTvPlayerMode ? 'mt-3 sm:mt-4 md:mt-5' : 'mt-2.5 sm:mt-3.5 md:mt-4'}`}>
+                <span className={`inline-flex items-center ${isTvPlayerMode ? 'px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs md:text-sm' : 'px-2 py-0.5 sm:px-3 sm:py-1 rounded-md text-[9px] sm:text-xs'} bg-[#3e684d] text-[#cbf4d8] border border-[#528d69]/40 font-extrabold uppercase tracking-wider shadow-sm`}>
+                  {product.badge || 'OFERTA DO DIA'}
+                </span>
+              </div>
             </div>
 
-            {/* "De: R$ 10,99" regular price */}
-            {product.originalPrice && (
-              <div className={`text-white/85 ${isTvPlayerMode ? 'text-xs sm:text-sm md:text-base font-bold mt-0.5 sm:mt-1' : 'text-[10px] sm:text-xs md:text-sm font-semibold mt-0.5'} tracking-tight drop-shadow`}>
-                De: R${product.originalPrice.replace('R$', '').trim()}
-              </div>
-            )}
-
-            {/* Main Supermarket Orange Price Box */}
-            <div className={`${isTvPlayerMode ? 'mt-1.5 sm:mt-2.5 md:mt-3' : 'mt-1 sm:mt-2'} inline-flex items-center`}>
-              <div className={`bg-[#ea580c] bg-gradient-to-b from-[#f97316] via-[#ea580c] to-[#c2410c] text-white ${isTvPlayerMode ? 'rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_40px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-1.5 sm:gap-2.5 md:gap-3' : 'rounded-lg sm:rounded-xl md:rounded-2xl p-1.5 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1 sm:gap-2'} flex items-center transition-transform hover:scale-[1.02]`}>
-                
-                {/* Left: "POR R$" */}
-                <div className="flex flex-col justify-start self-start pt-0.5 leading-none">
-                  <span className={`${isTvPlayerMode ? 'text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-black' : 'text-[7px] sm:text-[9px] md:text-[11px] font-black'} uppercase tracking-wider text-white/90`}>
-                    POR
-                  </span>
-                  <span className={`${isTvPlayerMode ? 'text-[10px] sm:text-xs md:text-sm lg:text-base font-black mt-0.5' : 'text-[9px] sm:text-xs md:text-sm font-black mt-0.5'}`}>
-                    R$
-                  </span>
+            {/* Bottom Block: Regular Price & Main Supermarket Price Tag fixos e sempre alinhados à base do card */}
+            <div className="mt-auto flex flex-col items-start w-full pt-2 sm:pt-3 md:pt-4 shrink-0">
+              {/* "De: R$ 10,99" regular price */}
+              {product.originalPrice && (
+                <div className={`text-white/85 ${isTvPlayerMode ? 'text-xs sm:text-sm md:text-base font-bold mb-1 sm:mb-1.5' : 'text-[10px] sm:text-xs md:text-sm font-semibold mb-0.5 sm:mb-1'} tracking-tight drop-shadow`}>
+                  De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
+              )}
 
-                {/* Big Integer Number */}
-                <div className={`${isTvPlayerMode ? 'text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-[90px]' : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl'} font-black leading-none tracking-tighter drop-shadow-sm font-sans`}>
-                  {intPrice}
-                </div>
+              {/* Main Supermarket Orange Price Box */}
+              <div className="inline-flex items-center">
+                <div className={`bg-[#ea580c] bg-gradient-to-b from-[#f97316] via-[#ea580c] to-[#c2410c] text-white ${isTvPlayerMode ? 'rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_40px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-1.5 sm:gap-2.5 md:gap-3' : 'rounded-lg sm:rounded-xl md:rounded-2xl p-1.5 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1 sm:gap-2'} flex items-center transition-transform hover:scale-[1.02] origin-bottom-left`}>
+                  
+                  {/* Left: "POR R$" */}
+                  <div className="flex flex-col justify-start self-start pt-0.5 leading-none">
+                    <span className={`${isTvPlayerMode ? 'text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-black' : 'text-[7px] sm:text-[9px] md:text-[11px] font-black'} uppercase tracking-wider text-white/90`}>
+                      POR
+                    </span>
+                    <span className={`${isTvPlayerMode ? 'text-[10px] sm:text-xs md:text-sm lg:text-base font-black mt-0.5' : 'text-[9px] sm:text-xs md:text-sm font-black mt-0.5'}`}>
+                      R$
+                    </span>
+                  </div>
 
-                {/* Right: ",99" and "2L" / unit */}
-                <div className="flex flex-col justify-start self-start pt-0.5 leading-none pl-0.5">
-                  <span className={`${isTvPlayerMode ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black' : 'text-lg sm:text-xl md:text-2xl lg:text-3xl font-black'} leading-none`}>
-                    ,{centsPrice}
-                  </span>
-                  <span className={`${isTvPlayerMode ? 'text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black mt-0.5 sm:mt-1' : 'text-[8px] sm:text-[10px] md:text-xs font-black mt-0.5'} uppercase tracking-wider text-white/95`}>
-                    {product.unit || '2L'}
-                  </span>
+                  {/* Big Integer Number */}
+                  <div className={`${isTvPlayerMode ? 'text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-[90px]' : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl'} font-black leading-none tracking-tighter drop-shadow-sm font-sans`}>
+                    {intPrice}
+                  </div>
+
+                  {/* Right: ",99" and "2L" / unit */}
+                  <div className="flex flex-col justify-start self-start pt-0.5 leading-none pl-0.5">
+                    <span className={`${isTvPlayerMode ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black' : 'text-lg sm:text-xl md:text-2xl lg:text-3xl font-black'} leading-none`}>
+                      ,{centsPrice}
+                    </span>
+                    <span className={`${isTvPlayerMode ? 'text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black mt-0.5 sm:mt-1' : 'text-[8px] sm:text-[10px] md:text-xs font-black mt-0.5'} uppercase tracking-wider text-white/95`}>
+                      {product.unit || '2L'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -417,9 +428,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       className={`group relative ${
                         isVertical
                           ? 'w-full max-w-[364px] sm:max-w-[442px] aspect-[4/3]'
-                          : isTvPlayerMode
-                          ? 'h-[86%] max-h-[86%] aspect-[4/3] w-auto max-w-[48vw] shrink-0'
-                          : 'w-full max-w-[235px] sm:max-w-[312px] md:max-w-[442px] lg:max-w-[600px] xl:max-w-[728px] aspect-[4/3] max-h-[68vh] sm:max-h-[74vh] shrink-0'
+                          : 'h-[86%] max-h-[86%] aspect-[4/3] w-auto max-w-[48vw] shrink-0'
                       } ${
                         isAmbient
                           ? 'bg-neutral-950 border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.9)] ring-1 ring-white/30'
