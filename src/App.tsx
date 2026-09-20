@@ -217,6 +217,8 @@ export default function App() {
 
   // 2. Persistência contínua na Nuvem (Firebase) + Backup Local
   useEffect(() => {
+    // TV Player / Kiosk é um consumidor de transmissão: nunca deve recomprimir imagens ou gravar na nuvem
+    if (isDirectTvMode) return;
     // Não salva antes de completar o carregamento inicial
     if (!initialLoadDoneRef.current) return;
     // Se a alteração veio da própria nuvem, não devolve para o Firestore (evita loop)

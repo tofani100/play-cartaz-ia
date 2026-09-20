@@ -6,15 +6,35 @@ html, body {
   text-size-adjust: 100% !important;
 }
 
+/* Animações 100% aceleradas por hardware na GPU para fluidez absoluta no Stick TV */
 @keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
+  0% { transform: translate3d(100%, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
 }
 
 .animate-marquee {
   display: inline-block;
   white-space: nowrap;
-  animation: marquee 20s linear infinite;
+  animation: marquee 22s linear infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+@keyframes tvProgressBar {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes badgeTilt {
+  0%, 100% { transform: rotate(0deg) scale(1.1); }
+  50% { transform: rotate(3.5deg) scale(1.1); }
+}
+
+.animate-badge-tilt {
+  animation: badgeTilt 4s ease-in-out infinite;
+  will-change: transform;
+  transform-origin: center center;
 }
 
 /* Garante a mãozinha (cursor: pointer) em todos os botões e controles interativos em todo o sistema */

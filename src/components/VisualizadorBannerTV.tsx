@@ -140,24 +140,36 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   };
 
   const getAnimationProps = () => {
+    if (isTvPlayerMode) {
+      // Hardware-accelerated lightweight crossfade for TV Sticks
+      return {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.3, ease: 'easeOut' as const },
+      };
+    }
     if (campaign.animationStyle === 'zoom') {
       return {
         initial: { scale: 0.92, opacity: 0 },
         animate: { scale: 1, opacity: 1 },
-        transition: { duration: 0.45, ease: 'easeOut' as const },
+        exit: { opacity: 0 },
+        transition: { duration: 0.4, ease: 'easeOut' as const },
       };
     }
     if (campaign.animationStyle === 'slide') {
       return {
         initial: { x: 60, opacity: 0 },
         animate: { x: 0, opacity: 1 },
-        transition: { duration: 0.45, ease: 'easeOut' as const },
+        exit: { opacity: 0 },
+        transition: { duration: 0.4, ease: 'easeOut' as const },
       };
     }
     return {
       initial: { opacity: 0 },
       animate: { opacity: 1 },
-      transition: { duration: 0.4 },
+      exit: { opacity: 0 },
+      transition: { duration: 0.35 },
     };
   };
 
@@ -180,28 +192,34 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         style={getBannerContainerStyle()}
         className={`relative overflow-hidden ${isTvPlayerMode ? 'rounded-none border-none shadow-none shrink-0' : 'rounded-2xl shadow-2xl border border-emerald-500/20 w-full h-full'} transition-all select-none ${getAspectClass()} bg-[#073620] flex flex-col justify-between`}
       >
-        {/* Deep Green Texture Background matching Model Banner (Image 1) */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#06331e] via-[#083c24] to-[#042214] pointer-events-none" />
+        {/* GPU Isolated Background Layer: Rendered once, zero redraw overhead on frame updates */}
+        <div 
+          style={{ contain: 'strict', willChange: 'contents', transform: 'translateZ(0)' }}
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+        >
+          {/* Deep Green Texture Background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#06331e] via-[#083c24] to-[#042214]" />
 
-        {/* Subtle Watermark Geometric/Botanical Texture Pattern */}
-        <svg className="absolute inset-0 w-full h-full opacity-[0.06] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="marketPattern" width="80" height="80" patternUnits="userSpaceOnUse">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="#ffffff" strokeWidth="1.5" />
-              <circle cx="40" cy="40" r="18" fill="none" stroke="#ffffff" strokeWidth="1" />
-              <path d="M 40 0 L 40 80 M 0 40 L 80 40" stroke="#ffffff" strokeWidth="1" opacity="0.6" />
-              <circle cx="0" cy="0" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
-              <circle cx="80" cy="0" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
-              <circle cx="0" cy="80" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
-              <circle cx="80" cy="80" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#marketPattern)" />
-        </svg>
+          {/* Subtle Watermark Geometric/Botanical Texture Pattern */}
+          <svg className="absolute inset-0 w-full h-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="marketPattern" width="80" height="80" patternUnits="userSpaceOnUse">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#ffffff" strokeWidth="1.5" />
+                <circle cx="40" cy="40" r="18" fill="none" stroke="#ffffff" strokeWidth="1" />
+                <path d="M 40 0 L 40 80 M 0 40 L 80 40" stroke="#ffffff" strokeWidth="1" opacity="0.6" />
+                <circle cx="0" cy="0" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
+                <circle cx="80" cy="0" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
+                <circle cx="0" cy="80" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
+                <circle cx="80" cy="80" r="12" fill="none" stroke="#ffffff" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#marketPattern)" />
+          </svg>
 
-        {/* Lighting vignette and glow */}
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-black/40 rounded-full blur-2xl pointer-events-none" />
+          {/* Lighting vignette and glow */}
+          <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-black/40 rounded-full blur-2xl" />
+        </div>
 
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
         <div className={`relative z-10 ${
@@ -389,7 +407,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
           {/* Right Column: Framed Commercial Mini Banner Showcase Card - Dimensões e Proporção 4:3 Padronizadas */}
           <div className={`relative flex-1 min-w-0 flex items-center justify-center ${isVertical ? 'w-full py-1' : 'h-full max-h-full'}`}>
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode={isTvPlayerMode ? 'sync' : 'wait'}>
               <motion.div
                 key={product.id}
                 {...getAnimationProps()}
@@ -583,14 +601,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                       {/* Top-Right Circular Discount Starburst / Stamp Badge - Carimbo Externo Sobreposto */}
                       {product.discountPercentage && product.discountPercentage > 0 && (
-                        <motion.div
-                          animate={{ rotate: [0, 4, -4, 0] }}
-                          transition={{ repeat: Infinity, duration: 4 }}
+                        <div
                           className={`absolute ${
                             isTvPlayerMode
                               ? 'w-24 h-24 -top-6 -right-6 border-[3.5px]'
                               : 'w-8 h-8 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-[3px]'
-                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_14px_30px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none`}
+                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_14px_30px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none animate-badge-tilt`}
                         >
                           <span
                             className={`${
@@ -610,7 +626,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           >
                             -{product.discountPercentage}%
                           </span>
-                        </motion.div>
+                        </div>
                       )}
 
                       {/* Edit Controls Toolbar Overlay (Apenas no Modo Painel, Oculto no TV Player Fullscreen) */}

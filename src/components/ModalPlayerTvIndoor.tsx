@@ -28,7 +28,6 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [progress, setProgress] = useState<number>(0);
   const [showControls, setShowControls] = useState<boolean>(false);
 
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
@@ -170,49 +169,48 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
     effectivePlayableRef.current = effectivePlayable;
   }, [effectivePlayable]);
 
+  // Preload and decode all campaign product images into browser GPU memory
+  useEffect(() => {
+    if (!campaign.products || campaign.products.length === 0) return;
+    campaign.products.forEach((p) => {
+      if (p.imageUrl) {
+        const img = new Image();
+        img.src = p.imageUrl;
+        if ('decode' in img) {
+          img.decode().catch(() => {});
+        }
+      }
+    });
+  }, [campaign.products]);
+
   // If current product becomes hidden or is not in playable list, safely switch to the first visible product
   useEffect(() => {
     if (!effectivePlayable.includes(currentIndex)) {
       setCurrentIndex(effectivePlayable[0]);
-      setProgress(0);
     }
   }, [effectivePlayableKey, currentIndex]);
 
-  // Auto-play timer (cycles strictly through visible/unhidden products)
+  // Auto-play timer: 100% stutter-free and zero-CPU overhead
+  // Uses a single setTimeout per slide without ANY 100ms intermediate React re-renders!
   useEffect(() => {
-    if (!isOpen || !isPlaying) {
-      setProgress(0);
-      return;
-    }
+    if (!isOpen || !isPlaying) return;
 
     const playable = effectivePlayableRef.current;
-    if (!playable || playable.length <= 1) {
-      setProgress(0);
-      return;
-    }
+    if (!playable || playable.length <= 1) return;
 
     const duration = (campaign.slideDuration || 6) * 1000;
-    const intervalTime = 100;
-    const startTime = Date.now();
 
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min(100, (elapsed / duration) * 100);
-      setProgress(pct);
+    const timer = setTimeout(() => {
+      setCurrentIndex((prev) => {
+        const list = effectivePlayableRef.current;
+        if (!list || list.length === 0) return 0;
+        const currentPos = list.indexOf(prev);
+        const nextPos = (currentPos + 1) % list.length;
+        return list[nextPos];
+      });
+    }, duration);
 
-      if (elapsed >= duration) {
-        setProgress(0);
-        setCurrentIndex((prev) => {
-          const list = effectivePlayableRef.current;
-          if (!list || list.length === 0) return 0;
-          const currentPos = list.indexOf(prev);
-          const nextPos = (currentPos + 1) % list.length;
-          return list[nextPos];
-        });
-      }
-    }, intervalTime);
-
-    return () => clearInterval(interval);
+    return () => clearTimeout(timer);
   }, [isOpen, isPlaying, campaign.slideDuration, currentIndex, effectivePlayableKey]);
 
   // Fullscreen state listener
@@ -258,7 +256,6 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
           const nextPos = (currentPos + 1) % list.length;
           return list[nextPos];
         });
-        setProgress(0);
       }
       if (e.key === 'ArrowLeft') {
         setCurrentIndex((prev) => {
@@ -268,7 +265,6 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
           const prevPos = (currentPos - 1 + list.length) % list.length;
           return list[prevPos];
         });
-        setProgress(0);
       }
       if (e.key === 'f' || e.key === 'F') {
         toggleFullscreen();
@@ -366,7 +362,7 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
           style={{
             width: `${targetWidth}px`,
             height: `${targetHeight}px`,
-            transform: `scale(${scale})`,
+            transform: `scale(${scale}) translateZ(0)`,
             transformOrigin: 'center center',
             flexShrink: 0,
             willChange: 'transform',
@@ -379,19 +375,24 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
             currentProductIndex={currentIndex}
             onSelectProductIndex={(idx) => {
               setCurrentIndex(idx);
-              setProgress(0);
             }}
             isTvPlayerMode={true}
           />
         </div>
       </div>
 
-      {/* Slide Progress Bar (Bottom) - Discreto */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40 z-40 pointer-events-none">
-        <div 
-          className="h-full bg-amber-400/80 transition-all duration-100 ease-linear shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-          style={{ width: `${progress}%` }}
-        />
+      {/* Slide Progress Bar (Bottom) - 100% Acelerado por Hardware via CSS */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40 z-40 pointer-events-none overflow-hidden">
+        {isPlaying && (
+          <div 
+            key={`${currentIndex}-${campaign.slideDuration || 6}`}
+            style={{
+              animation: `tvProgressBar ${(campaign.slideDuration || 6)}s linear forwards`,
+              willChange: 'width',
+            }}
+            className="h-full bg-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
+          />
+        )}
       </div>
     </div>
   );
