@@ -233,19 +233,14 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               ? 'items-start text-left max-w-[50%] h-[86%] max-h-[86%] shrink-0' 
               : 'items-start text-left max-w-[48%] sm:max-w-[46%] h-[86%] max-h-[86%]'
           }`}>
-            {/* Top Block: Title & Packaging Subtitle (Posição fixa no topo, sem oscilação) */}
-            <div className="flex flex-col items-start w-full shrink-0">
+            {/* Top Block: Title com respiro em relação ao logo */}
+            <div className="flex flex-col items-start w-full shrink-0 pt-2.5 sm:pt-3.5 md:pt-4 lg:pt-5">
               {/* Product Title */}
               <h2 className={`${isTvPlayerMode ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[44px]' : isVertical ? 'text-[13px] sm:text-[16px] md:text-[19px]' : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[24px] xl:text-[28px]'} font-black text-white leading-[1.12] tracking-tight drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] font-sans break-words`}>
                 {product.title}
               </h2>
 
-              {/* Packaging / Commercial Unit Subtitle */}
-              <p className={`${isTvPlayerMode ? 'text-xs sm:text-sm md:text-base lg:text-lg font-semibold mt-0.5 sm:mt-1' : 'text-[10px] sm:text-xs md:text-sm mt-0.5'} text-neutral-200 font-medium drop-shadow-sm opacity-95`}>
-                Embalagem comercial {product.unit || '2L'}
-              </p>
-
-              {/* Promotional Badge com espaçamento equilibrado em relação à sub-descrição */}
+              {/* Promotional Badge com espaçamento equilibrado */}
               <div className={`${isTvPlayerMode ? 'mt-3 sm:mt-4 md:mt-5' : 'mt-2.5 sm:mt-3.5 md:mt-4'}`}>
                 <span className={`inline-flex items-center ${isTvPlayerMode ? 'px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs md:text-sm' : 'px-2 py-0.5 sm:px-3 sm:py-1 rounded-md text-[9px] sm:text-xs'} bg-[#3e684d] text-[#cbf4d8] border border-[#528d69]/40 font-extrabold uppercase tracking-wider shadow-sm`}>
                   {product.badge || 'OFERTA DO DIA'}
