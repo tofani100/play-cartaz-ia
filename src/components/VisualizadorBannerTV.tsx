@@ -78,23 +78,56 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
   // Contenção estrita para o banner
   const getBannerContainerStyle = (): React.CSSProperties => {
-    if (!isTvPlayerMode) return {};
+    if (isTvPlayerMode) {
+      if (campaign.format === '9:16') {
+        return {
+          aspectRatio: '9 / 16',
+          height: '100%',
+          maxHeight: '100dvh',
+          width: 'auto',
+          margin: 'auto',
+        };
+      }
 
-    if (campaign.format === '9:16') {
+      // No modo TV para 16:9 (horizontal padrão), preenche 100% da tela física sem criar faixas pretas
       return {
-        aspectRatio: '9 / 16',
+        width: '100%',
         height: '100%',
-        maxHeight: '100dvh',
-        width: 'auto',
-        margin: 'auto',
       };
     }
 
-    // No modo TV para 16:9 (horizontal padrão), preenche 100% da tela física sem criar faixas pretas
-    return {
-      width: '100%',
-      height: '100%',
-    };
+    // No modo de edição / workspace:
+    // Garante que o card suba até o topo eliminando espaço vago e caiba 100% na tela sem barra de rolagem (scroll)
+    const hasNav = campaign.products.length > 1;
+    const reserveHeight = hasNav ? '155px' : '110px';
+
+    switch (campaign.format) {
+      case '9:16':
+        return {
+          aspectRatio: '9 / 16',
+          maxHeight: `calc(100vh - ${reserveHeight})`,
+          width: `min(100%, 440px, calc((100vh - ${reserveHeight}) * 9 / 16))`,
+        };
+      case '1:1':
+        return {
+          aspectRatio: '1 / 1',
+          maxHeight: `calc(100vh - ${reserveHeight})`,
+          width: `min(100%, 680px, calc(100vh - ${reserveHeight}))`,
+        };
+      case '4:5':
+        return {
+          aspectRatio: '4 / 5',
+          maxHeight: `calc(100vh - ${reserveHeight})`,
+          width: `min(100%, 540px, calc((100vh - ${reserveHeight}) * 4 / 5))`,
+        };
+      case '16:9':
+      default:
+        return {
+          aspectRatio: '16 / 9',
+          maxHeight: `calc(100vh - ${reserveHeight})`,
+          width: `min(100%, 1120px, calc((100vh - ${reserveHeight}) * 16 / 9))`,
+        };
+    }
   };
 
   const getAnimationProps = () => {
@@ -131,12 +164,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
     (campaign.clientLogoUrl && campaign.clientLogoUrl.includes('belissima'));
 
   return (
-    <div className={`relative w-full ${isTvPlayerMode ? 'h-full w-full p-0 m-0 overflow-hidden flex items-center justify-center bg-black' : 'flex flex-col items-center justify-center p-2 sm:p-4'}`}>
+    <div className={`relative w-full ${isTvPlayerMode ? 'h-full w-full p-0 m-0 overflow-hidden flex items-center justify-center bg-black' : 'h-full w-full flex flex-col items-center justify-start p-1 sm:p-1.5 pt-0'}`}>
       {/* Main Banner Frame with ID for image capture */}
       <div
         id="tv-banner-capture"
         style={getBannerContainerStyle()}
-        className={`relative overflow-hidden ${isTvPlayerMode ? 'rounded-none border-none shadow-none w-full h-full' : 'rounded-2xl shadow-2xl border border-emerald-500/20 w-full'} transition-all select-none ${getAspectClass()} bg-[#073620] flex flex-col justify-between`}
+        className={`relative overflow-hidden ${isTvPlayerMode ? 'rounded-none border-none shadow-none w-full h-full' : 'rounded-2xl shadow-2xl border border-emerald-500/20'} transition-all select-none ${getAspectClass()} bg-[#073620] flex flex-col justify-between`}
       >
         {/* Deep Green Texture Background matching Model Banner (Image 1) */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#06331e] via-[#083c24] to-[#042214] pointer-events-none" />
@@ -641,25 +674,28 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
       {/* Navigation Thumbnails and Arrows (When not in fullscreen TV player) */}
       {!isTvPlayerMode && campaign.products.length > 1 && (
-        <div className="w-full max-w-[1120px] mt-3 flex items-center justify-between px-2">
+        <div 
+          style={{ width: `min(100%, 1120px, calc((100vh - 155px) * 16 / 9))` }}
+          className="mt-1 sm:mt-1.5 flex items-center justify-between px-1 shrink-0"
+        >
           {/* Prev Button */}
           <button
             id="btn-prev-product"
             onClick={() => onSelectProductIndex((currentProductIndex - 1 + campaign.products.length) % campaign.products.length)}
-            className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors"
+            className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
             title="Produto anterior"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Anterior</span>
           </button>
 
           {/* Product Bullets */}
-          <div className="flex items-center gap-2 overflow-x-auto py-1 max-w-[70%] px-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[70%] px-1">
             {campaign.products.map((p, idx) => (
               <button
                 key={p.id}
                 onClick={() => onSelectProductIndex(idx)}
-                className={`relative px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
                   idx === currentProductIndex
                     ? 'bg-amber-500 text-black shadow-md scale-105'
                     : 'bg-neutral-800 text-neutral-400 hover:text-white'
@@ -667,7 +703,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 title={p.title}
               >
                 <span>#{idx + 1}</span>
-                <span className="truncate max-w-[90px] sm:max-w-[130px]">{p.title}</span>
+                <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.title}</span>
               </button>
             ))}
           </div>
@@ -676,11 +712,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           <button
             id="btn-next-product"
             onClick={() => onSelectProductIndex((currentProductIndex + 1) % campaign.products.length)}
-            className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors"
+            className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
             title="Próximo produto"
           >
             <span className="hidden sm:inline">Próximo</span>
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       )}

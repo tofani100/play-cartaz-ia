@@ -380,7 +380,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-['Plus_Jakarta_Sans',_sans-serif]">
+    <div className="min-h-screen lg:h-screen lg:max-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-['Plus_Jakarta_Sans',_sans-serif] overflow-x-hidden lg:overflow-hidden">
       {/* Top Header */}
       <BarraSuperiorNavegacao
         format={campaign.format}
@@ -399,9 +399,9 @@ export default function App() {
       />
 
       {/* Main Workspace Layout */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Visual Stage (Center / Main Left) */}
-        <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 overflow-y-auto bg-neutral-950/60">
+      <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
+        {/* Visual Stage (Center / Main Left) - Sem espaço vago e sem scroll */}
+        <div className={`flex-1 min-h-0 flex flex-col items-center justify-start p-1 sm:p-2 pt-1 lg:pt-1.5 ${campaign.format === 'tabloid' ? 'overflow-y-auto' : 'lg:overflow-hidden'} bg-neutral-950/60`}>
 
 
           {/* Conditional Preview: Tabloid or Banner */}
@@ -422,7 +422,7 @@ export default function App() {
         </div>
 
         {/* Product & Campaign Management Sidebar */}
-        <aside className="w-full lg:w-96 xl:w-[420px] bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col shrink-0">
+        <aside className="w-full lg:w-96 xl:w-[420px] bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col shrink-0 lg:overflow-y-auto lg:h-full">
           <PainelEditorProdutos
             products={campaign.products}
             currentProductIndex={campaign.activeProductIndex}
