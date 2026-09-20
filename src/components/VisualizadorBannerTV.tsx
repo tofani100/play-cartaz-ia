@@ -612,10 +612,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           {/* Ticker Tier */}
           {campaign.showMarqueeTicker && (
             <div className={`${isTvPlayerMode ? 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3' : 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3'} flex items-center`}>
-              {/* Red OFERTAS Button */}
+              {/* Red INFORME Button */}
               <div className={`flex items-center ${isTvPlayerMode ? 'gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-md' : 'gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-md'} font-black bg-[#d90429] text-white shadow-md shrink-0`}>
                 <Volume2 className={`${isTvPlayerMode ? 'w-3.5 h-3.5 sm:w-4 sm:h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} animate-pulse`} />
-                <span>OFERTAS</span>
+                <span>INFORME</span>
               </div>
 
               {/* Marquee Text with Yellow Stars */}

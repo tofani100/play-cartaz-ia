@@ -402,69 +402,7 @@ export default function App() {
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Visual Stage (Center / Main Left) */}
         <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 overflow-y-auto bg-neutral-950/60">
-          {/* Top Preview Bar with Format & Quick Action Buttons */}
-          <div className="w-full max-w-4xl flex flex-wrap items-center justify-between gap-2.5 mb-3 px-1">
-            {/* Format indicator */}
-            <div className="flex items-center gap-2 text-xs text-neutral-400 bg-neutral-900/90 px-3 py-1.5 rounded-full border border-neutral-800">
-              {campaign.format === '16:9' && <Tv className="w-3.5 h-3.5 text-amber-400" />}
-              {campaign.format === '9:16' && <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
-              {campaign.format === '1:1' && <Square className="w-3.5 h-3.5 text-amber-400" />}
-              {campaign.format === 'tabloid' && <Newspaper className="w-3.5 h-3.5 text-amber-400" />}
-              <span className="font-bold text-white">
-                {campaign.format === '16:9' && 'TV Indoor 16:9 (1920x1080)'}
-                {campaign.format === '9:16' && 'Totem / Stories 9:16 (1080x1920)'}
-                {campaign.format === '1:1' && 'Instagram Feed 1:1 (1080x1080)'}
-                {campaign.format === '4:5' && 'Retrato 4:5 (1080x1350)'}
-                {campaign.format === 'tabloid' && 'Tablóide de Ofertas / Encarte'}
-              </span>
-              <span className="text-neutral-500">•</span>
-              <span className="text-neutral-400 font-medium">{activeTheme.name}</span>
-            </div>
 
-            {/* Quick Actions: Logo Switch, View Fullscreen / TV & Download Ready */}
-            <div className="flex items-center gap-2">
-              {/* Botão de Controle do Logotipo: Com Logo / Sem Logo */}
-              <button
-                id="btn-toggle-logo-workspace"
-                type="button"
-                onClick={() => setCampaign((prev) => ({ ...prev, showClientLogo: !prev.showClientLogo }))}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm ${
-                  campaign.showClientLogo !== false
-                    ? 'bg-amber-400 text-neutral-950 border-amber-300 shadow-amber-400/20'
-                    : 'bg-neutral-800 text-neutral-300 border-neutral-700 hover:border-neutral-500'
-                }`}
-                title="Clique para alternar entre colocar o logotipo gráfico ou usar o nome em texto estilizado"
-              >
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Logo:</span>
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${
-                  campaign.showClientLogo !== false ? 'bg-neutral-950 text-amber-300' : 'bg-neutral-700 text-neutral-200'
-                }`}>
-                  {campaign.showClientLogo !== false ? 'COM LOGO' : 'SEM LOGO'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsTvPlayerOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
-                title="Abrir o banner pronto em Tela Cheia (100% limpo, sem painel de edição)"
-              >
-                <Play className="w-3.5 h-3.5 fill-white" />
-                <span>Ver Pronto em Tela Cheia</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsExportModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-semibold text-xs rounded-lg border border-neutral-700 transition-colors cursor-pointer"
-                title="Baixar imagem HD (PNG/JPG) ou PDF do banner"
-              >
-                <Download className="w-3.5 h-3.5 text-amber-400" />
-                <span>Baixar Banner</span>
-              </button>
-            </div>
-          </div>
 
           {/* Conditional Preview: Tabloid or Banner */}
           {campaign.format === 'tabloid' ? (
