@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BannerCampaign, BannerFormat, ProductItem, ThemePresetId } from './tiposGeradorBanner';
 import { BANCO_TEMAS_VISUAIS } from './data/bancoTemasVisuais';
 import { BANCO_PRODUTOS_COMERCIAIS } from './data/bancoProdutosComerciais';
@@ -156,6 +156,9 @@ export default function App() {
   });
 
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'syncing' | 'saved' | 'idle'>('saved');
+  const isRemoteUpdateRef = useRef<boolean>(false);
+  const initialLoadDoneRef = useRef<boolean>(false);
+  const lastSavedTimestampRef = useRef<string>('');
 
   // 1. Carregamento inicial da Nuvem (Firebase Firestore)
   useEffect(() => {
@@ -164,6 +167,10 @@ export default function App() {
       setCloudSyncStatus('syncing');
       const cloudCampaign = await loadCampaignFromCloud();
       if (cloudCampaign && isMounted) {
+        isRemoteUpdateRef.current = true;
+        if ((cloudCampaign as any)._syncTimestamp) {
+          lastSavedTimestampRef.current = (cloudCampaign as any)._syncTimestamp;
+        }
         setCampaign((prev) => ({
           ...prev,
           ...cloudCampaign,
@@ -173,6 +180,7 @@ export default function App() {
               : cloudCampaign.clientLogoUrl,
         }));
       }
+      initialLoadDoneRef.current = true;
       setCloudSyncStatus('saved');
     })();
 
@@ -183,19 +191,22 @@ export default function App() {
       }
     });
 
-    // Ouve alterações em tempo real do Firestore para que múltiplos computadores e TVs sincronizem
+    // Ouve alterações em tempo real do Firestore (para múltiplos computadores e TVs sincronizarem sem loop)
     const unsubscribe = subscribeToCloudCampaign((updatedCampaign) => {
-      if (isMounted && updatedCampaign) {
-        setCampaign((prev) => {
-          if ((updatedCampaign as any)._syncTimestamp !== (prev as any)._syncTimestamp) {
-            return {
-              ...prev,
-              ...updatedCampaign,
-            };
-          }
-          return prev;
-        });
+      if (!isMounted || !updatedCampaign) return;
+      const remoteTimestamp = (updatedCampaign as any)._syncTimestamp;
+      if (remoteTimestamp && remoteTimestamp === lastSavedTimestampRef.current) {
+        // Ignora eco de alterações geradas localmente
+        return;
       }
+      if (remoteTimestamp) {
+        lastSavedTimestampRef.current = remoteTimestamp;
+      }
+      isRemoteUpdateRef.current = true;
+      setCampaign((prev) => ({
+        ...prev,
+        ...updatedCampaign,
+      }));
     });
 
     return () => {
@@ -206,9 +217,22 @@ export default function App() {
 
   // 2. Persistência contínua na Nuvem (Firebase) + Backup Local
   useEffect(() => {
+    // Não salva antes de completar o carregamento inicial
+    if (!initialLoadDoneRef.current) return;
+    // Se a alteração veio da própria nuvem, não devolve para o Firestore (evita loop)
+    if (isRemoteUpdateRef.current) {
+      isRemoteUpdateRef.current = false;
+      return;
+    }
+
     setCloudSyncStatus('syncing');
     const timer = setTimeout(() => {
-      saveCampaignToCloud(campaign).then((success) => {
+      const now = new Date().toISOString();
+      lastSavedTimestampRef.current = now;
+      saveCampaignToCloud({
+        ...campaign,
+        _syncTimestamp: now,
+      } as any).then((success) => {
         if (success) {
           setCloudSyncStatus('saved');
         }
@@ -218,7 +242,7 @@ export default function App() {
       } catch (e) {
         // Safe catch se ultrapassar limite de 5MB do navegador
       }
-    }, 800);
+    }, 1200);
 
     return () => clearTimeout(timer);
   }, [campaign]);

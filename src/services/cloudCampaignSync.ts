@@ -135,7 +135,7 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
     const campaignDocRef = doc(db, CAMPAIGN_DOC_PATH, ACTIVE_CAMPAIGN_ID);
     await setDoc(campaignDocRef, {
       ...payloadToSave,
-      _syncTimestamp: new Date().toISOString(),
+      _syncTimestamp: (payloadToSave as any)._syncTimestamp || new Date().toISOString(),
       _version: '2.5.0',
     });
 
