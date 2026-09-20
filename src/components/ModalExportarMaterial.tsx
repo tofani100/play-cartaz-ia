@@ -206,14 +206,14 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
                   <Film className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="text-sm font-bold text-white">Vídeo com Animação (MP4 / WebM)</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-white">Vídeo HD Oficial para TV & Redes (MP4)</h4>
                     <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300">
-                      Reels / TikTok / Stories
+                      Full HD 1080p • Fiel ao Banner
                     </span>
                   </div>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Gera arquivo de vídeo com as animações de preço, zoom de produto e transição de ofertas.
+                    Gera arquivo de vídeo MP4 100% idêntico ao banner da TV, com letreiro em movimento, selo giratório, logo oficial e transição de ofertas.
                   </p>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
               <button
                 onClick={handleRecordVideo}
                 disabled={isExportingVideo}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all shrink-0 shadow"
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all shrink-0 shadow cursor-pointer disabled:opacity-50"
               >
                 {isExportingVideo ? (
                   <>
@@ -231,7 +231,7 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
                 ) : (
                   <>
                     <Film className="w-3.5 h-3.5" />
-                    <span>Gerar Vídeo</span>
+                    <span>Gerar Vídeo MP4</span>
                   </>
                 )}
               </button>
@@ -239,42 +239,46 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
 
             {/* Notification and Details when Video is Generated */}
             {generatedVideo && (
-              <div className="mt-1 p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 text-xs text-neutral-200 animate-fade-in space-y-2">
-                <div className="flex items-center gap-2 text-purple-300 font-bold">
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span>Vídeo gerado com sucesso!</span>
+              <div className="mt-1 p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 text-xs text-neutral-200 animate-fade-in space-y-2.5">
+                <div className="flex items-center justify-between text-purple-300 font-bold">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Vídeo MP4 gerado com sucesso!</span>
+                  </div>
+                  <span className="font-mono text-[11px] text-purple-200 bg-neutral-950 px-2 py-0.5 rounded border border-purple-500/30">
+                    {(generatedVideo.sizeBytes / (1024 * 1024)).toFixed(2)} MB
+                  </span>
+                </div>
+
+                {/* Inline Video Player Preview */}
+                <div className="w-full rounded-xl overflow-hidden border border-purple-500/40 bg-black shadow-lg">
+                  <video
+                    src={generatedVideo.blobUrl}
+                    controls
+                    autoPlay
+                    loop
+                    className="w-full max-h-[220px] object-contain bg-black"
+                  />
                 </div>
                 
                 <div className="p-2.5 rounded-lg bg-neutral-900/90 border border-neutral-800 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-neutral-300 font-medium">
                     <FolderDown className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span><strong>Onde foi salvo?</strong> O arquivo foi salvo na pasta <strong>Downloads</strong> do seu computador/celular.</span>
+                    <span>O arquivo de vídeo foi baixado na pasta <strong>Downloads</strong> do seu computador/dispositivo.</span>
                   </div>
                   <div className="font-mono text-[11px] text-purple-200 break-all bg-neutral-950 px-2 py-1 rounded">
-                    📁 Arquivo: {generatedVideo.filename} ({(generatedVideo.sizeBytes / (1024 * 1024)).toFixed(2)} MB)
+                    📁 Arquivo: {generatedVideo.filename}
                   </div>
-                  <p className="text-[11px] text-neutral-400">
-                    💡 <strong>Atalho rápido:</strong> No Google Chrome ou Edge, pressione <kbd className="px-1 py-0.5 bg-neutral-800 rounded text-neutral-200">Ctrl + J</kbd> (ou <kbd className="px-1 py-0.5 bg-neutral-800 rounded text-neutral-200">Cmd + J</kbd> no Mac) para abrir o gerenciador de downloads e ver o arquivo.
-                  </p>
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
                   <a
                     href={generatedVideo.blobUrl}
                     download={generatedVideo.filename}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg flex items-center gap-1.5 transition-colors"
+                    className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg flex items-center gap-1.5 transition-colors shadow"
                   >
                     <Download className="w-3 h-3" />
-                    <span>Baixar Novamente</span>
-                  </a>
-                  <a
-                    href={generatedVideo.blobUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold rounded-lg flex items-center gap-1.5 transition-colors"
-                  >
-                    <Play className="w-3 h-3" />
-                    <span>Assistir Vídeo</span>
+                    <span>Baixar Novamente (MP4)</span>
                   </a>
                 </div>
               </div>
