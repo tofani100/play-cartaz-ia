@@ -1,0 +1,451 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { BannerCampaign, BannerFormat, ProductItem, ThemePresetId } from './tiposGeradorBanner';
+import { BANCO_TEMAS_VISUAIS } from './data/bancoTemasVisuais';
+import { BANCO_PRODUTOS_COMERCIAIS } from './data/bancoProdutosComerciais';
+import { BarraSuperiorNavegacao } from './components/BarraSuperiorNavegacao';
+import { VisualizadorBannerTV } from './components/VisualizadorBannerTV';
+import { VisualizadorTabloideOfertas } from './components/VisualizadorTabloideOfertas';
+import { PainelEditorProdutos } from './components/PainelEditorProdutos';
+import { ModalCorretorListaIA } from './components/ModalCorretorListaIA';
+import { ModalPlayerTvIndoor } from './components/ModalPlayerTvIndoor';
+import { ModalExportarMaterial } from './components/ModalExportarMaterial';
+import { ModalGestaoClientes } from './components/ModalGestaoClientes';
+import { ModalConfiguracoesCampanha } from './components/ModalConfiguracoesCampanha';
+import { CLIENTES_PREDEFINIDOS } from './data/bancoClientes';
+import { ClientProfile } from './tiposGeradorBanner';
+import { Sparkles, Tv, Smartphone, Square, Newspaper, Layers, Play, Download, Eye, Store, Image as ImageIcon } from 'lucide-react';
+
+const INITIAL_PRODUCTS: ProductItem[] = [
+  {
+    id: 'prod-cafe-caboclo-500g',
+    title: 'Café Torrado e Moído Caboclo Tradicional a Vácuo 500g',
+    brand: 'Caboclo',
+    category: 'Mercearia',
+    unit: '500g',
+    price: '32,99',
+    originalPrice: '38,90',
+    discountPercentage: 15,
+    badge: 'SUPER OFERTA',
+    imageUrl: 'https://images.openfoodfacts.org/images/products/789/608/901/1470/front_pt.3.full.jpg',
+    isHero: true,
+  },
+  {
+    id: 'prod-coca-2l',
+    title: 'Refrigerante Coca-Cola Garrafa 2L',
+    brand: 'Coca-Cola',
+    category: 'Bebidas',
+    unit: '2L',
+    price: '8,99',
+    originalPrice: '10,99',
+    discountPercentage: 19,
+    badge: 'OFERTA DO DIA',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Coca_Cola_Flasche_-_Original_Taste.jpg/960px-Coca_Cola_Flasche_-_Original_Taste.jpg',
+    isHero: false,
+  },
+  {
+    id: 'prod-heineken-330ml',
+    title: 'Cerveja Heineken Puro Malte Garrafa Long Neck 330ml',
+    brand: 'Heineken',
+    category: 'Bebidas',
+    unit: '330ml',
+    price: '6,49',
+    originalPrice: '7,99',
+    discountPercentage: 19,
+    badge: 'GELADA',
+    imageUrl: 'https://images.openfoodfacts.org/images/products/871/200/004/7942/front_pt.3.full.jpg',
+  },
+  {
+    id: 'prod-ype-neutro-500ml',
+    title: 'Detergente Líquido Lava-Louças Ypê Neutro 500ml',
+    brand: 'Ypê',
+    category: 'Limpeza',
+    unit: '500ml',
+    price: '2,19',
+    originalPrice: '2,89',
+    discountPercentage: 24,
+    badge: 'ECONOMIA',
+    imageUrl: 'https://images.openfoodfacts.org/images/products/789/609/890/0253/front_pt.4.full.jpg',
+  },
+  {
+    id: 'prod-leite-piracanjuba-1l',
+    title: 'Leite Integral Piracanjuba UHT Tetra Pak 1L',
+    brand: 'Piracanjuba',
+    category: 'Laticínios',
+    unit: '1L',
+    price: '4,69',
+    originalPrice: '5,99',
+    discountPercentage: 22,
+    badge: 'PREÇO BAIXO',
+    imageUrl: 'https://images.openfoodfacts.org/images/products/789/821/515/0018/front_pt.8.full.jpg',
+  },
+  {
+    id: 'prod-feijao-camil-1kg',
+    title: 'Feijão Carioca Tipo 1 Camil Pacote 1kg',
+    brand: 'Camil',
+    category: 'Mercearia',
+    unit: '1kg',
+    price: '7,49',
+    originalPrice: '9,20',
+    discountPercentage: 18,
+    badge: 'DA TERRA',
+    imageUrl: 'https://images.openfoodfacts.org/images/products/789/600/671/1117/front_pt.3.full.jpg',
+  },
+];
+
+const DEFAULT_CAMPAIGN: BannerCampaign = {
+  id: 'camp-1',
+  clientName: 'Belíssima Casa di Frutas',
+  clientLogoUrl: '/logos/belissima-casa-di-frutas.png',
+  showClientLogo: true,
+  segment: 'Hortifrúti & Frutas Selecionadas',
+  campaignTitle: 'FESTIVAL DE OFERTAS PLAY COMUNIQUE',
+  campaignSubtitle: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
+  validityText: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
+  legalNotice: 'Imagens meramente ilustrativas. Produto estoqu de bebidas a menores de 18 anos.',
+  footerBrandText: 'ts.playcomunique.com.br',
+  tickerText: '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ NOSSO APLICATIVO É GAM DEMAIS! ★★ OFERTAS VÁLIDAS PARA TODAS AS FILIAIS DA BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★',
+  format: '16:9',
+  themeId: 'hortifruti-green',
+  products: INITIAL_PRODUCTS,
+  activeProductIndex: 0,
+  animationStyle: 'zoom',
+  slideDuration: 6,
+  showClock: false,
+  showMarqueeTicker: true,
+  showQrCode: false,
+  phoneWhatsapp: '(11) 99999-1234',
+  storeAddress: 'Rua das Frutas, 2004 - Centro Comercial',
+};
+
+export default function App() {
+  const [campaign, setCampaign] = useState<BannerCampaign>(() => {
+    try {
+      const saved = localStorage.getItem('playcomunique_campanha');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_CAMPAIGN,
+          ...parsed,
+          clientLogoUrl:
+            parsed.clientName === 'Belíssima Casa di Frutas' || parsed.id === 'camp-1'
+              ? (parsed.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
+              : parsed.clientLogoUrl,
+        };
+      }
+    } catch (e) {
+      console.error('Erro ao ler campanha do localStorage:', e);
+    }
+    return DEFAULT_CAMPAIGN;
+  });
+
+  // Persistência automática no localStorage a cada alteração na campanha
+  useEffect(() => {
+    try {
+      localStorage.setItem('playcomunique_campanha', JSON.stringify(campaign));
+    } catch (e) {
+      console.error('Erro ao salvar campanha no localStorage:', e);
+    }
+  }, [campaign]);
+
+  // Saved clients list with local storage persistence
+  const [clients, setClients] = useState<ClientProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('playcomunique_clientes');
+      if (saved) {
+        const parsed: ClientProfile[] = JSON.parse(saved);
+        return parsed.map((c) =>
+          c.id === 'cli-belissima'
+            ? { ...c, logoUrl: '/logos/belissima-casa-di-frutas.png' }
+            : c
+        );
+      }
+    } catch {
+      // Fallback
+    }
+    return CLIENTES_PREDEFINIDOS;
+  });
+
+  const handleSaveClient = (newOrUpdatedClient: ClientProfile) => {
+    setClients((prev) => {
+      const exists = prev.some((c) => c.id === newOrUpdatedClient.id);
+      let updated: ClientProfile[];
+      if (exists) {
+        updated = prev.map((c) => (c.id === newOrUpdatedClient.id ? newOrUpdatedClient : c));
+      } else {
+        updated = [newOrUpdatedClient, ...prev];
+      }
+      try {
+        localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // If edited client is currently active on banner, sync it
+    if (campaign.clientName.toLowerCase() === newOrUpdatedClient.name.toLowerCase()) {
+      setCampaign((prev) => ({
+        ...prev,
+        clientName: newOrUpdatedClient.name,
+        clientLogoUrl: newOrUpdatedClient.logoUrl,
+        themeId: newOrUpdatedClient.themeId,
+        segment: newOrUpdatedClient.segment,
+      }));
+    }
+  };
+
+  const handleDeleteClient = (clientId: string) => {
+    setClients((prev) => {
+      const updated = prev.filter((c) => c.id !== clientId);
+      try {
+        localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleSelectClient = (client: ClientProfile) => {
+    setCampaign((prev) => ({
+      ...prev,
+      clientName: client.name,
+      clientLogoUrl: client.logoUrl || '',
+      showClientLogo: Boolean(client.logoUrl),
+      themeId: client.themeId,
+      segment: client.segment,
+      tickerText: client.defaultTickerText || prev.tickerText,
+      phoneWhatsapp: client.phoneWhatsapp || prev.phoneWhatsapp,
+      storeAddress: client.storeAddress || prev.storeAddress,
+    }));
+  };
+
+  // Modal states
+  const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
+  const [isTvPlayerOpen, setIsTvPlayerOpen] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+
+  // Auto open TV player if opened with ?mode=tv or ?player=1
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'tv' || params.get('player') === '1') {
+        setIsTvPlayerOpen(true);
+      }
+    } catch (e) {
+      // Ignore URLSearchParams error in restricted contexts
+    }
+  }, []);
+
+  const activeTheme = BANCO_TEMAS_VISUAIS[campaign.themeId] || BANCO_TEMAS_VISUAIS['supermarket-red'];
+
+  const handleFormatChange = (fmt: BannerFormat) => {
+    setCampaign((prev) => ({ ...prev, format: fmt }));
+  };
+
+  const handleApplyAiProducts = (
+    newProducts: ProductItem[],
+    campaignTitle?: string,
+    validityText?: string
+  ) => {
+    setCampaign((prev) => ({
+      ...prev,
+      products: newProducts,
+      activeProductIndex: 0,
+      campaignTitle: campaignTitle || prev.campaignTitle,
+      validityText: validityText || prev.validityText,
+    }));
+  };
+
+  const handleUpdateProduct = (idx: number, updated: Partial<ProductItem>) => {
+    setCampaign((prev) => {
+      const nextProducts = [...prev.products];
+      nextProducts[idx] = { ...nextProducts[idx], ...updated };
+      return { ...prev, products: nextProducts };
+    });
+  };
+
+  const handleAddProduct = (newProduct: ProductItem) => {
+    setCampaign((prev) => ({
+      ...prev,
+      products: [newProduct, ...prev.products],
+      activeProductIndex: 0,
+    }));
+  };
+
+  const handleRemoveProduct = (idx: number) => {
+    setCampaign((prev) => {
+      const next = prev.products.filter((_, i) => i !== idx);
+      const nextIdx = Math.min(prev.activeProductIndex, Math.max(0, next.length - 1));
+      return { ...prev, products: next, activeProductIndex: nextIdx };
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-['Plus_Jakarta_Sans',_sans-serif]">
+      {/* Top Header */}
+      <BarraSuperiorNavegacao
+        format={campaign.format}
+        onFormatChange={handleFormatChange}
+        onOpenAiParser={() => setIsAiModalOpen(true)}
+        onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenThemeModal={() => setIsThemeModalOpen(true)}
+        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        clientName={campaign.clientName}
+        onClientNameChange={(name) => setCampaign((p) => ({ ...p, clientName: name }))}
+        activeThemeId={campaign.themeId}
+        showClientLogo={campaign.showClientLogo !== false}
+        onToggleShowLogo={() => setCampaign((p) => ({ ...p, showClientLogo: !p.showClientLogo }))}
+      />
+
+      {/* Main Workspace Layout */}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Visual Stage (Center / Main Left) */}
+        <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 overflow-y-auto bg-neutral-950/60">
+          {/* Top Preview Bar with Format & Quick Action Buttons */}
+          <div className="w-full max-w-4xl flex flex-wrap items-center justify-between gap-2.5 mb-3 px-1">
+            {/* Format indicator */}
+            <div className="flex items-center gap-2 text-xs text-neutral-400 bg-neutral-900/90 px-3 py-1.5 rounded-full border border-neutral-800">
+              {campaign.format === '16:9' && <Tv className="w-3.5 h-3.5 text-amber-400" />}
+              {campaign.format === '9:16' && <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
+              {campaign.format === '1:1' && <Square className="w-3.5 h-3.5 text-amber-400" />}
+              {campaign.format === 'tabloid' && <Newspaper className="w-3.5 h-3.5 text-amber-400" />}
+              <span className="font-bold text-white">
+                {campaign.format === '16:9' && 'TV Indoor 16:9 (1920x1080)'}
+                {campaign.format === '9:16' && 'Totem / Stories 9:16 (1080x1920)'}
+                {campaign.format === '1:1' && 'Instagram Feed 1:1 (1080x1080)'}
+                {campaign.format === '4:5' && 'Retrato 4:5 (1080x1350)'}
+                {campaign.format === 'tabloid' && 'Tablóide de Ofertas / Encarte'}
+              </span>
+              <span className="text-neutral-500">•</span>
+              <span className="text-neutral-400 font-medium">{activeTheme.name}</span>
+            </div>
+
+            {/* Quick Actions: Logo Switch, View Fullscreen / TV & Download Ready */}
+            <div className="flex items-center gap-2">
+              {/* Botão de Controle do Logotipo: Com Logo / Sem Logo */}
+              <button
+                id="btn-toggle-logo-workspace"
+                type="button"
+                onClick={() => setCampaign((prev) => ({ ...prev, showClientLogo: !prev.showClientLogo }))}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-sm ${
+                  campaign.showClientLogo !== false
+                    ? 'bg-amber-400 text-neutral-950 border-amber-300 shadow-amber-400/20'
+                    : 'bg-neutral-800 text-neutral-300 border-neutral-700 hover:border-neutral-500'
+                }`}
+                title="Clique para alternar entre colocar o logotipo gráfico ou usar o nome em texto estilizado"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Logo:</span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                  campaign.showClientLogo !== false ? 'bg-neutral-950 text-amber-300' : 'bg-neutral-700 text-neutral-200'
+                }`}>
+                  {campaign.showClientLogo !== false ? 'COM LOGO' : 'SEM LOGO'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsTvPlayerOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                title="Abrir o banner pronto em Tela Cheia (100% limpo, sem painel de edição)"
+              >
+                <Play className="w-3.5 h-3.5 fill-white" />
+                <span>Ver Pronto em Tela Cheia</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-semibold text-xs rounded-lg border border-neutral-700 transition-colors cursor-pointer"
+                title="Baixar imagem HD (PNG/JPG) ou PDF do banner"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span>Baixar Banner</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Conditional Preview: Tabloid or Banner */}
+          {campaign.format === 'tabloid' ? (
+            <VisualizadorTabloideOfertas campaign={campaign} theme={activeTheme} />
+          ) : (
+            <VisualizadorBannerTV
+              campaign={campaign}
+              theme={activeTheme}
+              currentProductIndex={campaign.activeProductIndex}
+              onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+              onUpdateProductImage={(productId, newImageUrl) => {
+                handleUpdateProduct(campaign.activeProductIndex, { imageUrl: newImageUrl });
+              }}
+            />
+          )}
+        </div>
+
+        {/* Product & Campaign Management Sidebar */}
+        <aside className="w-full lg:w-96 xl:w-[420px] bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col shrink-0">
+          <PainelEditorProdutos
+            products={campaign.products}
+            currentProductIndex={campaign.activeProductIndex}
+            onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+            onUpdateProduct={handleUpdateProduct}
+            onAddProduct={handleAddProduct}
+            onRemoveProduct={handleRemoveProduct}
+            showClientLogo={campaign.showClientLogo !== false}
+            onToggleShowLogo={() => setCampaign((p) => ({ ...p, showClientLogo: !p.showClientLogo }))}
+            clientName={campaign.clientName}
+          />
+        </aside>
+      </main>
+
+      {/* Modals */}
+      <ModalCorretorListaIA
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        onApplyProducts={handleApplyAiProducts}
+        currentSegment={campaign.segment}
+      />
+
+      <ModalPlayerTvIndoor
+        isOpen={isTvPlayerOpen}
+        onClose={() => setIsTvPlayerOpen(false)}
+        campaign={campaign}
+        theme={activeTheme}
+      />
+
+      <ModalExportarMaterial
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        campaign={campaign}
+        theme={activeTheme}
+        onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
+      />
+
+      <ModalGestaoClientes
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+        clients={clients}
+        activeClientName={campaign.clientName}
+        activeThemeId={campaign.themeId}
+        showClientLogo={campaign.showClientLogo !== false}
+        onSelectClient={handleSelectClient}
+        onSelectThemeOnly={(themeId) => setCampaign((p) => ({ ...p, themeId }))}
+        onSaveClient={handleSaveClient}
+        onDeleteClient={handleDeleteClient}
+        onToggleShowLogo={(show) => setCampaign((p) => ({ ...p, showClientLogo: show }))}
+        onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
+      />
+
+      <ModalConfiguracoesCampanha
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        campaign={campaign}
+        onUpdateCampaign={(updated) => setCampaign((p) => ({ ...p, ...updated }))}
+      />
+    </div>
+  );
+}

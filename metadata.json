@@ -1,0 +1,8 @@
+{
+  "name": "Play Comunique - Gerador de Banners, TV Indoor e Tabloides",
+  "description": "Plataforma de criação e animação de banners para TV Indoor, encartes/tabloides de ofertas para supermercados e redes sociais com inteligência artificial para correção de listas e geração de artes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
