@@ -162,9 +162,15 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-black/40 rounded-full blur-2xl pointer-events-none" />
 
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
-        <div className={`relative z-10 px-3 sm:px-6 md:px-10 lg:px-12 ${isTvPlayerMode ? 'py-1.5 sm:py-2 md:py-2.5' : 'py-2 sm:py-2.5 lg:py-1.5'} flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} gap-2 sm:gap-4 shrink-0`}>
+        <div className={`relative z-10 pl-3 sm:pl-6 md:pl-10 lg:pl-12 pr-0 ${isTvPlayerMode ? 'py-1.5 sm:py-2 md:py-2.5' : 'py-2 sm:py-2.5 lg:py-1.5'} flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
-          <div className={`flex items-center gap-2 shrink-0 ${isTvPlayerMode ? 'pr-3 sm:pr-6 md:pr-8' : 'pr-3 sm:pr-6 md:pr-12'}`}>
+          <div className={`flex items-center shrink-0 ${
+            isTvPlayerMode
+              ? 'w-[145px] sm:w-[205px] md:w-[260px] lg:w-[320px] xl:w-[350px]'
+              : isVertical
+              ? 'w-[145px] sm:w-[205px]'
+              : 'w-[115px] sm:w-[160px] md:w-[230px] lg:w-[290px]'
+          }`}>
             {campaign.showClientLogo !== false && (
               isBelissima ? (
                 <img
@@ -202,9 +208,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             )}
           </div>
 
-          {/* Top Center: Campaign Title & Validity - Cabe confortavelmente sem reticências e sem invadir o miolo */}
+          {/* Top Center: Campaign Title & Validity - Centralizado com precisão matemática entre os pontos 2 e 3 */}
           {!isVertical && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-2 sm:px-4 min-w-0 relative">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-2 sm:px-4 md:px-6 min-w-0 relative translate-y-1.5 sm:translate-y-2 md:translate-y-2.5 lg:translate-y-3">
               <h1 className={`${isTvPlayerMode ? 'text-lg sm:text-2xl md:text-3xl lg:text-4xl xl:text-[38px] 2xl:text-[42px]' : 'text-[14px] sm:text-[18px] md:text-[22px] lg:text-[28px] xl:text-[34px]'} font-black uppercase tracking-normal text-amber-400 drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] w-full text-center leading-tight whitespace-nowrap overflow-hidden text-ellipsis`}>
                 {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
               </h1>
@@ -416,8 +422,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           : 'w-full max-w-[235px] sm:max-w-[312px] md:max-w-[442px] lg:max-w-[600px] xl:max-w-[728px] aspect-[4/3] max-h-[68vh] sm:max-h-[74vh] shrink-0'
                       } ${
                         isAmbient
-                          ? 'bg-neutral-950 border-2 border-white/90 shadow-[0_25px_60px_rgba(0,0,0,0.9)] ring-1 ring-white/20'
-                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-2 border-white/80 shadow-[0_22px_50px_rgba(0,0,0,0.8)]'
+                          ? 'bg-neutral-950 border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.9)] ring-1 ring-white/30'
+                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-4 border-white shadow-[0_22px_50px_rgba(0,0,0,0.8)]'
                       } ${
                         isTvPlayerMode
                           ? 'rounded-2xl md:rounded-3xl p-1.5 sm:p-2 md:p-3'
