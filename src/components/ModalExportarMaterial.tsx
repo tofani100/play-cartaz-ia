@@ -17,6 +17,7 @@ import {
 import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
 import { downloadElementAsPng, gerarVideoAnimadoBanner, VideoExportResult } from '../utils/ajudanteExportacao';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
+import { APP_VERSION } from '../versao';
 
 interface ModalExportarMaterialProps {
   isOpen: boolean;
@@ -108,9 +109,14 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
               <Download className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">
-                Exportar Material & Sugestão de Formatos
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-white">
+                  Exportar Material & Sugestão de Formatos
+                </h3>
+                <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-amber-300 text-neutral-950 font-black text-[11px] shadow-sm">
+                  {APP_VERSION}
+                </span>
+              </div>
               <p className="text-xs text-neutral-400">
                 Escolha o formato ideal para TV Indoor física, redes sociais ou impressão.
               </p>
