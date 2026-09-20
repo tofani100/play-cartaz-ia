@@ -55,8 +55,108 @@ function preloadImage(url: string): Promise<HTMLImageElement | null> {
       fallbackImg.src = url;
     };
     img.src = url;
-    setTimeout(() => resolve(null), 3500);
+    setTimeout(() => resolve(null), 4000);
   });
+}
+
+/**
+ * Helper for drawing rounded rectangles
+ */
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number | [number, number, number, number]
+) {
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    const radius = typeof r === 'number' ? r : r[0];
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+}
+
+/**
+ * Robust, distortion-free image renderer preserving natural aspect ratio (cover or contain)
+ */
+function drawImagePreservingAspect(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  cardX: number,
+  cardY: number,
+  cardW: number,
+  cardH: number,
+  isContain: boolean,
+  zoom: number = 1.0
+) {
+  const imgW = img.naturalWidth || img.width;
+  const imgH = img.naturalHeight || img.height;
+  if (!imgW || !imgH) return;
+
+  const imgAspect = imgW / imgH;
+  const cardAspect = cardW / cardH;
+
+  if (isContain) {
+    // Packshot Mode: fit inside card with safety margins, zero crop, zero distortion
+    const pad = Math.round(cardH * 0.08);
+    const fitW = cardW - pad * 2;
+    const fitH = cardH - pad * 2;
+    const fitAspect = fitW / fitH;
+
+    let dW = fitW;
+    let dH = fitH;
+    if (imgAspect > fitAspect) {
+      dH = fitW / imgAspect;
+    } else {
+      dW = fitH * imgAspect;
+    }
+
+    const dX = cardX + (cardW - dW) / 2;
+    const dY = cardY + (cardH - dH) / 2;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = 25;
+    ctx.shadowOffsetY = 15;
+    ctx.drawImage(img, dX, dY, dW, dH);
+    ctx.restore();
+  } else {
+    // Ambient Mode: object-cover cropping excess without ANY distortion, with subtle Ken Burns zoom
+    let sX = 0;
+    let sY = 0;
+    let sW = imgW;
+    let sH = imgH;
+
+    if (imgAspect > cardAspect) {
+      // Source image is wider than 4:3 target -> crop left and right
+      sW = imgH * cardAspect;
+      sX = (imgW - sW) / 2;
+    } else {
+      // Source image is taller than 4:3 target -> crop top and bottom
+      sH = imgW / cardAspect;
+      sY = (imgH - sH) / 2;
+    }
+
+    const destW = cardW * zoom;
+    const destH = cardH * zoom;
+    const destX = cardX - (destW - cardW) / 2;
+    const destY = cardY - (destH - cardH) / 2;
+
+    ctx.drawImage(img, sX, sY, sW, sH, destX, destY, destW, destH);
+  }
 }
 
 /**
@@ -102,11 +202,30 @@ export async function gerarVideoAnimadoBanner(
         throw new Error('Não foi possível inicializar contexto 2D para gravação de vídeo.');
       }
 
-      // 2. Preload Logo (Belíssima or client custom logo)
+      // 2. Ensure Google Fonts are active and ready in memory
+      if (typeof document !== 'undefined' && document.fonts) {
+        try {
+          await document.fonts.ready;
+          await Promise.allSettled([
+            document.fonts.load('900 54px "Plus Jakarta Sans"'),
+            document.fonts.load('900 135px "Plus Jakarta Sans"'),
+            document.fonts.load('800 48px "Plus Jakarta Sans"'),
+            document.fonts.load('900 54px "Montserrat"'),
+            document.fonts.load('900 135px "Montserrat"'),
+          ]);
+        } catch (e) {
+          console.warn('Aviso de carregamento de fontes:', e);
+        }
+      }
+
+      const FONT_BLACK = '"Plus Jakarta Sans", "Montserrat", "Segoe UI", -apple-system, sans-serif';
+      const FONT_BOLD = '"Plus Jakarta Sans", "Montserrat", "Segoe UI", -apple-system, sans-serif';
+
+      // 3. Preload Logo (Belíssima or client custom logo)
       const logoUrl = campaign.clientLogoUrl || '/logos/belissima-casa-di-frutas.png';
       const logoImg = await preloadImage(logoUrl);
 
-      // 3. Products list & Preload all product images
+      // 4. Products list & Preload all product images
       const products: ProductItem[] = campaign.products && campaign.products.length > 0 
         ? campaign.products 
         : [{
@@ -126,12 +245,12 @@ export async function gerarVideoAnimadoBanner(
         loadedProductImages.push(pImg);
       }
 
-      // 4. Calculate timing: 4.5s per product, minimum 6s
-      const slideDurationSec = products.length === 1 ? 6.0 : 4.5;
+      // 5. Calculate timing: 5.0s per product, minimum 6s total
+      const slideDurationSec = products.length === 1 ? 6.0 : 5.0;
       const totalDurationSec = products.length * slideDurationSec;
       const totalDurationMs = totalDurationSec * 1000;
 
-      // 5. Setup MediaRecorder with best supported MP4 / WebM codec
+      // 6. Setup MediaRecorder with best supported MP4 / WebM codec
       const stream = canvas.captureStream(30); // 30 FPS broadcast quality
       const mimeTypes = [
         'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
@@ -152,7 +271,7 @@ export async function gerarVideoAnimadoBanner(
 
       const recorder = new MediaRecorder(stream, {
         mimeType: chosenMime,
-        videoBitsPerSecond: 8000000, // 8 Mbps high-bitrate Full HD
+        videoBitsPerSecond: 10000000, // 10 Mbps crisp broadcast bitrate
       });
 
       const chunks: Blob[] = [];
@@ -162,33 +281,6 @@ export async function gerarVideoAnimadoBanner(
 
       const startTime = performance.now();
       let animFrameId: number;
-
-      // Helper for rounded rectangles (supported across all modern canvas engines)
-      const drawRoundRect = (
-        x: number,
-        y: number,
-        w: number,
-        h: number,
-        r: number | [number, number, number, number]
-      ) => {
-        if (ctx.roundRect) {
-          ctx.beginPath();
-          ctx.roundRect(x, y, w, h, r);
-        } else {
-          const radius = typeof r === 'number' ? r : r[0];
-          ctx.beginPath();
-          ctx.moveTo(x + radius, y);
-          ctx.lineTo(x + w - radius, y);
-          ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-          ctx.lineTo(x + w, y + h - radius);
-          ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-          ctx.lineTo(x + radius, y + h);
-          ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-          ctx.lineTo(x, y + radius);
-          ctx.quadraticCurveTo(x, y, x + radius, y);
-          ctx.closePath();
-        }
-      };
 
       // Ticker text
       const tickerText = (campaign.tickerText || '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ NOSSO APLICATIVO É BOM DEMAIS! ★★ OFERTAS VÁLIDAS PARA TODAS AS FILIAIS DA BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★').toUpperCase();
@@ -203,7 +295,7 @@ export async function gerarVideoAnimadoBanner(
           onProgress(Math.round(progress * 100));
         }
 
-        // Determine active product index and transition alpha
+        // Determine active product index
         const productIndex = Math.min(
           products.length - 1,
           Math.floor(elapsedMs / (slideDurationSec * 1000))
@@ -211,7 +303,7 @@ export async function gerarVideoAnimadoBanner(
         const currentProduct = products[productIndex];
         const currentProductImg = loadedProductImages[productIndex];
 
-        // 1. BACKGROUND: Deep green gradient matching web
+        // 1. BACKGROUND: Deep green gradient matching web banner
         const bgGrad = ctx.createLinearGradient(0, 0, width, height);
         bgGrad.addColorStop(0, '#06331e');
         bgGrad.addColorStop(0.5, '#083c24');
@@ -219,133 +311,175 @@ export async function gerarVideoAnimadoBanner(
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, width, height);
 
-        // 2. WATERMARK TEXTURE: Subtle geometric concentric circles grid
+        // 2. WATERMARK TEXTURE: Subtle geometric concentric circles
         ctx.save();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
         ctx.lineWidth = 1;
-        const circleSpacing = 130;
+        const circleSpacing = 140;
         for (let cx = 0; cx <= width + circleSpacing; cx += circleSpacing) {
           for (let cy = 0; cy <= height + circleSpacing; cy += circleSpacing) {
             ctx.beginPath();
-            ctx.arc(cx, cy, 50, 0, Math.PI * 2);
+            ctx.arc(cx, cy, 54, 0, Math.PI * 2);
             ctx.stroke();
             ctx.beginPath();
             ctx.arc(cx, cy, 38, 0, Math.PI * 2);
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(cx, cy, 24, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+            ctx.arc(cx, cy, 22, 0, Math.PI * 2);
             ctx.stroke();
           }
         }
         ctx.restore();
 
-        // 3. LIGHTING VIGNETTE: Soft ambient glows
+        // 3. AMBIENT GLOW: Warm top lighting
         ctx.save();
-        const topGlow = ctx.createRadialGradient(width * 0.7, 0, 10, width * 0.7, 0, width * 0.45);
-        topGlow.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
+        const topGlow = ctx.createRadialGradient(width * 0.65, 0, 20, width * 0.65, 0, width * 0.5);
+        topGlow.addColorStop(0, 'rgba(16, 185, 129, 0.14)');
         topGlow.addColorStop(1, 'transparent');
         ctx.fillStyle = topGlow;
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
 
-        // 4. TOP HEADER
-        const headerH = height * 0.11;
-        // Left: Logo Belíssima
+        // 4. TOP HEADER (Height = 135px)
+        const headerH = 135;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+        ctx.fillRect(0, 0, width, headerH);
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+        ctx.fillRect(0, headerH - 1.5, width, 1.5);
+
+        // Header Left: Official Belíssima Logo
         if (logoImg) {
           ctx.save();
-          const targetH = headerH * 0.95;
+          const targetH = 92;
           const logoAspect = logoImg.width / logoImg.height;
           const targetW = targetH * logoAspect;
-          const logoX = width * 0.035;
-          const logoY = height * 0.015;
+          const logoX = 54;
+          const logoY = (headerH - targetH) / 2;
 
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-          ctx.shadowBlur = 18;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+          ctx.shadowBlur = 20;
           ctx.drawImage(logoImg, logoX, logoY, targetW, targetH);
           ctx.restore();
         } else {
-          // Fallback logo text
           ctx.save();
           ctx.fillStyle = '#ffffff';
-          ctx.font = `900 ${Math.round(height * 0.032)}px serif`;
-          ctx.fillText(campaign.clientName || 'Belíssima Casa di Frutas', width * 0.035, height * 0.06);
+          ctx.font = `900 36px ${FONT_BLACK}`;
+          ctx.fillText(campaign.clientName || 'Belíssima Casa di Frutas', 54, 75);
           ctx.restore();
         }
 
-        // Center: Campaign Title & Validity
+        // Header Center: Campaign Title & Validity
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
-        // Campaign Title in bold amber
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-        ctx.shadowBlur = 10;
+
+        // Campaign Title in Amber-400
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 12;
         ctx.shadowOffsetY = 2;
         ctx.fillStyle = '#fbbf24';
-        ctx.font = `900 ${Math.round(height * 0.040)}px 'Montserrat', sans-serif`;
+        ctx.font = `900 42px ${FONT_BLACK}`;
+        if ('letterSpacing' in ctx) {
+          (ctx as any).letterSpacing = '-0.5px';
+        }
         const centerTitle = (campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE').toUpperCase();
-        ctx.fillText(centerTitle, width * 0.52, height * 0.048);
+        ctx.fillText(centerTitle, width * 0.52, 54);
 
-        // Validity line with calendar icon
-        ctx.shadowBlur = 4;
+        // Validity period line
+        ctx.shadowBlur = 6;
         ctx.fillStyle = '#f3f4f6';
-        ctx.font = `600 ${Math.round(height * 0.019)}px sans-serif`;
+        ctx.font = `700 22px ${FONT_BOLD}`;
+        if ('letterSpacing' in ctx) {
+          (ctx as any).letterSpacing = '0px';
+        }
         const validityText = `📅 ${campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}`;
-        ctx.fillText(validityText, width * 0.52, height * 0.088);
+        ctx.fillText(validityText, width * 0.52, 98);
         ctx.restore();
 
-        // 5. RIGHT COLUMN: 4:3 Showcase Photo Frame with thick white border & Rotating OFERTAÇO
-        const cardW = width * 0.44;
-        const cardH = cardW * 0.75; // 4:3 aspect ratio
-        const cardX = width * 0.51;
-        const cardY = height * 0.16;
+        // 5. RIGHT COLUMN: 4:3 PHOTO FRAME (Strictly proportional, crisp white border)
+        const cardH = 710;
+        const cardW = Math.round(cardH * (4 / 3)); // 947px (standard 4:3)
+        const cardX = width - 64 - cardW; // 909px
+        const cardY = 175; // Centered vertically in available area (135px to 970px)
+        const cardBottomY = cardY + cardH; // 885px
 
         // Card Drop Shadow
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
-        ctx.shadowBlur = 35;
-        ctx.shadowOffsetY = 20;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+        ctx.shadowBlur = 45;
+        ctx.shadowOffsetY = 24;
         ctx.fillStyle = '#0a0a0a';
-        drawRoundRect(cardX, cardY, cardW, cardH, 24);
+        drawRoundRect(ctx, cardX, cardY, cardW, cardH, 26);
         ctx.fill();
         ctx.restore();
 
-        // Card Content (Product image with subtle Ken Burns zoom)
+        // Card Interior (Product image drawn with 100% PROPORTIONAL ASPECT RATIO!)
         ctx.save();
-        drawRoundRect(cardX, cardY, cardW, cardH, 24);
+        drawRoundRect(ctx, cardX, cardY, cardW, cardH, 26);
         ctx.clip();
 
+        const isContain = currentProduct.imageDisplayMode === 'contain';
+
+        if (isContain) {
+          // Packshot Mode: elegant soft studio gradient background
+          const cardBgGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
+          cardBgGrad.addColorStop(0, '#f8fafc');
+          cardBgGrad.addColorStop(0.5, '#ffffff');
+          cardBgGrad.addColorStop(1, '#e2e8f0');
+          ctx.fillStyle = cardBgGrad;
+          ctx.fillRect(cardX, cardY, cardW, cardH);
+        } else {
+          // Ambient Mode: dark background
+          ctx.fillStyle = '#0a0a0a';
+          ctx.fillRect(cardX, cardY, cardW, cardH);
+        }
+
         if (currentProductImg) {
-          const zoom = 1.0 + Math.sin(t * 0.9) * 0.025;
-          const zW = cardW * zoom;
-          const zH = cardH * zoom;
-          const zX = cardX - (zW - cardW) / 2;
-          const zY = cardY - (zH - cardH) / 2;
-          ctx.drawImage(currentProductImg, zX, zY, zW, zH);
+          const zoom = isContain ? 1.0 : 1.0 + Math.sin(t * 0.8) * 0.025;
+          // CRITICAL: Draw image preserving 100% of natural proportions without distortion!
+          drawImagePreservingAspect(
+            ctx,
+            currentProductImg,
+            cardX,
+            cardY,
+            cardW,
+            cardH,
+            isContain,
+            zoom
+          );
+
+          if (!isContain) {
+            // Soft vignette for ambient mode
+            const innerVignette = ctx.createRadialGradient(
+              cardX + cardW / 2, cardY + cardH / 2, cardW * 0.35,
+              cardX + cardW / 2, cardY + cardH / 2, cardW * 0.7
+            );
+            innerVignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            innerVignette.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+            ctx.fillStyle = innerVignette;
+            ctx.fillRect(cardX, cardY, cardW, cardH);
+          }
         } else {
           // Placeholder
           ctx.fillStyle = '#171717';
           ctx.fillRect(cardX, cardY, cardW, cardH);
-          ctx.fillStyle = '#666666';
-          ctx.font = 'bold 24px sans-serif';
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = `bold 28px ${FONT_BOLD}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('FOTO DO PRODUTO', cardX + cardW / 2, cardY + cardH / 2);
         }
         ctx.restore();
 
-        // Crisp White Border (4.5px) matching web
+        // 5px Crisp Solid White Border matching web
         ctx.save();
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4.5;
-        drawRoundRect(cardX, cardY, cardW, cardH, 24);
+        ctx.lineWidth = 5;
+        drawRoundRect(ctx, cardX, cardY, cardW, cardH, 26);
         ctx.stroke();
         ctx.restore();
 
-        // Rotating "OFERTAÇO -%" Circular Stamp in top-right corner
+        // Rotating OFERTAÇO Stamp in top-right corner of card
         const origPriceNum = currentProduct.originalPrice 
           ? parseFloat(currentProduct.originalPrice.replace('R$', '').replace(',', '.').trim()) 
           : 0;
@@ -355,25 +489,25 @@ export async function gerarVideoAnimadoBanner(
           discountPct = Math.round(((origPriceNum - currPriceNum) / origPriceNum) * 100);
         }
 
-        const stampR = 48;
-        const stampCx = cardX + cardW - 12;
-        const stampCy = cardY + 12;
-        const stampAngle = Math.sin(t * 2) * 0.07; // subtle smooth oscillation
+        const stampR = 56;
+        const stampCx = cardX + cardW - 16;
+        const stampCy = cardY + 16;
+        const stampAngle = Math.sin(t * 2) * 0.08;
 
         ctx.save();
         ctx.translate(stampCx, stampCy);
         ctx.rotate(stampAngle);
 
-        // Stamp gradient
         const stampGrad = ctx.createLinearGradient(-stampR, -stampR, stampR, stampR);
         stampGrad.addColorStop(0, '#ea580c');
         stampGrad.addColorStop(1, '#f97316');
 
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetY = 8;
         ctx.fillStyle = stampGrad;
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.arc(0, 0, stampR, 0, Math.PI * 2);
         ctx.fill();
@@ -383,57 +517,67 @@ export async function gerarVideoAnimadoBanner(
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = '900 13px sans-serif';
-        ctx.fillText('OFERTAÇO', 0, -12);
-        ctx.font = '900 24px sans-serif';
-        ctx.fillText(discountPct > 0 ? `-${discountPct}%` : 'OFERTA', 0, 13);
+        ctx.font = `900 15px ${FONT_BLACK}`;
+        ctx.fillText('OFERTAÇO', 0, -14);
+        ctx.font = `900 30px ${FONT_BLACK}`;
+        ctx.fillText(discountPct > 0 ? `-${discountPct}%` : 'OFERTA', 0, 14);
         ctx.restore();
 
         // 6. LEFT COLUMN: Product Details & Supermarket Orange Price Tag
-        const leftX = width * 0.045;
-        const leftMaxW = width * 0.44;
+        // Aligned vertically with the top and base of the card! Zero dead space!
+        const leftX = 64;
+        const maxLeftW = cardX - leftX - 40; // ~800px width
 
-        // Title com respiro ampliado do topo (exatamente como no v-38 aprovado)
-        const titleTopY = height * 0.23;
+        // Product Title: Impactful, large, crisp typography
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-        ctx.shadowBlur = 12;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 3;
         ctx.fillStyle = '#ffffff';
-        ctx.font = `900 ${Math.round(height * 0.048)}px 'Montserrat', sans-serif`;
+        ctx.font = `900 52px ${FONT_BLACK}`;
+        if ('letterSpacing' in ctx) {
+          (ctx as any).letterSpacing = '-1.5px';
+        }
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
-        // Word wrap title to max 2 lines
+        // Word wrap title across up to 3 lines
         const words = (currentProduct.title || 'Produto de Oferta').split(' ');
-        let line1 = '';
-        let line2 = '';
+        const lines: string[] = [];
+        let currentLine = '';
         for (const w of words) {
-          const testLine = (line1 ? line1 + ' ' : '') + w;
-          if (ctx.measureText(testLine).width < leftMaxW && !line2) {
-            line1 = testLine;
+          const test = currentLine ? `${currentLine} ${w}` : w;
+          if (ctx.measureText(test).width <= maxLeftW) {
+            currentLine = test;
           } else {
-            line2 = (line2 ? line2 + ' ' : '') + w;
+            if (currentLine) lines.push(currentLine);
+            currentLine = w;
+            if (lines.length >= 2) break; // Limit to 3 lines max
           }
         }
-        ctx.fillText(line1, leftX, titleTopY);
-        if (line2) {
-          ctx.fillText(line2, leftX, titleTopY + height * 0.056);
-        }
+        if (currentLine) lines.push(currentLine);
+
+        const titleLineH = 60;
+        const titleTopY = cardY + 10;
+        lines.forEach((line, idx) => {
+          ctx.fillText(line, leftX, titleTopY + idx * titleLineH);
+        });
+        const titleEndY = titleTopY + lines.length * titleLineH;
         ctx.restore();
 
-        // Promotional Badge (e.g. "PREÇO BAIXO" / "OFERTA DO DIA")
-        const badgeY = titleTopY + (line2 ? height * 0.125 : height * 0.075);
+        // Promotional Badge ("OFERTA DO DIA") placed right under title with tight, natural margin
+        const badgeY = titleEndY + 20;
         ctx.save();
         const badgeText = (currentProduct.badge || 'OFERTA DO DIA').toUpperCase();
-        ctx.font = `800 15px sans-serif`;
+        ctx.font = `800 20px ${FONT_BOLD}`;
         const badgeTextW = ctx.measureText(badgeText).width;
-        const bW = badgeTextW + 30;
-        const bH = 34;
+        const bW = badgeTextW + 36;
+        const bH = 44;
 
-        ctx.fillStyle = '#3e684d';
+        ctx.fillStyle = '#2d5a3f';
         ctx.strokeStyle = '#528d69';
-        ctx.lineWidth = 1.5;
-        drawRoundRect(leftX, badgeY, bW, bH, 6);
+        ctx.lineWidth = 2;
+        drawRoundRect(ctx, leftX, badgeY, bW, bH, 10);
         ctx.fill();
         ctx.stroke();
 
@@ -443,39 +587,51 @@ export async function gerarVideoAnimadoBanner(
         ctx.fillText(badgeText, leftX + bW / 2, badgeY + bH / 2);
         ctx.restore();
 
-        // Fixed alignment of the price box with the bottom of the photo card!
-        const cardBottomY = cardY + cardH;
-        const priceBoxH = 145;
-        const priceBoxW = 295;
-        const priceBoxY = cardBottomY - priceBoxH; // Base aligned with base of image card!
+        // Brand / Category Tag if present, harmoniously filling the middle space
+        if (currentProduct.brand || currentProduct.category) {
+          ctx.save();
+          const subtitleY = badgeY + bH + 16;
+          const subText = [currentProduct.category, currentProduct.brand].filter(Boolean).join(' • ');
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+          ctx.font = `700 22px ${FONT_BOLD}`;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(subText, leftX, subtitleY);
+          ctx.restore();
+        }
+
+        // PRICE BOX & REGULAR PRICE: Base-aligned with bottom of photo card!
+        const priceBoxH = 175; // Generous supermarket height
+        const priceBoxW = 460; // Generous width commanding the left side!
+        const priceBoxY = cardBottomY - priceBoxH; // Exactly at 710px
 
         // Regular Price ("De: R$ 10,99") positioned just above the orange box
         if (currentProduct.originalPrice) {
           ctx.save();
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-          ctx.shadowBlur = 6;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-          ctx.font = '700 20px sans-serif';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+          ctx.shadowBlur = 8;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.font = `700 26px ${FONT_BOLD}`;
           ctx.textAlign = 'left';
           ctx.textBaseline = 'bottom';
-          ctx.fillText(`De: R$ ${currentProduct.originalPrice.replace('R$', '').trim()}`, leftX, priceBoxY - 8);
+          ctx.fillText(`De: R$ ${currentProduct.originalPrice.replace('R$', '').trim()}`, leftX, priceBoxY - 12);
           ctx.restore();
         }
 
-        // Orange Supermarket Price Box
+        // Giant Supermarket Orange Price Box
         ctx.save();
         const pGrad = ctx.createLinearGradient(leftX, priceBoxY, leftX, priceBoxY + priceBoxH);
         pGrad.addColorStop(0, '#f97316');
         pGrad.addColorStop(0.5, '#ea580c');
         pGrad.addColorStop(1, '#c2410c');
 
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-        ctx.shadowBlur = 28;
-        ctx.shadowOffsetY = 16;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+        ctx.shadowBlur = 35;
+        ctx.shadowOffsetY = 18;
         ctx.fillStyle = pGrad;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.lineWidth = 2.5;
-        drawRoundRect(leftX, priceBoxY, priceBoxW, priceBoxH, 18);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 3;
+        drawRoundRect(ctx, leftX, priceBoxY, priceBoxW, priceBoxH, 22);
         ctx.fill();
         ctx.stroke();
 
@@ -489,33 +645,47 @@ export async function gerarVideoAnimadoBanner(
         // "POR R$"
         ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.font = '900 13px sans-serif';
-        ctx.fillText('POR', leftX + 18, priceBoxY + 34);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 19px sans-serif';
-        ctx.fillText('R$', leftX + 18, priceBoxY + 56);
+        ctx.font = `900 18px ${FONT_BLACK}`;
+        if ('letterSpacing' in ctx) {
+          (ctx as any).letterSpacing = '1px';
+        }
+        ctx.fillText('POR', leftX + 22, priceBoxY + 48);
 
-        // Giant Integer Price (Montserrat 900)
-        ctx.font = '900 100px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `900 28px ${FONT_BLACK}`;
+        ctx.fillText('R$', leftX + 22, priceBoxY + 80);
+
+        // Giant Integer Price Number
+        ctx.font = `900 135px ${FONT_BLACK}`;
+        if ('letterSpacing' in ctx) {
+          (ctx as any).letterSpacing = '-4px'; // Tight authentic supermarket font!
+        }
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(intPrice, leftX + 62, priceBoxY + priceBoxH - 24);
+        ctx.fillText(intPrice, leftX + 86, priceBoxY + priceBoxH - 28);
 
-        // Cents and Unit
+        // Cents and Unit column
         const intWidth = ctx.measureText(intPrice).width;
-        const rightPartX = leftX + 68 + intWidth;
-        ctx.font = '900 38px sans-serif';
-        ctx.fillText(`,${centsPrice}`, rightPartX, priceBoxY + 58);
+        const rightPartX = leftX + 90 + intWidth;
 
-        ctx.font = '900 16px sans-serif';
+        ctx.font = `900 50px ${FONT_BLACK}`;
+        if ('letterSpacing' in ctx) {
+          (ctx as any).letterSpacing = '-1px';
+        }
+        ctx.fillText(`,${centsPrice}`, rightPartX, priceBoxY + 70);
+
+        ctx.font = `900 22px ${FONT_BLACK}`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-        ctx.fillText(unit.toUpperCase(), rightPartX + 2, priceBoxY + 84);
+        if ('letterSpacing' in ctx) {
+          (ctx as any).letterSpacing = '1px';
+        }
+        ctx.fillText(unit.toUpperCase(), rightPartX + 2, priceBoxY + 106);
         ctx.restore();
 
-        // 7. BOTTOM FOOTER: Two-tier Ticker & Legal Bar
-        const tickerTierH = height * 0.065;
-        const legalTierH = height * 0.035;
+        // 7. BOTTOM FOOTER: Two-tier Ticker & Legal Bar (Height = 110px)
+        const tickerTierH = 72;
+        const legalTierH = 38;
         const footerTotalH = tickerTierH + legalTierH;
         const footerTopY = height - footerTotalH;
 
@@ -523,59 +693,59 @@ export async function gerarVideoAnimadoBanner(
         ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
         ctx.fillRect(0, footerTopY, width, footerTotalH);
 
-        // Top divider
+        // Divider
         ctx.fillStyle = '#262626';
-        ctx.fillRect(0, footerTopY, width, 1.5);
+        ctx.fillRect(0, footerTopY, width, 2);
 
         // Red INFORME button
-        const infBtnW = 120;
-        const infBtnH = tickerTierH * 0.65;
-        const infBtnX = width * 0.035;
+        const infBtnW = 165;
+        const infBtnH = 50;
+        const infBtnX = 54;
         const infBtnY = footerTopY + (tickerTierH - infBtnH) / 2;
 
         ctx.fillStyle = '#d90429';
-        drawRoundRect(infBtnX, infBtnY, infBtnW, infBtnH, 6);
+        drawRoundRect(ctx, infBtnX, infBtnY, infBtnW, infBtnH, 10);
         ctx.fill();
 
         // Pulsing speaker icon
-        const pulse = 1.0 + Math.sin(t * 6) * 0.12;
+        const pulse = 1.0 + Math.sin(t * 6) * 0.14;
         ctx.save();
-        ctx.translate(infBtnX + 18, infBtnY + infBtnH / 2);
+        ctx.translate(infBtnX + 24, infBtnY + infBtnH / 2);
         ctx.scale(pulse, pulse);
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(-6, -4);
-        ctx.lineTo(-2, -4);
-        ctx.lineTo(3, -8);
-        ctx.lineTo(3, 8);
-        ctx.lineTo(-2, 4);
-        ctx.lineTo(-6, 4);
+        ctx.moveTo(-7, -5);
+        ctx.lineTo(-2, -5);
+        ctx.lineTo(4, -10);
+        ctx.lineTo(4, 10);
+        ctx.lineTo(-2, 5);
+        ctx.lineTo(-7, 5);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = '900 13px sans-serif';
+        ctx.font = `900 22px ${FONT_BLACK}`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText('INFORME', infBtnX + 34, infBtnY + infBtnH / 2);
+        ctx.fillText('INFORME', infBtnX + 44, infBtnY + infBtnH / 2);
 
         // Moving Marquee Text with Yellow Stars
         ctx.save();
-        const marqueeClipX = infBtnX + infBtnW + 18;
-        const marqueeClipW = width - marqueeClipX - 20;
+        const marqueeClipX = infBtnX + infBtnW + 24;
+        const marqueeClipW = width - marqueeClipX - 24;
         ctx.beginPath();
         ctx.rect(marqueeClipX, footerTopY, marqueeClipW, tickerTierH);
         ctx.clip();
 
-        ctx.font = '900 16px sans-serif';
-        const fullMarqueeString = `${tickerText}   •   ${tickerText}`;
+        ctx.font = `800 26px ${FONT_BOLD}`;
+        const fullMarqueeString = `${tickerText}   ★   ${tickerText}`;
         const marqueeTextMetrics = ctx.measureText(fullMarqueeString);
-        const marqueeSpeedPx = 95; // pixels per second
+        const marqueeSpeedPx = 110; // Smooth readable speed
         const textLoopWidth = marqueeTextMetrics.width / 2;
         const marqueeShift = (t * marqueeSpeedPx) % textLoopWidth;
 
-        ctx.fillStyle = '#f5f5f5';
+        ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(fullMarqueeString, marqueeClipX - marqueeShift, footerTopY + tickerTierH / 2);
@@ -586,25 +756,25 @@ export async function gerarVideoAnimadoBanner(
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, subFooterY, width, legalTierH);
 
-        ctx.fillStyle = '#171717';
+        ctx.fillStyle = '#262626';
         ctx.fillRect(0, subFooterY, width, 1);
 
         ctx.fillStyle = '#a3a3a3';
-        ctx.font = '500 12px sans-serif';
+        ctx.font = `600 15px ${FONT_BOLD}`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(
           campaign.legalNotice || 'Imagens meramente ilustrativas. Proibida a venda de bebidas alcoólicas a menores de 18 anos.',
-          width * 0.035,
+          54,
           subFooterY + legalTierH / 2
         );
 
         ctx.fillStyle = '#d4d4d4';
-        ctx.font = '700 12px sans-serif';
+        ctx.font = `700 15px ${FONT_BOLD}`;
         ctx.textAlign = 'right';
         ctx.fillText(
           campaign.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
-          width * 0.965,
+          width - 54,
           subFooterY + legalTierH / 2
         );
 
@@ -619,7 +789,7 @@ export async function gerarVideoAnimadoBanner(
       // Handler when recording completes
       recorder.onstop = () => {
         const videoBlob = new Blob(chunks, { type: chosenMime });
-        const ext = isMp4 ? 'mp4' : 'mp4'; // Saved as .mp4 for universal TV & WhatsApp compatibility
+        const ext = isMp4 ? 'mp4' : 'mp4'; // Always .mp4 for universal compatibility
         const cleanTitle = (campaign.campaignTitle || 'ofertas')
           .toLowerCase()
           .normalize('NFD')
