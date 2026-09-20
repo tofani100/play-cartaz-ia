@@ -266,8 +266,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               ? 'items-start text-left max-w-[50%] h-[86%] max-h-[86%] shrink-0' 
               : 'items-start text-left max-w-[48%] sm:max-w-[46%] h-[86%] max-h-[86%]'
           }`}>
-            {/* Top Block: Title com respiro em relação ao logo */}
-            <div className="flex flex-col items-start w-full shrink-0 pt-2.5 sm:pt-3.5 md:pt-4 lg:pt-5">
+            {/* Top Block: Title com respiro ampliado em relação ao logo (baixado na proporção exata solicitada) */}
+            <div className={`flex flex-col items-start w-full shrink-0 ${isVertical ? 'pt-2 sm:pt-3' : isTvPlayerMode ? 'pt-8 sm:pt-12 md:pt-16 lg:pt-20' : 'pt-7 sm:pt-10 md:pt-13 lg:pt-16'}`}>
               {/* Product Title */}
               <h2 className={`${isTvPlayerMode ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[44px]' : isVertical ? 'text-[13px] sm:text-[16px] md:text-[19px]' : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[24px] xl:text-[28px]'} font-black text-white leading-[1.12] tracking-tight drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] font-sans break-words`}>
                 {product.title}
