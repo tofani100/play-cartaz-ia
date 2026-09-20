@@ -316,6 +316,17 @@ export default function App() {
     }));
   };
 
+  // Check if running in direct standalone TV Kiosk mode (?mode=tv or ?player=1 or ?kiosk=1)
+  const [isDirectTvMode, setIsDirectTvMode] = useState<boolean>(() => {
+    try {
+      if (typeof window === 'undefined') return false;
+      const params = new URLSearchParams(window.location.search);
+      return params.get('mode') === 'tv' || params.get('player') === '1' || params.get('kiosk') === '1';
+    } catch {
+      return false;
+    }
+  });
+
   // Modal states
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [isTvPlayerOpen, setIsTvPlayerOpen] = useState<boolean>(false);
@@ -327,8 +338,8 @@ export default function App() {
   React.useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('mode') === 'tv' || params.get('player') === '1') {
-        setIsTvPlayerOpen(true);
+      if (params.get('mode') === 'tv' || params.get('player') === '1' || params.get('kiosk') === '1') {
+        setIsDirectTvMode(true);
       }
     } catch (e) {
       // Ignore URLSearchParams error in restricted contexts
@@ -378,6 +389,29 @@ export default function App() {
       return { ...prev, products: next, activeProductIndex: nextIdx };
     });
   };
+
+  // Standalone Direct TV Player View (Pure Digital Signage for Stick TV & Fully Kiosk)
+  if (isDirectTvMode) {
+    return (
+      <div className="w-screen h-screen overflow-hidden bg-black select-none">
+        <ModalPlayerTvIndoor
+          isOpen={true}
+          onClose={() => {
+            setIsDirectTvMode(false);
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('mode');
+              url.searchParams.delete('player');
+              url.searchParams.delete('kiosk');
+              window.history.replaceState({}, '', url.pathname);
+            } catch {}
+          }}
+          campaign={campaign}
+          theme={activeTheme}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen lg:h-screen lg:max-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-['Plus_Jakarta_Sans',_sans-serif] overflow-x-hidden lg:overflow-hidden">

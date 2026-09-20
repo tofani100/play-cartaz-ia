@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Impede que o Android WebView ou navegadores alterem a escala das fontes */
+html, body {
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+}
+
 @keyframes marquee {
   0% { transform: translateX(100%); }
   100% { transform: translateX(-100%); }

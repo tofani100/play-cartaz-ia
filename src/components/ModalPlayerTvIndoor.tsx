@@ -5,7 +5,8 @@ import {
   Minimize2, 
   Play, 
   Pause, 
-  Radio
+  Radio,
+  Tv
 } from 'lucide-react';
 import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
 import { VisualizadorBannerTV } from './VisualizadorBannerTV';
@@ -31,6 +32,68 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
   const [showControls, setShowControls] = useState<boolean>(false);
 
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Reference logical resolution for pixel-perfect broadcast signage
+  const targetWidth = campaign.format === '9:16' ? 1080 : campaign.format === '1:1' ? 1080 : campaign.format === '4:5' ? 1080 : 1920;
+  const targetHeight = campaign.format === '9:16' ? 1920 : campaign.format === '1:1' ? 1080 : campaign.format === '4:5' ? 1350 : 1080;
+
+  // Safe area multiplier state (default: 'safe' = 0.96 for anti-overscan protection on TVs)
+  const [safeAreaMode, setSafeAreaMode] = useState<'safe' | 'full' | 'legacy'>(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const safeParam = p.get('safe');
+      if (safeParam === '1' || safeParam === 'full') return 'full';
+      if (safeParam === 'legacy' || safeParam === '0.92') return 'legacy';
+      const stored = localStorage.getItem('playcomunique_tv_safe_mode');
+      if (stored === 'full' || stored === 'legacy' || stored === 'safe') return stored;
+    } catch {}
+    return 'safe';
+  });
+
+  const cycleSafeAreaMode = () => {
+    setSafeAreaMode((prev) => {
+      const next = prev === 'safe' ? 'full' : prev === 'full' ? 'legacy' : 'safe';
+      try {
+        localStorage.setItem('playcomunique_tv_safe_mode', next);
+      } catch {}
+      return next;
+    });
+  };
+
+  const [scale, setScale] = useState<number>(1);
+
+  // Dynamic GPU Scale Engine: calculates optimal scale factor for any screen (720p, 1080p, 4K, Android TV)
+  useEffect(() => {
+    const computeScale = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const baseScale = Math.min(vw / targetWidth, vh / targetHeight);
+      const factor = safeAreaMode === 'full' ? 1.0 : safeAreaMode === 'legacy' ? 0.92 : 0.96;
+      setScale(baseScale * factor);
+    };
+
+    computeScale();
+    window.addEventListener('resize', computeScale);
+    return () => window.removeEventListener('resize', computeScale);
+  }, [targetWidth, targetHeight, safeAreaMode]);
+
+  // Screen WakeLock to prevent TV screen from going to sleep
+  useEffect(() => {
+    let wakeLock: any = null;
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+        }
+      } catch {}
+    };
+    requestWakeLock();
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+    };
+  }, []);
 
   // Auto-hide controls and cursor after 2.5s of inactivity
   const showControlsTemporarily = () => {
@@ -184,6 +247,9 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
       if (e.key === 'f' || e.key === 'F') {
         toggleFullscreen();
       }
+      if (e.key === 's' || e.key === 'S' || e.key === 'o' || e.key === 'O') {
+        cycleSafeAreaMode();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -224,6 +290,22 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2.5 bg-black/60 backdrop-blur-md p-1 sm:p-1.5 rounded-xl border border-white/10">
+          {/* TV Safe Area Anti-Overscan Button */}
+          <button
+            onClick={cycleSafeAreaMode}
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-[11px] sm:text-xs transition-colors shadow border border-white/10"
+            title="Alternar Margem Anti-Corte da TV (Tecla S): 96% Seguro, 100% Borda Total ou 92% TV Antiga"
+          >
+            <Tv className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber-400" />
+            <span className="hidden xs:inline">
+              {safeAreaMode === 'safe'
+                ? 'Margem: 96% (Anti-Corte TV)'
+                : safeAreaMode === 'full'
+                ? 'Margem: 100% (Borda Total)'
+                : 'Margem: 92% (TV Antiga)'}
+            </span>
+          </button>
+
           <button
             onClick={() => setIsPlaying((p) => !p)}
             className="p-1.5 sm:p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white transition-colors"
@@ -251,18 +333,31 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
         </div>
       </div>
 
-      {/* Main TV Screen Canvas: 100% Edge-to-Edge Fullscreen */}
+      {/* Main TV Screen Canvas: GPU Dynamic Scale Engine & Anti-Overscan Safe Area */}
       <div className="w-full h-full flex items-center justify-center p-0 m-0 overflow-hidden bg-black">
-        <VisualizadorBannerTV
-          campaign={campaign}
-          theme={theme}
-          currentProductIndex={currentIndex}
-          onSelectProductIndex={(idx) => {
-            setCurrentIndex(idx);
-            setProgress(0);
+        <div
+          id="tv-indoor-scaled-artboard"
+          style={{
+            width: `${targetWidth}px`,
+            height: `${targetHeight}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center',
+            flexShrink: 0,
+            willChange: 'transform',
           }}
-          isTvPlayerMode={true}
-        />
+          className="relative overflow-hidden flex items-center justify-center shadow-2xl"
+        >
+          <VisualizadorBannerTV
+            campaign={campaign}
+            theme={theme}
+            currentProductIndex={currentIndex}
+            onSelectProductIndex={(idx) => {
+              setCurrentIndex(idx);
+              setProgress(0);
+            }}
+            isTvPlayerMode={true}
+          />
+        </div>
       </div>
 
       {/* Slide Progress Bar (Bottom) - Discreto */}
