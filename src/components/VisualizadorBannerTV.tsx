@@ -194,8 +194,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-black/40 rounded-full blur-2xl pointer-events-none" />
 
-        {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes with TV Safe Margins */}
-        <div className={`relative z-10 ${isTvPlayerMode ? 'pl-6 sm:pl-10 md:pl-14 lg:pl-16 pr-4 sm:pr-8 md:pr-12 lg:pr-14 py-2 sm:py-2.5' : 'pl-3 sm:pl-6 md:pl-10 lg:pl-12 pr-0 py-2 sm:py-2.5 lg:py-1.5'} flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
+        {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
+        <div className={`relative z-10 pl-3 sm:pl-6 md:pl-10 lg:pl-12 pr-0 ${isTvPlayerMode ? 'py-1.5 sm:py-2 md:py-2.5' : 'py-2 sm:py-2.5 lg:py-1.5'} flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
             isTvPlayerMode
@@ -255,8 +255,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           )}
         </div>
 
-        {/* CENTER CONTENT: Perfectly Proportioned - Margens seguras de TV para evitar corte por borda ou overscan */}
-        <div className={`relative z-10 flex-1 min-h-0 ${isTvPlayerMode ? 'px-6 sm:px-10 md:px-14 lg:px-16 py-1 sm:py-1.5 md:py-2 gap-4 sm:gap-6 md:gap-8' : 'px-3 sm:px-6 md:px-10 py-1 sm:py-2 gap-2 sm:gap-6'} flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
+        {/* CENTER CONTENT: Perfectly Proportioned - Nunca cortado pelo cabeçalho ou rodapé */}
+        <div className={`relative z-10 flex-1 min-h-0 ${isTvPlayerMode ? 'px-4 sm:px-8 md:px-12 py-1.5 sm:py-2 md:py-3 gap-4 sm:gap-6 md:gap-8' : 'px-3 sm:px-6 md:px-10 py-1 sm:py-2 gap-2 sm:gap-6'} flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
           <div className={`flex flex-col justify-between min-w-0 ${
@@ -267,7 +267,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               : 'items-start text-left max-w-[48%] sm:max-w-[46%] h-[86%] max-h-[86%]'
           }`}>
             {/* Top Block: Title com respiro ampliado em relação ao logo (baixado na proporção exata solicitada) */}
-            <div className={`flex flex-col items-start w-full shrink-0 ${isVertical ? 'pt-2 sm:pt-3' : isTvPlayerMode ? 'pt-5 sm:pt-8 md:pt-11 lg:pt-14 xl:pt-16' : 'pt-7 sm:pt-10 md:pt-13 lg:pt-16'}`}>
+            <div className={`flex flex-col items-start w-full shrink-0 ${isVertical ? 'pt-2 sm:pt-3' : isTvPlayerMode ? 'pt-8 sm:pt-12 md:pt-16 lg:pt-20' : 'pt-7 sm:pt-10 md:pt-13 lg:pt-16'}`}>
               {/* Product Title */}
               <h2 className={`${isTvPlayerMode ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[44px]' : isVertical ? 'text-[13px] sm:text-[16px] md:text-[19px]' : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[24px] xl:text-[28px]'} font-black text-white leading-[1.12] tracking-tight drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] font-sans break-words`}>
                 {product.title}
@@ -644,7 +644,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         <div className="relative z-10 bg-black/95 border-t border-neutral-800 overflow-hidden shrink-0 w-full">
           {/* Ticker Tier */}
           {campaign.showMarqueeTicker && (
-            <div className={`${isTvPlayerMode ? 'py-1 sm:py-1.5 md:py-2 px-6 sm:px-10 md:px-14 lg:px-16 gap-2 sm:gap-3' : 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3'} flex items-center`}>
+            <div className={`${isTvPlayerMode ? 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3' : 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3'} flex items-center`}>
               {/* Red INFORME Button */}
               <div className={`flex items-center ${isTvPlayerMode ? 'gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-md' : 'gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-md'} font-black bg-[#d90429] text-white shadow-md shrink-0`}>
                 <Volume2 className={`${isTvPlayerMode ? 'w-3.5 h-3.5 sm:w-4 sm:h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} animate-pulse`} />
@@ -660,8 +660,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             </div>
           )}
 
-          {/* Sub-Footer Legal Notice & Signature Link com Safe Area inferior para TV */}
-          <div className={`${isTvPlayerMode ? 'px-6 sm:px-10 md:px-14 lg:px-16 pt-1 pb-3 sm:pb-4 md:pb-5 text-[8px] sm:text-[9px] md:text-[10px]' : 'px-3 sm:px-6 py-0.5 sm:py-1 text-[8px] sm:text-[9px] md:text-[10px]'} bg-black text-neutral-400 flex items-center justify-between border-t border-neutral-900`}>
+          {/* Sub-Footer Legal Notice & Signature Link */}
+          <div className={`${isTvPlayerMode ? 'px-3 sm:px-6 py-0.5 sm:py-1 text-[8px] sm:text-[9px] md:text-[10px]' : 'px-3 sm:px-6 py-0.5 sm:py-1 text-[8px] sm:text-[9px] md:text-[10px]'} bg-black text-neutral-400 flex items-center justify-between border-t border-neutral-900`}>
             <span className="truncate max-w-[80%]">
               {campaign.legalNotice || 'Imagens meramente ilustrativas. Proibida a venda de bebidas alcoólicas a menores de 18 anos.'}
             </span>
