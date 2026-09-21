@@ -261,53 +261,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 /**
- * Draws a rotating 4-point diamond star sparkle with golden core
- */
-function drawCommercialSparkle(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  size: number,
-  rotation: number,
-  alpha: number
-) {
-  if (alpha <= 0.01 || size <= 0.5) return;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rotation);
-  ctx.globalAlpha = Math.min(1, Math.max(0, alpha));
-
-  // 4-point diamond star
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(0, -size);
-  ctx.quadraticCurveTo(0, 0, size, 0);
-  ctx.quadraticCurveTo(0, 0, 0, size);
-  ctx.quadraticCurveTo(0, 0, -size, 0);
-  ctx.quadraticCurveTo(0, 0, 0, -size);
-  ctx.fill();
-
-  // 4 subtle diagonal micro-rays
-  const raySize = size * 0.45;
-  ctx.rotate(Math.PI / 4);
-  ctx.beginPath();
-  ctx.moveTo(0, -raySize);
-  ctx.quadraticCurveTo(0, 0, raySize, 0);
-  ctx.quadraticCurveTo(0, 0, 0, raySize);
-  ctx.quadraticCurveTo(0, 0, -raySize, 0);
-  ctx.quadraticCurveTo(0, 0, 0, -raySize);
-  ctx.fill();
-
-  // Golden core
-  ctx.beginPath();
-  ctx.arc(0, 0, size * 0.28, 0, Math.PI * 2);
-  ctx.fillStyle = '#fef08a';
-  ctx.fill();
-
-  ctx.restore();
-}
-
-/**
  * True Layered Motion Graphics Video Recording Engine.
  * Animates each element INDEPENDENTLY with staggered keyframes:
  * 1. Product Title: slides in from the left (0.0s - 0.5s)
@@ -576,7 +529,11 @@ async function recordLayeredSlidesToVideo(
             ctx.save();
             ctx.globalAlpha = Math.max(0, Math.min(1, pAlpha));
             const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
-            const pCy = currentSlide.priceBox.y + pOffsetY + currentSlide.priceBox.h / 2;
+            let pCy = currentSlide.priceBox.y + pOffsetY + currentSlide.priceBox.h / 2;
+            const maxPriceBottom = tickerTop - 8;
+            if (pCy + (currentSlide.priceBox.h * pScale) / 2 > maxPriceBottom) {
+              pCy = maxPriceBottom - (currentSlide.priceBox.h * pScale) / 2;
+            }
             ctx.translate(pCx, pCy);
             ctx.scale(pScale, pScale);
             ctx.drawImage(
@@ -631,47 +588,7 @@ async function recordLayeredSlidesToVideo(
         }
 
         // ==========================================
-        // 6. METALLIC LIGHT SHEEN SWEEP (Across the Card & Price)
-        // ==========================================
-        const sheenCycle = 2.4;
-        const sheenTime = slideT % sheenCycle;
-        if (sheenTime >= 0.4 && sheenTime <= 1.4) {
-          const sweepProgress = (sheenTime - 0.4) / 1.0;
-          const sweepX = -400 + (canvasWidth + 800) * sweepProgress;
-
-          ctx.save();
-          ctx.globalCompositeOperation = 'screen';
-          const sheenGrad = ctx.createLinearGradient(sweepX - 220, 0, sweepX + 220, canvasHeight);
-          sheenGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          sheenGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.04)');
-          sheenGrad.addColorStop(0.48, 'rgba(255, 255, 255, 0.32)');
-          sheenGrad.addColorStop(0.50, 'rgba(255, 255, 255, 0.65)');
-          sheenGrad.addColorStop(0.52, 'rgba(255, 255, 255, 0.32)');
-          sheenGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
-          sheenGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = sheenGrad;
-          ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-          ctx.restore();
-
-          // Diamond sparkle glints
-          if (sheenTime >= 0.7 && sheenTime <= 1.3) {
-            const sparkleProgress = (sheenTime - 0.7) / 0.6;
-            const sparkleAlpha = Math.sin(sparkleProgress * Math.PI);
-            const sparkleSize = 32 * sparkleAlpha;
-            const sparkleRot = sparkleProgress * Math.PI * 0.75;
-
-            const pX = Math.round(canvasWidth * (isVertical ? 0.45 : 0.35));
-            const pY = Math.round(canvasHeight * (isVertical ? 0.70 : 0.78));
-            drawCommercialSparkle(ctx, pX, pY, sparkleSize, sparkleRot, sparkleAlpha);
-
-            const bX = Math.round(canvasWidth * (isVertical ? 0.82 : 0.88));
-            const bY = Math.round(canvasHeight * (isVertical ? 0.30 : 0.25));
-            drawCommercialSparkle(ctx, bX, bY, sparkleSize * 0.85, -sparkleRot, sparkleAlpha);
-          }
-        }
-
-        // ==========================================
-        // 7. TRANSITION TO NEXT SLIDE (Broadcast Commercial Push / Flash)
+        // 6. TRANSITION TO NEXT SLIDE (Broadcast Commercial Push / Flash)
         // ==========================================
         if (isTransitioning && nextSlide) {
           const fadeP = (timeInSlideMs - transitionStartMs) / transitionDurationMs;

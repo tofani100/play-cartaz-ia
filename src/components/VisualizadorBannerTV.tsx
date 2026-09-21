@@ -9,7 +9,6 @@ import {
   Search,
   Upload,
   CheckCircle2,
-  Sparkles,
   RefreshCw,
   ShieldCheck,
   Copy,
@@ -320,43 +319,38 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             isVertical 
               ? 'items-center text-center max-w-full' 
               : isTvPlayerMode 
-              ? 'items-start text-left w-[47%] max-w-[47%] h-[82%] max-h-[82%] shrink-0' 
-              : 'items-start text-left max-w-[46%] h-[82%] max-h-[82%]'
+              ? 'items-start text-left w-[47%] max-w-[47%] h-[88%] max-h-[88%] shrink-0' 
+              : 'items-start text-left max-w-[46%] h-[88%] max-h-[88%]'
           }`}>
-            {/* Top Block: Title with Promotional Badge inline in front of the text */}
-            <div id="tv-anim-title-block" className={`flex flex-col items-start w-full p-2 -m-2 shrink-0 ${
-              isVertical ? 'pt-2' : isTvPlayerMode ? 'pt-2' : 'pt-1 sm:pt-2'
-            }`}>
-              {/* Product Title with Tag in front of the text */}
+            {/* Top Block: Title & Promotional Badge - Um na frente do outro com diagramação perfeita */}
+            <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0">
+              {/* Product Title with Promotional Tag inline in front of the text */}
               <h2 className={`${
                 isTvPlayerMode
-                  ? 'text-[44px] xl:text-[48px] leading-[1.16]'
+                  ? 'text-[36px] xl:text-[40px] leading-[1.16]'
                   : isVertical
-                  ? 'text-[14px] sm:text-[17px] md:text-[20px] leading-snug'
-                  : 'text-[14px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[30px] leading-[1.18]'
+                  ? 'text-[13px] sm:text-[15px] md:text-[17px] leading-snug'
+                  : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[22px] xl:text-[25px] leading-[1.18]'
               } font-black text-white tracking-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] font-sans break-words`}>
-                {/* Promotional Tag inline directly in front of the text */}
                 <span className={`inline-flex items-center ${
                   isTvPlayerMode
-                    ? 'px-3.5 py-1 text-base mr-3 rounded-xl'
-                    : 'px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs mr-2 rounded-lg'
-                } bg-[#2d523b] bg-gradient-to-r from-[#2d523b] to-[#3e684d] text-[#cbf4d8] border border-[#528d69]/60 font-black uppercase tracking-wider shadow-md align-middle`}>
+                    ? 'px-3.5 py-1 text-sm mr-2.5 rounded-lg'
+                    : 'px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[9px] sm:text-[10px] md:text-xs mr-2 rounded-md'
+                } bg-[#2d523b] bg-gradient-to-r from-[#2d523b] to-[#3e684d] text-[#cbf4d8] border border-[#528d69]/70 font-black uppercase tracking-wider shadow-md align-middle`}>
                   {product.badge || 'SUPER OFERTA'}
                 </span>
-                <span>{product.title}</span>
+                <span className="align-middle">{product.title}</span>
               </h2>
             </div>
 
             {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div id="tv-anim-price-block" className={`mt-auto inline-flex flex-col items-start w-fit p-4 -m-4 shrink-0 overflow-visible ${
-              isTvPlayerMode ? 'pt-4' : 'pt-2 sm:pt-3'
-            }`}>
+            <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1 shrink-0">
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div className={`text-white/85 ${
                   isTvPlayerMode
-                    ? 'text-xl font-bold mb-2'
-                    : 'text-[11px] sm:text-xs md:text-sm font-semibold mb-1'
+                    ? 'text-lg font-bold mb-1.5'
+                    : 'text-[10px] sm:text-xs md:text-sm font-semibold mb-0.5'
                 } tracking-tight drop-shadow`}>
                   De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
@@ -546,8 +540,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         isVertical
                           ? 'w-full max-w-[340px] sm:max-w-[420px] aspect-[4/3] my-auto'
                           : isTvPlayerMode
-                          ? 'w-full max-w-[820px] max-h-[600px] aspect-[4/3] shrink-0 my-auto'
-                          : 'h-auto max-h-[78%] w-auto max-w-[92%] aspect-[4/3] shrink-0 my-auto'
+                          ? 'w-full max-w-[820px] max-h-[620px] aspect-[4/3] shrink-0 my-auto'
+                          : 'h-[86%] max-h-[86%] aspect-[4/3] w-auto max-w-[46vw] shrink-0 my-auto'
                       } ${
                         isAmbient
                           ? 'bg-neutral-950 border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)] ring-1 ring-white/30'
@@ -567,7 +561,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                             exit={{ opacity: 0, y: -10 }}
                             className="absolute top-3 inset-x-3 z-50 bg-black/90 backdrop-blur-md text-amber-300 border border-amber-500/40 text-[10px] sm:text-xs py-1.5 px-3 rounded-xl shadow-2xl text-center font-bold flex items-center justify-center gap-1.5 pointer-events-none"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                             <span>{toastMessage}</span>
                           </motion.div>
                         )}
@@ -575,7 +569,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                       {/* MODE 1: AMBIENT FULL-BLEED (Fotografia Comercial Ambientada Limpa de Alta Definição) */}
                       {isAmbient ? (
-                        <div className={`absolute inset-0 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-xl sm:rounded-2xl md:rounded-3xl'} overflow-hidden pointer-events-none`}>
+                        <div className={`absolute inset-1 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-[10px] sm:rounded-[14px] md:rounded-[18px]'} overflow-hidden pointer-events-none`}>
                           {/* Ambient Photography Background Layer - Full Bleed */}
                           <img
                             src={product.imageUrl}
@@ -587,11 +581,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           />
 
                           {/* Ambient Stage Glow & Soft Vignette */}
-                          <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)] pointer-events-none" />
+                          <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(0,0,0,0.3)] pointer-events-none" />
                         </div>
                       ) : (
                         /* MODE 2: CLASSIC WHITE STUDIO CUTOUT PACKSHOT */
-                        <div className={`absolute inset-0 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-xl sm:rounded-2xl md:rounded-3xl'} overflow-hidden flex items-center justify-center p-2 sm:p-3 md:p-4 pointer-events-none`}>
+                        <div className={`absolute inset-1 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-[10px] sm:rounded-[14px] md:rounded-[18px]'} overflow-hidden flex items-center justify-center p-2 sm:p-3 md:p-4 pointer-events-none`}>
                           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white/80 to-slate-100/60 pointer-events-none" />
 
                           <div className="absolute bottom-2 sm:bottom-3 w-3/5 h-3 sm:h-5 bg-black/25 rounded-full blur-md pointer-events-none" />
@@ -676,9 +670,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                             {isGeneratingAiImage ? (
                               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                             ) : (
-                              <Sparkles className="w-3.5 h-3.5 fill-black" />
+                              <Camera className="w-3.5 h-3.5" />
                             )}
-                            <span>{isGeneratingAiImage ? 'Criando Cena...' : 'Gerar Arte IA ✨'}</span>
+                            <span>{isGeneratingAiImage ? 'Criando Foto...' : 'Foto Comercial IA'}</span>
                           </button>
 
                           {/* 2. Botão: Copiar Prompt Mestre para o Gemini Web */}
