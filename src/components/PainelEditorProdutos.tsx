@@ -101,15 +101,23 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
         showClientLogo: showClientLogo !== false,
       } as BannerCampaign);
 
-      const activeTheme: ThemeColors = theme || {
-        id: 'verde-hortifruti',
+      const activeTheme: ThemeColors = theme || ({
+        id: 'verde-hortifruti' as any,
         name: 'Verde Hortifrúti',
+        category: 'Hortifrúti',
+        primary: '#10b981',
+        secondary: '#f59e0b',
+        accent: '#ffffff',
         headerBg: '#06331e',
-        priceColor: '#f59e0b',
-        accentColor: '#10b981',
+        headerText: '#ffffff',
+        priceBg: '#ea580c',
+        priceText: '#ffffff',
         badgeBg: '#10b981',
         badgeText: '#ffffff',
-      };
+        bgGradient: 'from-[#06331e] to-[#042214]',
+        cardBg: '#ffffff',
+        textColor: '#ffffff',
+      } as ThemeColors);
 
       await gerarVideoAnimadoProdutoIndividual(
         activeCampaign,

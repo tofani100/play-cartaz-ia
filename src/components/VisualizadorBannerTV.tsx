@@ -414,8 +414,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             <AnimatePresence mode={isTvPlayerMode ? 'sync' : 'wait'}>
               <motion.div
                 key={product.id}
+                id="tv-anim-card-wrapper"
                 {...getAnimationProps()}
-                className="relative w-full h-full flex items-center justify-center p-1"
+                className="relative w-full h-full flex items-center justify-center p-1 sm:p-2 overflow-visible"
               >
                 {/* Standardized Mini Banner Container - Proporção 4:3 Idêntica e Padronizada para Todos os Produtos */}
                 {/* Standardized Mini Banner Container - Suporte Duplo: Modo Ambientado Full-Bleed (Print 1) ou Packshot Tradicional (Print 2) */}
@@ -638,7 +639,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                       {/* Edit Controls Toolbar Overlay (Apenas no Modo Painel, Oculto no TV Player Fullscreen) */}
                       {!isTvPlayerMode && (
-                        <div className="absolute inset-x-0 bottom-0 p-2 z-20 bg-black/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-wrap items-center justify-center gap-1.5 rounded-b-xl sm:rounded-b-2xl md:rounded-b-3xl">
+                        <div id="tv-card-toolbar" className="absolute inset-x-0 bottom-0 p-2 z-20 bg-black/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-wrap items-center justify-center gap-1.5 rounded-b-xl sm:rounded-b-2xl md:rounded-b-3xl">
                           <input
                             ref={cardFileInputRef}
                             type="file"
