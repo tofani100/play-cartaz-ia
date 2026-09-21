@@ -19,7 +19,7 @@ export async function downloadElementAsPng(elementId: string, filename: string =
       pixelRatio: 2, // 2x Retina / 4K crispness
       cacheBust: false,
       filter: (node) => {
-        if (node instanceof HTMLElement && node.classList.contains('group-hover:opacity-100')) {
+        if (node instanceof HTMLElement && (node.classList.contains('group-hover:opacity-100') || node.id === 'tv-card-toolbar')) {
           return false;
         }
         return true;
@@ -58,6 +58,47 @@ interface ProductSlideLayers {
   leftBox: ElementBox | null;
   cardSnap: HTMLImageElement | null;
   cardBox: ElementBox | null;
+  productImgSnap: HTMLImageElement | null;
+  productImgBox: ElementBox | null;
+}
+
+/**
+ * Ensures any image URL is safely converted to a same-origin Data URL (base64)
+ * using direct fetch with fallback to the high-speed weserv.nl CORS proxy.
+ * Once an image is a Data URL, html-to-image and Canvas NEVER fail to render it.
+ */
+export async function getSafeImageDataUrl(url: string): Promise<string> {
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('data:')) return url;
+
+  // 1. Direct fetch with CORS
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (res.ok) {
+      const blob = await res.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch {}
+
+  // 2. High-speed CORS proxy fallback (weserv.nl)
+  try {
+    const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=webp&q=88`;
+    const res = await fetch(proxyUrl);
+    if (res.ok) {
+      const blob = await res.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch {}
+
+  return url;
 }
 
 /**
@@ -84,6 +125,7 @@ async function captureDomElementImage(el: HTMLElement, minTargetWidth: number = 
 
   return new Promise((resolve, reject) => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = (e) => reject(e);
     img.src = dataUrl;
@@ -111,17 +153,35 @@ function getRelativeBox(el: HTMLElement, container: HTMLElement, canvasW: number
 /**
  * Captures the banner into clean broadcast layers with 100% fidelity to the base original:
  * 1. Left Column (Tag + Title + Regular Price + Orange Supermarket Price Box) - intact, never separated or lost
- * 2. Framed Product Card (5px White Border + Photo + Discount Stamp Badge) - intact, never missing stamp
- * 3. Clean Background Artboard (Header, Client Logo, Wallpaper Texture, and Single Clean Footer)
+ * 2. Framed Product Card (5px White Border + Photo + Discount Stamp Badge) - intact, never missing photo or stamp
+ * 3. Product Photo Element (isolated and preloaded as safe CORS image for guaranteed display)
+ * 4. Clean Background Artboard (Header, Client Logo, Wallpaper Texture, and Single Clean Legal Footer)
  */
 async function captureProductSlideLayers(
   bannerEl: HTMLElement,
   canvasW: number,
-  canvasH: number
+  canvasH: number,
+  productImageUrl?: string
 ): Promise<ProductSlideLayers> {
   const centerContentEl = document.getElementById('tv-banner-center-content');
   const leftColEl = document.getElementById('tv-anim-left-column');
-  const cardEl = document.getElementById('tv-anim-card-wrapper') || document.getElementById('tv-anim-product-card');
+  const cardEl = document.getElementById('tv-anim-product-card');
+
+  // Guarantee 100% opacity and no animation transform interference
+  if (cardEl) {
+    cardEl.style.opacity = '1';
+    cardEl.style.visibility = 'visible';
+    if (cardEl.parentElement) {
+      cardEl.parentElement.style.opacity = '1';
+      cardEl.parentElement.style.visibility = 'visible';
+      (cardEl.parentElement as HTMLElement).style.transform = 'none';
+    }
+  }
+
+  if (leftColEl) {
+    leftColEl.style.opacity = '1';
+    leftColEl.style.visibility = 'visible';
+  }
 
   let leftSnap: HTMLImageElement | null = null;
   let leftBox: ElementBox | null = null;
@@ -136,16 +196,42 @@ async function captureProductSlideLayers(
 
   let cardSnap: HTMLImageElement | null = null;
   let cardBox: ElementBox | null = null;
+  let productImgSnap: HTMLImageElement | null = null;
+  let productImgBox: ElementBox | null = null;
+
   if (cardEl) {
     try {
       cardBox = getRelativeBox(cardEl, bannerEl, canvasW, canvasH);
+
+      // Pre-load safe product photo clone as a direct layer
+      const targetUrl = productImageUrl || (cardEl.querySelector('img') as HTMLImageElement)?.src;
+      if (targetUrl) {
+        try {
+          const safeData = await getSafeImageDataUrl(targetUrl);
+          const imgEl = cardEl.querySelector('img') as HTMLImageElement;
+          if (imgEl && safeData.startsWith('data:')) {
+            imgEl.src = safeData;
+            productImgBox = getRelativeBox(imgEl, bannerEl, canvasW, canvasH);
+          }
+          productImgSnap = await new Promise<HTMLImageElement>((resolve) => {
+            const clone = new Image();
+            clone.crossOrigin = 'anonymous';
+            clone.onload = () => resolve(clone);
+            clone.onerror = () => resolve(clone);
+            clone.src = safeData;
+          });
+        } catch (e) {
+          console.warn('Erro ao clonar imagem do produto:', e);
+        }
+      }
+
       cardSnap = await captureDomElementImage(cardEl, canvasW);
     } catch (e) {
       console.warn('Falha ao capturar card isolado:', e);
     }
   }
 
-  // Hide the center container so bgSnap captures clean background artboard with header & footer
+  // Hide the center container so bgSnap captures clean background artboard with header & legal footer
   if (centerContentEl) {
     centerContentEl.style.display = 'none';
   }
@@ -166,6 +252,8 @@ async function captureProductSlideLayers(
     leftBox,
     cardSnap,
     cardBox,
+    productImgSnap,
+    productImgBox,
   };
 }
 
@@ -237,7 +325,8 @@ function renderCanvasFrame(
     slideExitAlpha = 1.0 - fadeP;
   }
 
-  // 1. BASE BACKGROUND & STAGE
+  // 1. BASE BACKGROUND & BROADCAST STAGE
+  // Fundo verde limpo e espaçoso com cabeçalho no topo e barra legal preta embaixo
   ctx.fillStyle = '#06331e';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
@@ -307,7 +396,7 @@ function renderCanvasFrame(
   }
 
   // 3. ELEMENT: PRODUCT SHOWCASE CARD (White Border + Photo + Discount Stamp)
-  // Swoop from right with momentum and gentle 3D hover/levitation
+  // Swoop from right with momentum, gentle 3D hover/levitation and guaranteed photo
   let cFloatY = 0;
   if (currentSlide.cardSnap && currentSlide.cardBox) {
     let cAlpha = slideExitAlpha;
@@ -337,6 +426,8 @@ function renderCanvasFrame(
     ctx.translate(cCx, cCy);
     ctx.rotate(cRot);
     ctx.scale(cScale, cScale);
+
+    // 1. Draw the card snapshot (complete with 5px white border and discount stamp)
     ctx.drawImage(
       currentSlide.cardSnap,
       -currentSlide.cardBox.w / 2,
@@ -344,7 +435,34 @@ function renderCanvasFrame(
       currentSlide.cardBox.w,
       currentSlide.cardBox.h
     );
-    ctx.restore();
+
+    // 2. Guaranteed Photo Reinforcement: If productImgSnap exists, draw it inside the card frame
+    if (
+      currentSlide.productImgSnap &&
+      currentSlide.productImgSnap.complete &&
+      currentSlide.productImgSnap.naturalWidth > 0
+    ) {
+      const pad = 6;
+      const innerW = currentSlide.cardBox.w - pad * 2;
+      const innerH = currentSlide.cardBox.h - pad * 2;
+      const innerX = -currentSlide.cardBox.w / 2 + pad;
+      const innerY = -currentSlide.cardBox.h / 2 + pad;
+
+      ctx.save();
+      roundRect(ctx, innerX, innerY, innerW, innerH, 18);
+      ctx.clip();
+
+      const imgW = currentSlide.productImgSnap.naturalWidth;
+      const imgH = currentSlide.productImgSnap.naturalHeight;
+      const ratio = Math.max(innerW / imgW, innerH / imgH);
+      const drawW = imgW * ratio;
+      const drawH = imgH * ratio;
+      const drawX = innerX + (innerW - drawW) / 2;
+      const drawY = innerY + (innerH - drawH) / 2;
+
+      ctx.drawImage(currentSlide.productImgSnap, drawX, drawY, drawW, drawH);
+      ctx.restore();
+    }
 
     // 3.5 METALLIC LIGHT SHEEN SWEEP (Commercial Gloss Flare across the card)
     const sweepDuration = 0.9;
@@ -352,8 +470,8 @@ function renderCanvasFrame(
     const isSweep2 = slideT >= 3.2 && slideT <= 3.2 + sweepDuration;
     if (isSweep1 || isSweep2) {
       const sweepT = isSweep1 ? (slideT - 1.2) / sweepDuration : (slideT - 3.2) / sweepDuration;
-      const cardX = currentSlide.cardBox.x;
-      const cardY = currentSlide.cardBox.y + cFloatY;
+      const cardX = -currentSlide.cardBox.w / 2;
+      const cardY = -currentSlide.cardBox.h / 2;
       const cardW = currentSlide.cardBox.w;
       const cardH = currentSlide.cardBox.h;
 
@@ -372,6 +490,8 @@ function renderCanvasFrame(
       ctx.fillRect(cardX, cardY, cardW, cardH);
       ctx.restore();
     }
+
+    ctx.restore();
   }
 
   // 4. TRANSITION TO NEXT SLIDE (Broadcast Push / Soft Flash)
@@ -768,7 +888,7 @@ async function recordLayeredSlidesToVideo(
  * Fast, energetic commercial motion with staggered animations:
  * - Product Title & Promotional Tag slide in together from left
  * - Supermarket Price Box slams in and pulses with commercial heartbeat
- * - Product Image Card swoops in with 3D momentum and gentle levitation
+ * - Product Image Card swoops in with 3D momentum and guaranteed photo
  * - Glossy metallic light sheen sweep across the card
  */
 export async function gerarVideoAnimadoProdutoIndividual(
@@ -783,12 +903,30 @@ export async function gerarVideoAnimadoProdutoIndividual(
 
   if (onProgress) onProgress(5);
 
+  const prod = campaign.products[productIndex];
+
   // 1. Switch active product in DOM if needed and wait for layout to render
   if (onSelectProductIndex) {
     onSelectProductIndex(productIndex);
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 450));
   } else {
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 150));
+  }
+
+  // Pre-convert product image to safe Data URL so DOM has zero CORS issue
+  if (prod?.imageUrl) {
+    try {
+      const safeData = await getSafeImageDataUrl(prod.imageUrl);
+      if (safeData && safeData.startsWith('data:')) {
+        const imgEl = document.getElementById('tv-anim-product-img') as HTMLImageElement;
+        if (imgEl) {
+          imgEl.src = safeData;
+          if (!imgEl.complete) {
+            await new Promise((r) => { imgEl.onload = r; imgEl.onerror = r; setTimeout(r, 400); });
+          }
+        }
+      }
+    } catch {}
   }
 
   const bannerEl = document.getElementById('tv-banner-capture');
@@ -813,8 +951,8 @@ export async function gerarVideoAnimadoProdutoIndividual(
 
   if (onProgress) onProgress(15);
 
-  // 2. Capture individual element layers
-  const slideLayers = await captureProductSlideLayers(bannerEl, canvasWidth, canvasHeight);
+  // 2. Capture individual element layers with guaranteed photo
+  const slideLayers = await captureProductSlideLayers(bannerEl, canvasWidth, canvasHeight, prod?.imageUrl);
 
   if (onProgress) onProgress(25);
 
@@ -823,7 +961,6 @@ export async function gerarVideoAnimadoProdutoIndividual(
     onSelectProductIndex(originalIndex);
   }
 
-  const prod = campaign.products[productIndex];
   const cleanTitle = (prod?.title || `produto-${productIndex + 1}`)
     .toLowerCase()
     .normalize('NFD')
@@ -891,19 +1028,37 @@ export async function gerarVideoAnimadoBanner(
 
   for (let i = 0; i < totalProducts; i++) {
     const prodIndex = targetIndices[i];
+    const currentProd = allProducts[prodIndex];
+
     if (onProgress) {
       onProgress(Math.round(5 + (i / totalProducts) * 20));
     }
 
     if (onSelectProductIndex && totalProducts > 1) {
       onSelectProductIndex(prodIndex);
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 450));
     } else {
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 150));
+    }
+
+    // Pre-convert product image to safe Data URL
+    if (currentProd?.imageUrl) {
+      try {
+        const safeData = await getSafeImageDataUrl(currentProd.imageUrl);
+        if (safeData && safeData.startsWith('data:')) {
+          const imgEl = document.getElementById('tv-anim-product-img') as HTMLImageElement;
+          if (imgEl) {
+            imgEl.src = safeData;
+            if (!imgEl.complete) {
+              await new Promise((r) => { imgEl.onload = r; imgEl.onerror = r; setTimeout(r, 400); });
+            }
+          }
+        }
+      } catch {}
     }
 
     const currentEl = document.getElementById('tv-banner-capture') || bannerEl;
-    const slide = await captureProductSlideLayers(currentEl, canvasWidth, canvasHeight);
+    const slide = await captureProductSlideLayers(currentEl, canvasWidth, canvasHeight, currentProd?.imageUrl);
     slides.push(slide);
   }
 

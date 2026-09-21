@@ -52,7 +52,8 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     originalPrice: '10,99',
     discountPercentage: 19,
     badge: 'OFERTA DO DIA',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Coca_Cola_Flasche_-_Original_Taste.jpg/960px-Coca_Cola_Flasche_-_Original_Taste.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=1200&auto=format&fit=crop&q=85',
+    imageDisplayMode: 'ambient',
     isHero: false,
   },
   {
