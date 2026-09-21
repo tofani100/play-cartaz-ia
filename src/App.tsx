@@ -469,6 +469,8 @@ export default function App() {
             showClientLogo={campaign.showClientLogo !== false}
             onToggleShowLogo={() => setCampaign((p) => ({ ...p, showClientLogo: !p.showClientLogo }))}
             clientName={campaign.clientName}
+            campaign={campaign}
+            theme={activeTheme}
           />
         </aside>
       </main>

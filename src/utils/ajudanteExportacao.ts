@@ -46,12 +46,11 @@ export interface VideoExportResult {
 
 /**
  * Captures a 100% faithful high-resolution image of a DOM element using html-to-image
+ * Does not force canvasWidth/Height so html-to-image preserves exact layout proportions
  */
-async function captureDomElementImage(el: HTMLElement, targetW: number, targetH: number): Promise<HTMLImageElement> {
+async function captureDomElementImage(el: HTMLElement): Promise<HTMLImageElement> {
   const dataUrl = await toPng(el, {
-    quality: 0.95,
-    canvasWidth: targetW,
-    canvasHeight: targetH,
+    quality: 0.98,
     pixelRatio: 2, // 2x Retina crispness
     cacheBust: true,
     filter: (node) => {
@@ -72,80 +71,25 @@ async function captureDomElementImage(el: HTMLElement, targetW: number, targetH:
 }
 
 /**
- * Generates an MP4/WebM video that is a 100% FAITHFUL COPY of what is displayed on the screen.
- * Captures the actual rendered DOM banner frame-by-frame across all products in the campaign,
- * guaranteeing identical fonts, identical logo proportions, identical prices and zero artificial shadows.
- * Features a full TV commercial duration (minimum 15 seconds) so the video is complete and does not cut short.
+ * Core frame-driven video recording engine.
+ * Records captured snapshots onto a standard broadcast canvas (Full HD 1920x1080, 1080x1920, etc.)
+ * with subtle broadcast breathing motion and smooth crossfades.
  */
-export async function gerarVideoAnimadoBanner(
-  campaign: BannerCampaign,
-  _theme: ThemeColors,
-  slideDurationSec: number = 5.0,
-  onProgress?: (progress: number) => void,
-  onSelectProductIndex?: (index: number) => void
+async function recordSnapshotsToVideo(
+  snapshots: HTMLImageElement[],
+  canvasWidth: number,
+  canvasHeight: number,
+  totalDurationSec: number,
+  perProductSec: number,
+  filename: string,
+  onProgress?: (progress: number) => void
 ): Promise<VideoExportResult> {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
-      const bannerEl = document.getElementById('tv-banner-capture');
-      if (!bannerEl) {
-        throw new Error('Banner de TV (#tv-banner-capture) não encontrado no DOM.');
+      if (!snapshots || snapshots.length === 0) {
+        throw new Error('Nenhum quadro capturado para gravação do vídeo.');
       }
 
-      // Filter only active (non-hidden) products for the commercial video rotation
-      const allProducts = campaign.products && campaign.products.length > 0 ? campaign.products : [];
-      const visibleIndices = allProducts
-        .map((p, idx) => (!p.hidden ? idx : -1))
-        .filter((idx) => idx !== -1);
-      const targetIndices = visibleIndices.length > 0 ? visibleIndices : (allProducts.length > 0 ? [0] : [0]);
-      const totalProductsToRender = targetIndices.length;
-      const originalIndex = campaign.activeProductIndex || 0;
-
-      // 1. STANDARD BROADCAST DIMENSIONS (strictly even numbers to ensure 100% video encoder compatibility)
-      let canvasWidth = 1920;
-      let canvasHeight = 1080;
-      if (campaign.format === '9:16') {
-        canvasWidth = 1080;
-        canvasHeight = 1920;
-      } else if (campaign.format === '1:1') {
-        canvasWidth = 1080;
-        canvasHeight = 1080;
-      } else if (campaign.format === '4:5') {
-        canvasWidth = 1080;
-        canvasHeight = 1350;
-      }
-
-      // 2. CAPTURE DOM SNAPSHOTS: 100% exact copy of each visible product in the campaign
-      const snapshots: HTMLImageElement[] = [];
-
-      for (let i = 0; i < totalProductsToRender; i++) {
-        const prodIndex = targetIndices[i];
-        if (onProgress) {
-          onProgress(Math.round(5 + (i / totalProductsToRender) * 20));
-        }
-
-        // If multi-product, switch index and wait for React & animations to settle
-        if (onSelectProductIndex && totalProductsToRender > 1) {
-          onSelectProductIndex(prodIndex);
-          await new Promise((r) => setTimeout(r, 450));
-        } else {
-          await new Promise((r) => setTimeout(r, 80));
-        }
-
-        const currentEl = document.getElementById('tv-banner-capture') || bannerEl;
-        const img = await captureDomElementImage(currentEl, canvasWidth, canvasHeight);
-        snapshots.push(img);
-      }
-
-      // Restore active product index in editor
-      if (onSelectProductIndex && totalProductsToRender > 1) {
-        onSelectProductIndex(originalIndex);
-      }
-
-      if (snapshots.length === 0) {
-        throw new Error('Falha ao capturar quadros do banner.');
-      }
-
-      // 3. SETUP BROADCAST RECORDING CANVAS
       const canvas = document.createElement('canvas');
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
@@ -157,43 +101,28 @@ export async function gerarVideoAnimadoBanner(
       // Draw initial frame immediately
       ctx.drawImage(snapshots[0], 0, 0, canvasWidth, canvasHeight);
 
-      // 4. BROADCAST DURATION: Minimum 15.0 seconds complete TV commercial loop
-      let perProductSec = 6.0;
-      if (totalProducts === 1) {
-        perProductSec = 15.0; // 15 seconds full TV ad
-      } else if (totalProducts === 2) {
-        perProductSec = 8.0; // 16s total
-      } else if (totalProducts === 3) {
-        perProductSec = 6.0; // 18s total
-      } else {
-        perProductSec = Math.max(5.0, slideDurationSec);
-      }
-
-      const totalDurationSec = totalProducts * perProductSec;
-      const totalDurationMs = totalDurationSec * 1000;
-
-      // 5. SETUP MEDIARECORDER (Strict video-only MIME types, zero audio codecs)
       const stream = canvas.captureStream(30); // 30 FPS broadcast quality
       const mimeTypes = [
         'video/mp4;codecs=avc1.42E01E',
+        'video/mp4;codecs=avc1.4d002a',
+        'video/mp4;codecs=h264',
         'video/mp4',
+        'video/webm;codecs=h264',
         'video/webm;codecs=vp9',
         'video/webm;codecs=vp8',
         'video/webm',
       ];
       let chosenMime = 'video/webm';
-      let isMp4 = false;
       for (const m of mimeTypes) {
         if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m)) {
           chosenMime = m;
-          if (m.includes('mp4')) isMp4 = true;
           break;
         }
       }
 
       const recorder = new MediaRecorder(stream, {
         mimeType: chosenMime,
-        videoBitsPerSecond: 8000000, // 8 Mbps high-bitrate Full HD
+        videoBitsPerSecond: 8000000, // 8 Mbps high bitrate Full HD
       });
 
       const chunks: Blob[] = [];
@@ -208,7 +137,6 @@ export async function gerarVideoAnimadoBanner(
         reject(new Error('Erro durante a gravação de vídeo no navegador.'));
       };
 
-      // 6. FRAME-DRIVEN RECORDING ENGINE (Guarantees every frame is encoded smoothly without freezing)
       const FPS = 30;
       const frameDurationMs = 1000 / FPS;
       const totalFrames = Math.round(totalDurationSec * FPS);
@@ -224,8 +152,8 @@ export async function gerarVideoAnimadoBanner(
         const t = elapsedMs / 1000;
 
         if (onProgress) {
-          // Progress smoothly advances from 25% to 95%
-          onProgress(Math.round(25 + progressRatio * 70));
+          // Progress advances smoothly from 25% to 96%
+          onProgress(Math.round(25 + progressRatio * 71));
         }
 
         // Active snapshot
@@ -243,8 +171,8 @@ export async function gerarVideoAnimadoBanner(
         const nextIdx = (currentIdx + 1) % snapshots.length;
         const nextSnap = snapshots[nextIdx];
 
-        // Subtle broadcast breathing motion (less than 0.6% zoom, 100% faithful proportions)
-        const zoom = 1.0 + Math.sin(t * 0.5) * 0.005;
+        // Subtle broadcast breathing motion (less than 0.4% zoom, perfectly faithful proportions)
+        const zoom = 1.0 + Math.sin(t * 0.5) * 0.004;
         const zW = canvasWidth * zoom;
         const zH = canvasHeight * zoom;
         const zX = (canvasWidth - zW) / 2;
@@ -273,7 +201,7 @@ export async function gerarVideoAnimadoBanner(
           clearInterval(recordTimer);
 
           if (onProgress) {
-            onProgress(97);
+            onProgress(98);
           }
 
           // Safe buffer drain before stopping
@@ -306,15 +234,6 @@ export async function gerarVideoAnimadoBanner(
         }
 
         const videoBlob = new Blob(chunks, { type: chosenMime });
-        const ext = isMp4 ? 'mp4' : 'mp4'; // Always .mp4 extension for TV and WhatsApp compatibility
-        const cleanTitle = (campaign.campaignTitle || 'ofertas')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]/g, '-')
-          .slice(0, 25);
-        const filename = `playcomunique-tv-${campaign.format || '16x9'}-${cleanTitle}-${Date.now()}.${ext}`;
-
         const blobUrl = URL.createObjectURL(videoBlob);
         const a = document.createElement('a');
         a.href = blobUrl;
@@ -337,4 +256,181 @@ export async function gerarVideoAnimadoBanner(
       reject(err);
     }
   });
+}
+
+/**
+ * Generates an animated MP4 video specifically for an INDIVIDUAL PRODUCT (Single Banner).
+ * Duration: 6.0 seconds (optimal for WhatsApp Status, Instagram Reels/Stories, and TV promos).
+ */
+export async function gerarVideoAnimadoProdutoIndividual(
+  campaign: BannerCampaign,
+  _theme: ThemeColors,
+  productIndex: number,
+  slideDurationSec: number = 6.0,
+  onProgress?: (progress: number) => void,
+  onSelectProductIndex?: (index: number) => void
+): Promise<VideoExportResult> {
+  const originalIndex = campaign.activeProductIndex || 0;
+
+  if (onProgress) onProgress(5);
+
+  // 1. Switch active product in DOM if needed and wait for layout to render
+  if (onSelectProductIndex) {
+    onSelectProductIndex(productIndex);
+    await new Promise((r) => setTimeout(r, 350));
+  } else {
+    await new Promise((r) => setTimeout(r, 80));
+  }
+
+  const bannerEl = document.getElementById('tv-banner-capture');
+  if (!bannerEl) {
+    if (onSelectProductIndex) onSelectProductIndex(originalIndex);
+    throw new Error('Elemento do banner (#tv-banner-capture) não encontrado.');
+  }
+
+  if (onProgress) onProgress(15);
+
+  // 2. Capture snapshot of this single product banner
+  const snap = await captureDomElementImage(bannerEl);
+
+  if (onProgress) onProgress(25);
+
+  // Calculate canvas dimensions based on aspect ratio
+  let canvasWidth = 1920;
+  let canvasHeight = 1080;
+  if (campaign.format === '9:16') {
+    canvasWidth = 1080;
+    canvasHeight = 1920;
+  } else if (campaign.format === '1:1') {
+    canvasWidth = 1080;
+    canvasHeight = 1080;
+  } else if (campaign.format === '4:5') {
+    canvasWidth = 1080;
+    canvasHeight = 1350;
+  }
+
+  const prod = campaign.products[productIndex];
+  const cleanTitle = (prod?.title || `produto-${productIndex + 1}`)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '-')
+    .slice(0, 25);
+
+  const filename = `banner-animado-${cleanTitle}-${Date.now()}.mp4`;
+
+  // 3. Record video of this single banner
+  return recordSnapshotsToVideo(
+    [snap],
+    canvasWidth,
+    canvasHeight,
+    slideDurationSec,
+    slideDurationSec,
+    filename,
+    onProgress
+  );
+}
+
+/**
+ * Generates an MP4 video that is a 100% FAITHFUL COPY of what is displayed on the screen across all active products.
+ * Features a full TV commercial duration (15+ seconds) so the video is complete and does not cut short.
+ */
+export async function gerarVideoAnimadoBanner(
+  campaign: BannerCampaign,
+  _theme: ThemeColors,
+  slideDurationSec: number = 5.0,
+  onProgress?: (progress: number) => void,
+  onSelectProductIndex?: (index: number) => void
+): Promise<VideoExportResult> {
+  const bannerEl = document.getElementById('tv-banner-capture');
+  if (!bannerEl) {
+    throw new Error('Banner de TV (#tv-banner-capture) não encontrado no DOM.');
+  }
+
+  // Filter only active (non-hidden) products for the commercial video rotation
+  const allProducts = campaign.products && campaign.products.length > 0 ? campaign.products : [];
+  const visibleIndices = allProducts
+    .map((p, idx) => (!p.hidden ? idx : -1))
+    .filter((idx) => idx !== -1);
+  const targetIndices = visibleIndices.length > 0 ? visibleIndices : (allProducts.length > 0 ? [0] : [0]);
+  const totalProducts = targetIndices.length;
+  const originalIndex = campaign.activeProductIndex || 0;
+
+  // 1. STANDARD BROADCAST DIMENSIONS (strictly even numbers to ensure 100% video encoder compatibility)
+  let canvasWidth = 1920;
+  let canvasHeight = 1080;
+  if (campaign.format === '9:16') {
+    canvasWidth = 1080;
+    canvasHeight = 1920;
+  } else if (campaign.format === '1:1') {
+    canvasWidth = 1080;
+    canvasHeight = 1080;
+  } else if (campaign.format === '4:5') {
+    canvasWidth = 1080;
+    canvasHeight = 1350;
+  }
+
+  // 2. CAPTURE DOM SNAPSHOTS: 100% exact copy of each visible product in the campaign
+  const snapshots: HTMLImageElement[] = [];
+
+  for (let i = 0; i < totalProducts; i++) {
+    const prodIndex = targetIndices[i];
+    if (onProgress) {
+      onProgress(Math.round(5 + (i / totalProducts) * 20));
+    }
+
+    // If multi-product, switch index and wait for React & animations to settle
+    if (onSelectProductIndex && totalProducts > 1) {
+      onSelectProductIndex(prodIndex);
+      await new Promise((r) => setTimeout(r, 450));
+    } else {
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    const currentEl = document.getElementById('tv-banner-capture') || bannerEl;
+    const img = await captureDomElementImage(currentEl);
+    snapshots.push(img);
+  }
+
+  // Restore active product index in editor
+  if (onSelectProductIndex && totalProducts > 1) {
+    onSelectProductIndex(originalIndex);
+  }
+
+  if (snapshots.length === 0) {
+    throw new Error('Falha ao capturar quadros do banner.');
+  }
+
+  // 3. BROADCAST DURATION: Minimum 15.0 seconds complete TV commercial loop
+  let perProductSec = 6.0;
+  if (totalProducts === 1) {
+    perProductSec = 15.0; // 15 seconds full TV ad
+  } else if (totalProducts === 2) {
+    perProductSec = 8.0; // 16s total
+  } else if (totalProducts === 3) {
+    perProductSec = 6.0; // 18s total
+  } else {
+    perProductSec = Math.max(5.0, slideDurationSec);
+  }
+
+  const totalDurationSec = totalProducts * perProductSec;
+
+  const cleanTitle = (campaign.campaignTitle || 'ofertas')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '-')
+    .slice(0, 25);
+  const filename = `playcomunique-tv-${campaign.format || '16x9'}-${cleanTitle}-${Date.now()}.mp4`;
+
+  // 4. Record using unified broadcast engine
+  return recordSnapshotsToVideo(
+    snapshots,
+    canvasWidth,
+    canvasHeight,
+    totalDurationSec,
+    perProductSec,
+    filename,
+    onProgress
+  );
 }

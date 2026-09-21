@@ -15,7 +15,12 @@ import {
   Play
 } from 'lucide-react';
 import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
-import { downloadElementAsPng, gerarVideoAnimadoBanner, VideoExportResult } from '../utils/ajudanteExportacao';
+import { 
+  downloadElementAsPng, 
+  gerarVideoAnimadoBanner, 
+  gerarVideoAnimadoProdutoIndividual, 
+  VideoExportResult 
+} from '../utils/ajudanteExportacao';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
 import { APP_VERSION } from '../versao';
 
@@ -39,6 +44,8 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
   const [isExportingImage, setIsExportingImage] = useState<boolean>(false);
   const [isExportingVideo, setIsExportingVideo] = useState<boolean>(false);
   const [videoProgress, setVideoProgress] = useState<number>(0);
+  const [isExportingSingleVideo, setIsExportingSingleVideo] = useState<boolean>(false);
+  const [singleVideoProgress, setSingleVideoProgress] = useState<number>(0);
   const [isExportingAllBanners, setIsExportingAllBanners] = useState<boolean>(false);
   const [exportAllProgress, setExportAllProgress] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
@@ -116,6 +123,31 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
 
   const handlePrintPdf = () => {
     window.print();
+  };
+
+  const handleRecordSingleVideo = async () => {
+    setIsExportingSingleVideo(true);
+    setSingleVideoProgress(5);
+    setVideoError(null);
+
+    try {
+      const currentIdx = campaign.activeProductIndex || 0;
+      const result = await gerarVideoAnimadoProdutoIndividual(
+        campaign,
+        activeTheme,
+        currentIdx,
+        6.0,
+        (progress) => setSingleVideoProgress(progress),
+        onSelectProductIndex
+      );
+
+      setGeneratedVideo(result);
+    } catch (err: any) {
+      console.error('Erro ao gerar vídeo animado individual:', err);
+      setVideoError('Não foi possível gravar o vídeo animado deste banner individual.');
+    } finally {
+      setIsExportingSingleVideo(false);
+    }
   };
 
   const handleRecordVideo = async () => {
@@ -275,7 +307,7 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
 
           {/* Format 3: Animated Video (WebM / MP4) */}
           <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 shrink-0">
                   <Film className="w-6 h-6" />
@@ -284,32 +316,56 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-bold text-white">Vídeo HD Oficial para TV & Redes (MP4)</h4>
                     <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300">
-                      Full HD 1080p • 15s Comercial TV • Fiel 100%
+                      Full HD 1080p • MP4 Sem Travamento • 100% Fiel
                     </span>
                   </div>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Gera arquivo de vídeo MP4 com duração completa de 15 segundos (padrão de TV Indoor e pen drive), 100% idêntico ao banner da sua tela, com logo oficial e transição de ofertas.
+                    Gere vídeo animado em MP4 pronto para TV Indoor, WhatsApp e Instagram: escolha entre o banner individual (6s) ou a rotação completa da campanha (15s+).
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={handleRecordVideo}
-                disabled={isExportingVideo}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all shrink-0 shadow cursor-pointer disabled:opacity-50"
-              >
-                {isExportingVideo ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Gerando {videoProgress}%</span>
-                  </>
-                ) : (
-                  <>
-                    <Film className="w-3.5 h-3.5" />
-                    <span>Gerar Vídeo MP4</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                {/* Botão: Vídeo Individual do Banner Atual */}
+                <button
+                  onClick={handleRecordSingleVideo}
+                  disabled={isExportingSingleVideo || isExportingVideo}
+                  className="px-3.5 py-2 bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 hover:text-purple-200 border border-purple-500/40 hover:border-purple-400 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow cursor-pointer disabled:opacity-50"
+                  title="Gera vídeo animado de 6 segundos exclusivo deste produto atual"
+                >
+                  {isExportingSingleVideo ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                      <span>Banner {singleVideoProgress}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <Film className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Vídeo Deste Banner (6s)</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Botão: Vídeo da Campanha Completa */}
+                <button
+                  onClick={handleRecordVideo}
+                  disabled={isExportingVideo || isExportingSingleVideo}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow cursor-pointer disabled:opacity-50"
+                  title="Gera vídeo MP4 completo com rotação de todas as ofertas ativas da TV"
+                >
+                  {isExportingVideo ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Campanha {videoProgress}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <Film className="w-3.5 h-3.5" />
+                      <span>Campanha Completa</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Notification and Details when Video is Generated */}

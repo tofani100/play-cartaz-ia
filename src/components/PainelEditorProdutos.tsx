@@ -16,12 +16,13 @@ import {
   Eye,
   EyeOff,
   Download,
+  Film,
   Loader2
 } from 'lucide-react';
-import { ProductItem, CuratedProduct } from '../tiposGeradorBanner';
+import { ProductItem, CuratedProduct, BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
 import { handleImageError } from '../utils/imageFallback';
-import { downloadElementAsPng } from '../utils/ajudanteExportacao';
+import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual } from '../utils/ajudanteExportacao';
 
 interface PainelEditorProdutosProps {
   products: ProductItem[];
@@ -33,6 +34,8 @@ interface PainelEditorProdutosProps {
   showClientLogo?: boolean;
   onToggleShowLogo?: () => void;
   clientName?: string;
+  campaign?: BannerCampaign;
+  theme?: ThemeColors;
 }
 
 export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
@@ -45,6 +48,8 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   showClientLogo = true,
   onToggleShowLogo,
   clientName,
+  campaign,
+  theme,
 }) => {
   const [showCatalogModal, setShowCatalogModal] = useState<boolean>(false);
   const [catalogSearch, setCatalogSearch] = useState<string>('');
@@ -53,6 +58,8 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   const [isGeneratingAiImage, setIsGeneratingAiImage] = useState<boolean>(false);
   const [isPromptCopied, setIsPromptCopied] = useState<boolean>(false);
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
+  const [recordingVideoIndex, setRecordingVideoIndex] = useState<number | null>(null);
+  const [recordingVideoProgress, setRecordingVideoProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadIndividualBanner = async (idx: number) => {
@@ -76,6 +83,48 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       console.error('Erro ao baixar banner individual do produto:', err);
     } finally {
       setDownloadingIndex(null);
+    }
+  };
+
+  const handleDownloadIndividualVideo = async (idx: number) => {
+    if (recordingVideoIndex !== null) return;
+    setRecordingVideoIndex(idx);
+    setRecordingVideoProgress(5);
+    try {
+      const activeCampaign: BannerCampaign = campaign || ({
+        id: 'campanha-atual',
+        campaignTitle: clientName || 'Ofertas da Semana',
+        format: '16:9',
+        products,
+        activeProductIndex: idx,
+        clientName: clientName || 'Belíssima Casa di Frutas',
+        showClientLogo: showClientLogo !== false,
+      } as BannerCampaign);
+
+      const activeTheme: ThemeColors = theme || {
+        id: 'verde-hortifruti',
+        name: 'Verde Hortifrúti',
+        headerBg: '#06331e',
+        priceColor: '#f59e0b',
+        accentColor: '#10b981',
+        badgeBg: '#10b981',
+        badgeText: '#ffffff',
+      };
+
+      await gerarVideoAnimadoProdutoIndividual(
+        activeCampaign,
+        activeTheme,
+        idx,
+        6.0,
+        (progress) => setRecordingVideoProgress(progress),
+        onSelectProductIndex
+      );
+    } catch (err) {
+      console.error('Erro ao baixar banner animado MP4:', err);
+      alert('Não foi possível gravar o vídeo deste banner. Tente baixar o banner em imagem PNG.');
+    } finally {
+      setRecordingVideoIndex(null);
+      setRecordingVideoProgress(0);
     }
   };
 
@@ -319,7 +368,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   <div className="text-[9px] text-neutral-400">/{item.unit}</div>
                 </div>
 
-                {/* Botão: Baixar Banner Individual Só Deste Produto */}
+                {/* Botão: Baixar Banner Individual Só Deste Produto (PNG) */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -333,6 +382,28 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
                   ) : (
                     <Download className="w-3.5 h-3.5" />
+                  )}
+                </button>
+
+                {/* Botão: Baixar Banner Animado MP4 Só Deste Produto */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownloadIndividualVideo(idx);
+                  }}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-purple-300 hover:bg-neutral-800 transition-colors"
+                  title={`Baixar banner animado em vídeo (MP4 • 6s) de "${item.title}"`}
+                >
+                  {recordingVideoIndex === idx ? (
+                    <div className="flex items-center gap-0.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                      {recordingVideoProgress > 0 && (
+                        <span className="text-[8px] text-purple-400 font-bold">{recordingVideoProgress}%</span>
+                      )}
+                    </div>
+                  ) : (
+                    <Film className="w-3.5 h-3.5 text-neutral-400 hover:text-purple-300" />
                   )}
                 </button>
 
@@ -601,7 +672,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {/* Baixar Banner Individual Só Deste Produto */}
+                {/* Baixar Banner Individual Só Deste Produto (PNG) */}
                 <button
                   type="button"
                   disabled={downloadingIndex === currentProductIndex}
@@ -617,38 +688,59 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   <span>
                     {downloadingIndex === currentProductIndex
                       ? 'Gerando PNG...'
-                      : 'Baixar Banner Deste Item (PNG)'}
+                      : 'Baixar Imagem (PNG)'}
                   </span>
                 </button>
 
-                {/* Ocultar / Exibir na Playlist da TV */}
+                {/* Baixar Banner Animado MP4 Só Deste Produto */}
                 <button
                   type="button"
-                  onClick={() => onUpdateProduct(currentProductIndex, { hidden: !activeProduct.hidden })}
-                  className={`w-full py-2 px-3 font-extrabold text-xs rounded-xl border flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer ${
-                    activeProduct.hidden
-                      ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/50'
-                      : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
-                  }`}
-                  title={
-                    activeProduct.hidden
-                      ? 'Reativar produto na rotação da TV'
-                      : 'Ocultar da TV sem deletar da lista de ofertas'
-                  }
+                  disabled={recordingVideoIndex === currentProductIndex}
+                  onClick={() => handleDownloadIndividualVideo(currentProductIndex)}
+                  className="w-full py-2 px-3 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 hover:from-purple-900/60 hover:to-indigo-900/60 text-purple-300 hover:text-purple-200 font-extrabold text-xs rounded-xl border border-purple-500/40 hover:border-purple-400 flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  title="Baixar banner animado em vídeo (MP4 • 6s) pronto para TV, WhatsApp e Redes"
                 >
-                  {activeProduct.hidden ? (
+                  {recordingVideoIndex === currentProductIndex ? (
                     <>
-                      <Eye className="w-4 h-4 text-amber-400" />
-                      <span>Reativar na TV (Está Oculto)</span>
+                      <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                      <span>Gerando {recordingVideoProgress}%</span>
                     </>
                   ) : (
                     <>
-                      <EyeOff className="w-4 h-4 text-neutral-400" />
-                      <span>Ocultar da Playlist da TV</span>
+                      <Film className="w-4 h-4 text-purple-400" />
+                      <span>Baixar Animado (MP4)</span>
                     </>
                   )}
                 </button>
               </div>
+
+              {/* Ocultar / Exibir na Playlist da TV */}
+              <button
+                type="button"
+                onClick={() => onUpdateProduct(currentProductIndex, { hidden: !activeProduct.hidden })}
+                className={`w-full py-2 px-3 font-extrabold text-xs rounded-xl border flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer ${
+                  activeProduct.hidden
+                    ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/50'
+                    : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
+                }`}
+                title={
+                  activeProduct.hidden
+                    ? 'Reativar produto na rotação da TV'
+                    : 'Ocultar da TV sem deletar da lista de ofertas'
+                }
+              >
+                {activeProduct.hidden ? (
+                  <>
+                    <Eye className="w-4 h-4 text-amber-400" />
+                    <span>Reativar na TV (Está Oculto)</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-4 h-4 text-neutral-400" />
+                    <span>Ocultar da Playlist da TV</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
