@@ -64,12 +64,17 @@ interface ProductSlideLayers {
 }
 
 /**
- * Captures a crisp image of a DOM element using html-to-image
+ * Captures a crisp image of a DOM element using html-to-image with dynamic Super-Sampling
+ * Guarantees at least 1920px (or minTargetWidth) resolution so downsampling in 1080p canvas is razor-sharp.
  */
-async function captureDomElementImage(el: HTMLElement): Promise<HTMLImageElement> {
+async function captureDomElementImage(el: HTMLElement, minTargetWidth: number = 1920): Promise<HTMLImageElement> {
+  const rect = el.getBoundingClientRect();
+  const calculatedRatio = rect.width > 0 ? (minTargetWidth / rect.width) : 2.5;
+  const pixelRatio = Math.max(2.5, Math.min(4.0, calculatedRatio));
+
   const dataUrl = await toPng(el, {
-    quality: 0.98,
-    pixelRatio: 2, // 2x Retina crispness
+    quality: 1.0,
+    pixelRatio,
     cacheBust: true,
     filter: (node) => {
       if (node instanceof HTMLElement) {
@@ -108,9 +113,9 @@ function getRelativeBox(el: HTMLElement, container: HTMLElement, canvasW: number
 
 /**
  * Captures the banner separated into individual element layers:
- * 1. Product Title & Promotional Badge block
+ * 1. Product Title & Promotional Badge block (with tag inline in front of text)
  * 2. Supermarket Price Tag box
- * 3. Product Image Card
+ * 3. Product Image Card (with white border 100% surrounding image)
  * 4. Discount Stamp Badge ("OFERTAÇO -XX%")
  * 5. Clean Background Artboard (with client logo, full title, and green texture)
  */
@@ -130,7 +135,7 @@ async function captureProductSlideLayers(
   if (titleEl) {
     try {
       titleBox = getRelativeBox(titleEl, bannerEl, canvasW, canvasH);
-      titleSnap = await captureDomElementImage(titleEl);
+      titleSnap = await captureDomElementImage(titleEl, canvasW);
     } catch (e) {
       console.warn('Falha ao capturar title block isolado:', e);
     }
@@ -141,7 +146,7 @@ async function captureProductSlideLayers(
   if (priceEl) {
     try {
       priceBox = getRelativeBox(priceEl, bannerEl, canvasW, canvasH);
-      priceSnap = await captureDomElementImage(priceEl);
+      priceSnap = await captureDomElementImage(priceEl, canvasW);
     } catch (e) {
       console.warn('Falha ao capturar price block isolado:', e);
     }
@@ -152,7 +157,7 @@ async function captureProductSlideLayers(
   if (stampEl) {
     try {
       stampBox = getRelativeBox(stampEl, bannerEl, canvasW, canvasH);
-      stampSnap = await captureDomElementImage(stampEl);
+      stampSnap = await captureDomElementImage(stampEl, canvasW);
     } catch (e) {
       console.warn('Falha ao capturar stamp isolado:', e);
     }
@@ -166,7 +171,7 @@ async function captureProductSlideLayers(
       const isStampInside = stampEl && cardEl.contains(stampEl);
       if (isStampInside && stampEl) stampEl.style.display = 'none';
       cardBox = getRelativeBox(cardEl, bannerEl, canvasW, canvasH);
-      cardSnap = await captureDomElementImage(cardEl);
+      cardSnap = await captureDomElementImage(cardEl, canvasW);
       if (isStampInside && stampEl) stampEl.style.display = '';
     } catch (e) {
       console.warn('Falha ao capturar card isolado:', e);
@@ -186,7 +191,7 @@ async function captureProductSlideLayers(
 
   let bgSnap: HTMLImageElement;
   try {
-    bgSnap = await captureDomElementImage(bannerEl);
+    bgSnap = await captureDomElementImage(bannerEl, canvasW);
   } finally {
     // Restore DOM immediately
     if (centerContentEl) {
@@ -341,6 +346,8 @@ async function recordLayeredSlidesToVideo(
       if (!ctx) {
         throw new Error('Não foi possível inicializar contexto 2D para gravação de vídeo.');
       }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
       // Draw initial background
       ctx.drawImage(slides[0].bgSnap, 0, 0, canvasWidth, canvasHeight);
@@ -366,7 +373,7 @@ async function recordLayeredSlidesToVideo(
 
       const recorder = new MediaRecorder(stream, {
         mimeType: chosenMime,
-        videoBitsPerSecond: 14000000, // 14 Mbps ultra-sharp broadcast Full HD
+        videoBitsPerSecond: 16000000, // 16 Mbps broadcast master quality Full HD
       });
 
       const chunks: Blob[] = [];
@@ -711,21 +718,29 @@ async function recordLayeredSlidesToVideo(
         // 8. LIVE ANIMATED SCROLLING MARQUEE TICKER (Ultra-Crisp Vector)
         // ==========================================
         if (campaign.showMarqueeTicker !== false) {
-          // A) Black Ticker Background Bar
-          ctx.fillStyle = '#050505';
+          // A) Broadcast Glass Ticker Background Bar with Gold Top Line
+          ctx.fillStyle = '#0a0a0a';
           ctx.fillRect(0, tickerTop, canvasWidth, tickerH);
 
-          ctx.strokeStyle = '#262626';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+          ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(0, tickerTop);
           ctx.lineTo(canvasWidth, tickerTop);
           ctx.stroke();
 
-          // B) Red "INFORME" Pill
-          ctx.fillStyle = '#d90429';
+          // B) Red 3D Beveled "INFORME" Pill
+          const badgeGrad = ctx.createLinearGradient(padX, badgeY, padX, badgeY + badgeH);
+          badgeGrad.addColorStop(0, '#e63946');
+          badgeGrad.addColorStop(0.5, '#d90429');
+          badgeGrad.addColorStop(1, '#9b021a');
+          ctx.fillStyle = badgeGrad;
           roundRect(ctx, padX, badgeY, badgeW, badgeH, 6);
           ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
 
           ctx.fillStyle = '#ffffff';
           const badgeFontSize = Math.round(badgeH * 0.48);
@@ -755,7 +770,7 @@ async function recordLayeredSlidesToVideo(
           const scrollPos = ((elapsedMs / 1000) * scrollSpeed) % oneLoopW;
           const textY = tickerTop + tickerH / 2;
 
-          ctx.fillStyle = '#f3f4f6';
+          ctx.fillStyle = '#fef08a'; // Bright supermarket golden-yellow
           let drawX = marqueeLeft - scrollPos;
           while (drawX < marqueeRight + oneLoopW) {
             ctx.fillText(fullTickerLoop, drawX, textY);
@@ -764,26 +779,26 @@ async function recordLayeredSlidesToVideo(
           ctx.restore();
 
           // D) Sub-Footer Legal Notice
-          ctx.fillStyle = '#000000';
+          ctx.fillStyle = '#050505';
           ctx.fillRect(0, subFooterTop, canvasWidth, subFooterH);
-          ctx.strokeStyle = '#1a1a1a';
+          ctx.strokeStyle = '#262626';
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(0, subFooterTop);
           ctx.lineTo(canvasWidth, subFooterTop);
           ctx.stroke();
 
-          const subFontSize = Math.round(subFooterH * 0.46);
+          const subFontSize = Math.round(subFooterH * 0.48);
           ctx.font = `600 ${subFontSize}px "Plus Jakarta Sans", sans-serif`;
           ctx.textBaseline = 'middle';
           const subY = subFooterTop + subFooterH / 2;
 
-          ctx.fillStyle = '#9ca3af';
+          ctx.fillStyle = '#d1d5db';
           ctx.textAlign = 'left';
-          const legal = campaign.legalNotice || 'Imagens meramente ilustrativas. Proibida a venda de bebidas alcoólicas a menores de 18 anos.';
+          const legal = campaign.legalNotice || 'Imagens meramente ilustrativas; Proibida a venda de bebidas alcoólicas a menores de 18 anos!';
           ctx.fillText(legal, padX, subY);
 
-          ctx.fillStyle = '#d1d5db';
+          ctx.fillStyle = '#f59e0b'; // Amber-gold brand accent
           ctx.textAlign = 'right';
           const brand = campaign.footerBrandText !== undefined && campaign.footerBrandText !== ''
             ? campaign.footerBrandText

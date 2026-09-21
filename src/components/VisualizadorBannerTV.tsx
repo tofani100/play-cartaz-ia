@@ -311,8 +311,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         {/* CENTER CONTENT: Perfectly Proportioned - Nunca cortado pelo cabeçalho ou rodapé */}
         <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 ${
           isTvPlayerMode
-            ? 'px-14 py-2 gap-10'
-            : 'px-3 sm:px-6 md:px-10 py-1 sm:py-2 gap-2 sm:gap-6'
+            ? 'px-14 py-3 gap-10'
+            : 'px-3 sm:px-6 md:px-10 py-2 sm:py-3 gap-2 sm:gap-6'
         } flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
@@ -320,34 +320,31 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             isVertical 
               ? 'items-center text-center max-w-full' 
               : isTvPlayerMode 
-              ? 'items-start text-left w-[47%] max-w-[47%] h-[84%] max-h-[84%] shrink-0' 
-              : 'items-start text-left max-w-[46%] h-[84%] max-h-[84%]'
+              ? 'items-start text-left w-[47%] max-w-[47%] h-[82%] max-h-[82%] shrink-0' 
+              : 'items-start text-left max-w-[46%] h-[82%] max-h-[82%]'
           }`}>
-            {/* Top Block: Title & Promotional Badge */}
+            {/* Top Block: Title with Promotional Badge inline in front of the text */}
             <div id="tv-anim-title-block" className={`flex flex-col items-start w-full p-2 -m-2 shrink-0 ${
               isVertical ? 'pt-2' : isTvPlayerMode ? 'pt-2' : 'pt-1 sm:pt-2'
             }`}>
-              {/* Product Title */}
+              {/* Product Title with Tag in front of the text */}
               <h2 className={`${
                 isTvPlayerMode
-                  ? 'text-[48px] xl:text-[52px] leading-[1.12]'
+                  ? 'text-[44px] xl:text-[48px] leading-[1.16]'
                   : isVertical
-                  ? 'text-[14px] sm:text-[17px] md:text-[20px]'
-                  : 'text-[14px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[30px] leading-[1.15]'
+                  ? 'text-[14px] sm:text-[17px] md:text-[20px] leading-snug'
+                  : 'text-[14px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[30px] leading-[1.18]'
               } font-black text-white tracking-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] font-sans break-words`}>
-                {product.title}
-              </h2>
-
-              {/* Promotional Badge */}
-              <div className={`${isTvPlayerMode ? 'mt-3.5' : 'mt-2 sm:mt-2.5'}`}>
+                {/* Promotional Tag inline directly in front of the text */}
                 <span className={`inline-flex items-center ${
                   isTvPlayerMode
-                    ? 'px-4 py-1.5 rounded-xl text-base'
-                    : 'px-2.5 py-1 rounded-md text-[10px] sm:text-xs'
-                } bg-[#3e684d] text-[#cbf4d8] border border-[#528d69]/50 font-black uppercase tracking-wider shadow-md`}>
-                  {product.badge || 'OFERTA DO DIA'}
+                    ? 'px-3.5 py-1 text-base mr-3 rounded-xl'
+                    : 'px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs mr-2 rounded-lg'
+                } bg-[#2d523b] bg-gradient-to-r from-[#2d523b] to-[#3e684d] text-[#cbf4d8] border border-[#528d69]/60 font-black uppercase tracking-wider shadow-md align-middle`}>
+                  {product.badge || 'SUPER OFERTA'}
                 </span>
-              </div>
+                <span>{product.title}</span>
+              </h2>
             </div>
 
             {/* Bottom Block: Regular Price & Supermarket Price Box */}
@@ -547,14 +544,14 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       tabIndex={0}
                       className={`group relative ${
                         isVertical
-                          ? 'w-full max-w-[364px] sm:max-w-[442px] aspect-[4/3]'
+                          ? 'w-full max-w-[340px] sm:max-w-[420px] aspect-[4/3] my-auto'
                           : isTvPlayerMode
-                          ? 'w-full max-w-[880px] max-h-[660px] aspect-[4/3] shrink-0'
-                          : 'h-[84%] max-h-[84%] aspect-[4/3] w-auto max-w-[46vw] shrink-0'
+                          ? 'w-full max-w-[820px] max-h-[600px] aspect-[4/3] shrink-0 my-auto'
+                          : 'h-auto max-h-[78%] w-auto max-w-[92%] aspect-[4/3] shrink-0 my-auto'
                       } ${
                         isAmbient
-                          ? 'bg-neutral-950 border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.9)] ring-1 ring-white/30'
-                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-4 border-white shadow-[0_22px_50px_rgba(0,0,0,0.8)]'
+                          ? 'bg-neutral-950 border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)] ring-1 ring-white/30'
+                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
                       } ${
                         isTvPlayerMode
                           ? 'rounded-3xl p-3'
@@ -733,28 +730,28 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           </div>
         </div>
 
-        {/* BOTTOM FOOTER: Two-tier Ticker & Legal Bar matching Image 1 */}
-        <div className="relative z-10 bg-black/95 border-t border-neutral-800 overflow-hidden shrink-0 w-full">
+        {/* BOTTOM FOOTER: Broadcast TV Ticker & Legal Bar */}
+        <div className="relative z-10 bg-gradient-to-r from-[#0a0a0a] via-[#141414] to-[#0a0a0a] border-t border-amber-500/30 shadow-[0_-6px_25px_rgba(0,0,0,0.9)] overflow-hidden shrink-0 w-full">
           {/* Ticker Tier */}
           {campaign.showMarqueeTicker && (
             <div className={`${
-              isTvPlayerMode ? 'py-2.5 px-12 gap-3.5' : 'py-1 sm:py-1.5 md:py-2 px-3 sm:px-6 gap-2 sm:gap-3'
+              isTvPlayerMode ? 'py-3 px-12 gap-4' : 'py-1.5 sm:py-2 px-3 sm:px-6 gap-2.5 sm:gap-3.5'
             } flex items-center`}>
-              {/* Red INFORME Button */}
+              {/* Red 3D Beveled INFORME Button */}
               <div className={`flex items-center ${
                 isTvPlayerMode
                   ? 'gap-2 text-sm px-4 py-1.5 rounded-lg'
-                  : 'gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-md'
-              } font-black bg-[#d90429] text-white shadow-md shrink-0`}>
+                  : 'gap-1.5 text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 rounded-md'
+              } font-black bg-gradient-to-b from-[#e63946] via-[#d90429] to-[#9b021a] text-white border border-red-400/60 shadow-[0_4px_12px_rgba(217,4,41,0.5)] shrink-0 select-none`}>
                 <Volume2 className={`${isTvPlayerMode ? 'w-4 h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} animate-pulse`} />
                 <span>INFORME</span>
               </div>
 
-              {/* Marquee Text with Yellow Stars */}
-              <div className="overflow-hidden whitespace-nowrap flex-1">
+              {/* Marquee Text with Smooth Edge Fade (No Truncation) */}
+              <div className="overflow-hidden whitespace-nowrap flex-1 [mask-image:linear-gradient(to_right,transparent_0%,black_16px,black_calc(100%-16px),transparent_100%)]">
                 <div className={`animate-marquee ${
-                  isTvPlayerMode ? 'text-lg' : 'text-[10px] sm:text-xs md:text-sm'
-                } font-black text-neutral-100 uppercase tracking-wide`}>
+                  isTvPlayerMode ? 'text-lg' : 'text-[11px] sm:text-xs md:text-sm'
+                } font-black text-amber-200/95 tracking-wide uppercase`}>
                   {campaign.tickerText || '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ NOSSO APLICATIVO É BOM DEMAIS! ★★ OFERTAS VÁLIDAS PARA TODAS AS FILIAIS DA BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★'}
                 </div>
               </div>
@@ -764,13 +761,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           {/* Sub-Footer Legal Notice & Signature Link */}
           <div className={`${
             isTvPlayerMode
-              ? 'px-12 py-1.5 text-xs'
-              : 'px-3 sm:px-6 py-0.5 sm:py-1 text-[8px] sm:text-[9px] md:text-[10px]'
-          } bg-black text-neutral-400 flex items-center justify-between border-t border-neutral-900`}>
-            <span className="truncate max-w-[80%]">
-              {campaign.legalNotice || 'Imagens meramente ilustrativas. Proibida a venda de bebidas alcoólicas a menores de 18 anos.'}
+              ? 'px-12 py-2 text-xs'
+              : 'px-3 sm:px-6 py-1 text-[9px] sm:text-[10px] md:text-[11px]'
+          } bg-[#050505] text-neutral-300 flex items-center justify-between border-t border-neutral-800/80`}>
+            <span className="truncate max-w-[75%] font-medium">
+              {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibida a venda de bebidas alcoólicas a menores de 18 anos!'}
             </span>
-            <span className="font-bold text-neutral-300 shrink-0">
+            <span className="font-bold text-amber-400 shrink-0">
               {campaign.footerBrandText !== undefined && campaign.footerBrandText !== '' ? campaign.footerBrandText : 'Desenvolvido por: playcomunique.com.br'}
             </span>
           </div>
