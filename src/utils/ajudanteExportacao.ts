@@ -53,14 +53,10 @@ interface ElementBox {
 
 interface ProductSlideLayers {
   bgSnap: HTMLImageElement;
-  titleSnap: HTMLImageElement | null;
-  titleBox: ElementBox | null;
+  leftSnap: HTMLImageElement | null;
+  leftBox: ElementBox | null;
   cardSnap: HTMLImageElement | null;
   cardBox: ElementBox | null;
-  priceSnap: HTMLImageElement | null;
-  priceBox: ElementBox | null;
-  stampSnap: HTMLImageElement | null;
-  stampBox: ElementBox | null;
 }
 
 /**
@@ -112,12 +108,10 @@ function getRelativeBox(el: HTMLElement, container: HTMLElement, canvasW: number
 }
 
 /**
- * Captures the banner separated into individual element layers:
- * 1. Product Title & Promotional Badge block (with tag inline in front of text)
- * 2. Supermarket Price Tag box
- * 3. Product Image Card (with white border 100% surrounding image)
- * 4. Discount Stamp Badge ("OFERTAÇO -XX%")
- * 5. Clean Background Artboard (with client logo, full title, and green texture)
+ * Captures the banner into clean broadcast layers with 100% fidelity to the base original:
+ * 1. Left Column (Tag + Title + Regular Price + Orange Supermarket Price Box) - intact, never separated or lost
+ * 2. Framed Product Card (5px White Border + Photo + Discount Stamp Badge) - intact, never missing stamp
+ * 3. Clean Background Artboard (Header, Client Logo, Wallpaper Texture, and Single Clean Footer)
  */
 async function captureProductSlideLayers(
   bannerEl: HTMLElement,
@@ -125,41 +119,17 @@ async function captureProductSlideLayers(
   canvasH: number
 ): Promise<ProductSlideLayers> {
   const centerContentEl = document.getElementById('tv-banner-center-content');
-  const titleEl = document.getElementById('tv-anim-title-block');
-  const priceEl = document.getElementById('tv-anim-price-block');
+  const leftColEl = document.getElementById('tv-anim-left-column');
   const cardEl = document.getElementById('tv-anim-product-card');
-  const stampEl = document.getElementById('tv-anim-stamp-badge');
 
-  let titleSnap: HTMLImageElement | null = null;
-  let titleBox: ElementBox | null = null;
-  if (titleEl) {
+  let leftSnap: HTMLImageElement | null = null;
+  let leftBox: ElementBox | null = null;
+  if (leftColEl) {
     try {
-      titleBox = getRelativeBox(titleEl, bannerEl, canvasW, canvasH);
-      titleSnap = await captureDomElementImage(titleEl, canvasW);
+      leftBox = getRelativeBox(leftColEl, bannerEl, canvasW, canvasH);
+      leftSnap = await captureDomElementImage(leftColEl, canvasW);
     } catch (e) {
-      console.warn('Falha ao capturar title block isolado:', e);
-    }
-  }
-
-  let priceSnap: HTMLImageElement | null = null;
-  let priceBox: ElementBox | null = null;
-  if (priceEl) {
-    try {
-      priceBox = getRelativeBox(priceEl, bannerEl, canvasW, canvasH);
-      priceSnap = await captureDomElementImage(priceEl, canvasW);
-    } catch (e) {
-      console.warn('Falha ao capturar price block isolado:', e);
-    }
-  }
-
-  let stampSnap: HTMLImageElement | null = null;
-  let stampBox: ElementBox | null = null;
-  if (stampEl) {
-    try {
-      stampBox = getRelativeBox(stampEl, bannerEl, canvasW, canvasH);
-      stampSnap = await captureDomElementImage(stampEl, canvasW);
-    } catch (e) {
-      console.warn('Falha ao capturar stamp isolado:', e);
+      console.warn('Falha ao capturar left column isolada:', e);
     }
   }
 
@@ -167,26 +137,17 @@ async function captureProductSlideLayers(
   let cardBox: ElementBox | null = null;
   if (cardEl) {
     try {
-      // Temporarily hide stamp if inside card so the stamp can animate separately with physics
-      const isStampInside = stampEl && cardEl.contains(stampEl);
-      if (isStampInside && stampEl) stampEl.style.display = 'none';
+      // The discount stamp stays attached to the card so it is 100% visible and perfectly aligned!
       cardBox = getRelativeBox(cardEl, bannerEl, canvasW, canvasH);
       cardSnap = await captureDomElementImage(cardEl, canvasW);
-      if (isStampInside && stampEl) stampEl.style.display = '';
     } catch (e) {
       console.warn('Falha ao capturar card isolado:', e);
     }
   }
 
-  // Hide the entire center container so bgSnap is 100% clean with ZERO ghost frames or shadows
+  // Hide the center container so bgSnap captures clean background artboard with header & footer
   if (centerContentEl) {
     centerContentEl.style.display = 'none';
-  } else {
-    // Fallback if centerContentEl is missing
-    if (titleEl) titleEl.style.opacity = '0';
-    if (priceEl) priceEl.style.opacity = '0';
-    if (cardEl) cardEl.style.opacity = '0';
-    if (stampEl) stampEl.style.opacity = '0';
   }
 
   let bgSnap: HTMLImageElement;
@@ -196,24 +157,15 @@ async function captureProductSlideLayers(
     // Restore DOM immediately
     if (centerContentEl) {
       centerContentEl.style.display = '';
-    } else {
-      if (titleEl) titleEl.style.opacity = '';
-      if (priceEl) priceEl.style.opacity = '';
-      if (cardEl) cardEl.style.opacity = '';
-      if (stampEl) stampEl.style.opacity = '';
     }
   }
 
   return {
     bgSnap,
-    titleSnap,
-    titleBox,
+    leftSnap,
+    leftBox,
     cardSnap,
     cardBox,
-    priceSnap,
-    priceBox,
-    stampSnap,
-    stampBox,
   };
 }
 
@@ -347,21 +299,6 @@ async function recordLayeredSlidesToVideo(
       let currentFrame = 0;
       let isFinished = false;
 
-      // Layout constants for live animated ticker
-      const isVertical = canvasHeight > canvasWidth;
-      const footerTotalH = Math.round(canvasHeight * (isVertical ? 0.055 : 0.068));
-      const subFooterH = Math.round(canvasHeight * (isVertical ? 0.020 : 0.024));
-      const tickerH = footerTotalH - subFooterH;
-      const tickerTop = canvasHeight - footerTotalH;
-      const subFooterTop = tickerTop + tickerH;
-      const padX = Math.round(canvasWidth * (isVertical ? 0.035 : 0.025));
-      const badgeH = Math.round(tickerH * 0.70);
-      const badgeY = tickerTop + Math.round((tickerH - badgeH) / 2);
-      const badgeW = Math.round(canvasWidth * (isVertical ? 0.18 : 0.084));
-
-      const tickerText = (campaign.tickerText || '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ NOSSO APLICATIVO É BOM DEMAIS! ★★ OFERTAS VÁLIDAS PARA TODAS AS FILIAIS DA BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★').trim();
-      const fullTickerLoop = tickerText + '    ★    ';
-
       const recordTimer = setInterval(() => {
         if (isFinished) return;
 
@@ -407,188 +344,105 @@ async function recordLayeredSlidesToVideo(
         ctx.drawImage(currentSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
         ctx.restore();
 
-        // If elements are not separated, draw entire fallback cleanly
-        if (!currentSlide.titleBox || !currentSlide.cardBox || !currentSlide.priceBox) {
+        // ==========================================
+        // 1.5 COMMERCIAL STAGE SPOTLIGHT (Behind Product Card)
+        // ==========================================
+        if (currentSlide.cardBox) {
+          const spotX = currentSlide.cardBox.x + currentSlide.cardBox.w / 2;
+          const spotY = currentSlide.cardBox.y + currentSlide.cardBox.h / 2;
+          const spotR = Math.max(currentSlide.cardBox.w, currentSlide.cardBox.h) * 0.95;
           ctx.save();
-          ctx.globalAlpha = 1.0;
-          ctx.drawImage(currentSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
+          ctx.globalCompositeOperation = 'screen';
+          const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, spotR);
+          spotGrad.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
+          spotGrad.addColorStop(0.35, 'rgba(254, 240, 138, 0.12)');
+          spotGrad.addColorStop(0.65, 'rgba(34, 197, 94, 0.05)');
+          spotGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = spotGrad;
+          ctx.fillRect(0, 0, canvasWidth, canvasHeight);
           ctx.restore();
-        } else {
-          // ==========================================
-          // 1.5 COMMERCIAL STAGE SPOTLIGHT (Behind Product Card)
-          // ==========================================
-          if (currentSlide.cardBox) {
-            const spotX = currentSlide.cardBox.x + currentSlide.cardBox.w / 2;
-            const spotY = currentSlide.cardBox.y + currentSlide.cardBox.h / 2;
-            const spotR = Math.max(currentSlide.cardBox.w, currentSlide.cardBox.h) * 0.95;
-            ctx.save();
-            ctx.globalCompositeOperation = 'screen';
-            const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, spotR);
-            spotGrad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-            spotGrad.addColorStop(0.35, 'rgba(254, 240, 138, 0.15)');
-            spotGrad.addColorStop(0.65, 'rgba(34, 197, 94, 0.08)');
-            spotGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = spotGrad;
-            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-            ctx.restore();
-          }
-
-          // ==========================================
-          // 2. ELEMENT: PRODUCT TITLE & BADGE (Kinetic Slide from Left)
-          // ==========================================
-          if (currentSlide.titleSnap && currentSlide.titleBox) {
-            let tAlpha = slideExitAlpha;
-            let tOffsetX = 0;
-            if (slideT < 0.18) {
-              tAlpha = 0;
-            } else if (slideT < 0.62) {
-              const p = (slideT - 0.18) / 0.44;
-              const spring = springDamped(p, 1.5, 3.8);
-              tAlpha = Math.min(1, p * 3) * slideExitAlpha;
-              tOffsetX = -150 * (1 - spring);
-            }
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, Math.min(1, tAlpha));
-            ctx.drawImage(
-              currentSlide.titleSnap,
-              currentSlide.titleBox.x + tOffsetX,
-              currentSlide.titleBox.y,
-              currentSlide.titleBox.w,
-              currentSlide.titleBox.h
-            );
-            ctx.restore();
-          }
-
-          // ==========================================
-          // 3. ELEMENT: PRODUCT SHOWCASE CARD (Swoop from Right with Spring Momentum + 3D Levitation)
-          // ==========================================
-          let cFloatY = 0;
-          if (currentSlide.cardSnap && currentSlide.cardBox) {
-            let cAlpha = slideExitAlpha;
-            let cOffsetX = 0;
-            let cScale = 1.0;
-            let cRot = 0;
-
-            if (slideT < 0.08) {
-              cAlpha = 0;
-            } else if (slideT < 0.65) {
-              const p = (slideT - 0.08) / 0.57;
-              const spring = springDamped(p, 1.7, 4.0);
-              cAlpha = Math.min(1, p * 4) * slideExitAlpha;
-              cOffsetX = 190 * (1 - spring);
-              cScale = 0.78 + 0.22 * spring;
-              cRot = -0.05 * (1 - spring); // -3 deg dynamic tilt that settles to 0
-            } else {
-              // Gentle living 3D levitation & micro-angle
-              cFloatY = Math.sin((slideT - 0.65) * 2.3) * 7;
-              cRot = Math.sin((slideT - 0.65) * 1.5) * 0.008;
-            }
-
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, Math.min(1, cAlpha));
-            const cCx = currentSlide.cardBox.x + cOffsetX + currentSlide.cardBox.w / 2;
-            const cCy = currentSlide.cardBox.y + cFloatY + currentSlide.cardBox.h / 2;
-            ctx.translate(cCx, cCy);
-            ctx.rotate(cRot);
-            ctx.scale(cScale, cScale);
-            ctx.drawImage(
-              currentSlide.cardSnap,
-              -currentSlide.cardBox.w / 2,
-              -currentSlide.cardBox.h / 2,
-              currentSlide.cardBox.w,
-              currentSlide.cardBox.h
-            );
-            ctx.restore();
-          }
-
-          // ==========================================
-          // 4. ELEMENT: SUPERMARKET ORANGE PRICE BOX (Spring Slam Pop + Heartbeat Pulse)
-          // ==========================================
-          if (currentSlide.priceSnap && currentSlide.priceBox) {
-            let pAlpha = slideExitAlpha;
-            let pScale = 1.0;
-            let pOffsetY = 0;
-
-            if (slideT < 0.32) {
-              pAlpha = 0;
-            } else if (slideT < 0.82) {
-              const p = (slideT - 0.32) / 0.50;
-              const spring = springDamped(p, 2.0, 4.6);
-              pAlpha = Math.min(1, p * 4) * slideExitAlpha;
-              pScale = 0.25 + 0.75 * spring;
-              pOffsetY = -35 * (1 - spring);
-            } else {
-              // Continuous retail heartbeat pulse every 2.0 seconds
-              const pulsePhase = (slideT - 0.82) % 2.0;
-              if (pulsePhase < 0.35) {
-                const subP = pulsePhase / 0.35;
-                pScale = 1.0 + Math.sin(subP * Math.PI) * 0.07;
-              }
-            }
-
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, Math.min(1, pAlpha));
-            const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
-            let pCy = currentSlide.priceBox.y + pOffsetY + currentSlide.priceBox.h / 2;
-            const maxPriceBottom = tickerTop - 8;
-            if (pCy + (currentSlide.priceBox.h * pScale) / 2 > maxPriceBottom) {
-              pCy = maxPriceBottom - (currentSlide.priceBox.h * pScale) / 2;
-            }
-            ctx.translate(pCx, pCy);
-            ctx.scale(pScale, pScale);
-            ctx.drawImage(
-              currentSlide.priceSnap,
-              -currentSlide.priceBox.w / 2,
-              -currentSlide.priceBox.h / 2,
-              currentSlide.priceBox.w,
-              currentSlide.priceBox.h
-            );
-            ctx.restore();
-          }
-
-          // ==========================================
-          // 5. ELEMENT: DISCOUNT STAMP BADGE (Rubber Stamp Impact Drop + Wobble)
-          // ==========================================
-          if (currentSlide.stampSnap && currentSlide.stampBox) {
-            let sAlpha = slideExitAlpha;
-            let sOffsetY = 0;
-            let sRot = 0;
-            let sScale = 1.0;
-
-            if (slideT < 0.52) {
-              sAlpha = 0;
-            } else if (slideT < 0.88) {
-              const p = (slideT - 0.52) / 0.36;
-              const spring = springDamped(p, 2.4, 4.2);
-              sAlpha = Math.min(1, p * 4) * slideExitAlpha;
-              sOffsetY = -90 * (1 - easeOutCubic(p));
-              sRot = -0.40 * (1 - spring); // -23 deg to 0 with wobble
-              sScale = 1.5 - 0.5 * spring;
-            } else {
-              // Gentle living tilt oscillation
-              sRot = Math.sin((slideT - 0.88) * 2.8) * 0.08;
-            }
-
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, Math.min(1, sAlpha));
-            const sCx = currentSlide.stampBox.x + currentSlide.stampBox.w / 2;
-            const sCy = currentSlide.stampBox.y + sOffsetY + currentSlide.stampBox.h / 2 + cFloatY;
-            ctx.translate(sCx, sCy);
-            ctx.rotate(sRot);
-            ctx.scale(sScale, sScale);
-            ctx.drawImage(
-              currentSlide.stampSnap,
-              -currentSlide.stampBox.w / 2,
-              -currentSlide.stampBox.h / 2,
-              currentSlide.stampBox.w,
-              currentSlide.stampBox.h
-            );
-            ctx.restore();
-          }
         }
 
         // ==========================================
-        // 6. TRANSITION TO NEXT SLIDE (Broadcast Commercial Push / Flash)
+        // 2. ELEMENT: OFFER COLUMN (Tag + Title + Regular Price + Orange Supermarket Price Box)
+        // Kinetic slide from left with damped spring bounce
+        // ==========================================
+        if (currentSlide.leftSnap && currentSlide.leftBox) {
+          let lAlpha = slideExitAlpha;
+          let lOffsetX = 0;
+          let lScale = 1.0;
+
+          if (slideT < 0.12) {
+            lAlpha = 0;
+          } else if (slideT < 0.60) {
+            const p = (slideT - 0.12) / 0.48;
+            const spring = springDamped(p, 1.6, 3.8);
+            lAlpha = Math.min(1, p * 3) * slideExitAlpha;
+            lOffsetX = -150 * (1 - spring);
+            lScale = 0.90 + 0.10 * spring;
+          }
+
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, lAlpha));
+          const lCx = currentSlide.leftBox.x + lOffsetX + currentSlide.leftBox.w / 2;
+          const lCy = currentSlide.leftBox.y + currentSlide.leftBox.h / 2;
+          ctx.translate(lCx, lCy);
+          ctx.scale(lScale, lScale);
+          ctx.drawImage(
+            currentSlide.leftSnap,
+            -currentSlide.leftBox.w / 2,
+            -currentSlide.leftBox.h / 2,
+            currentSlide.leftBox.w,
+            currentSlide.leftBox.h
+          );
+          ctx.restore();
+        }
+
+        // ==========================================
+        // 3. ELEMENT: PRODUCT SHOWCASE CARD (White Border + Photo + Discount Stamp)
+        // Swoop from right with momentum and gentle 3D hover
+        // ==========================================
+        let cFloatY = 0;
+        if (currentSlide.cardSnap && currentSlide.cardBox) {
+          let cAlpha = slideExitAlpha;
+          let cOffsetX = 0;
+          let cScale = 1.0;
+          let cRot = 0;
+
+          if (slideT < 0.06) {
+            cAlpha = 0;
+          } else if (slideT < 0.64) {
+            const p = (slideT - 0.06) / 0.58;
+            const spring = springDamped(p, 1.8, 4.0);
+            cAlpha = Math.min(1, p * 4) * slideExitAlpha;
+            cOffsetX = 180 * (1 - spring);
+            cScale = 0.80 + 0.20 * spring;
+            cRot = -0.04 * (1 - spring);
+          } else {
+            // Gentle living 3D levitation
+            cFloatY = Math.sin((slideT - 0.64) * 2.2) * 6;
+            cRot = Math.sin((slideT - 0.64) * 1.5) * 0.006;
+          }
+
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, cAlpha));
+          const cCx = currentSlide.cardBox.x + cOffsetX + currentSlide.cardBox.w / 2;
+          const cCy = currentSlide.cardBox.y + cFloatY + currentSlide.cardBox.h / 2;
+          ctx.translate(cCx, cCy);
+          ctx.rotate(cRot);
+          ctx.scale(cScale, cScale);
+          ctx.drawImage(
+            currentSlide.cardSnap,
+            -currentSlide.cardBox.w / 2,
+            -currentSlide.cardBox.h / 2,
+            currentSlide.cardBox.w,
+            currentSlide.cardBox.h
+          );
+          ctx.restore();
+        }
+
+        // ==========================================
+        // 4. TRANSITION TO NEXT SLIDE (Broadcast Push / Flash)
         // ==========================================
         if (isTransitioning && nextSlide) {
           const fadeP = (timeInSlideMs - transitionStartMs) / transitionDurationMs;
@@ -598,8 +452,18 @@ async function recordLayeredSlidesToVideo(
           ctx.globalAlpha = fadeP;
           ctx.drawImage(nextSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
 
+          if (nextSlide.leftSnap && nextSlide.leftBox) {
+            const nextLeftOffsetX = (1 - easeP) * -160;
+            ctx.drawImage(
+              nextSlide.leftSnap,
+              nextSlide.leftBox.x + nextLeftOffsetX,
+              nextSlide.leftBox.y,
+              nextSlide.leftBox.w,
+              nextSlide.leftBox.h
+            );
+          }
           if (nextSlide.cardSnap && nextSlide.cardBox) {
-            const nextCardOffsetX = (1 - easeP) * 280;
+            const nextCardOffsetX = (1 - easeP) * 200;
             ctx.drawImage(
               nextSlide.cardSnap,
               nextSlide.cardBox.x + nextCardOffsetX,
@@ -608,119 +472,17 @@ async function recordLayeredSlidesToVideo(
               nextSlide.cardBox.h
             );
           }
-          if (nextSlide.priceSnap && nextSlide.priceBox) {
-            const nextPriceOffsetX = (1 - easeP) * -180;
-            ctx.drawImage(
-              nextSlide.priceSnap,
-              nextSlide.priceBox.x + nextPriceOffsetX,
-              nextSlide.priceBox.y,
-              nextSlide.priceBox.w,
-              nextSlide.priceBox.h
-            );
-          }
           ctx.restore();
 
-          // Commercial TV white flash beam at peak transition
+          // Broadcast transition soft light wash
           const flash = Math.sin(fadeP * Math.PI);
           if (flash > 0.05) {
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
-            ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.38})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.28})`;
             ctx.fillRect(0, 0, canvasWidth, canvasHeight);
             ctx.restore();
           }
-        }
-
-        // ==========================================
-        // 8. LIVE ANIMATED SCROLLING MARQUEE TICKER (Ultra-Crisp Vector)
-        // ==========================================
-        if (campaign.showMarqueeTicker !== false) {
-          // A) Broadcast Glass Ticker Background Bar with Gold Top Line
-          ctx.fillStyle = '#0a0a0a';
-          ctx.fillRect(0, tickerTop, canvasWidth, tickerH);
-
-          ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(0, tickerTop);
-          ctx.lineTo(canvasWidth, tickerTop);
-          ctx.stroke();
-
-          // B) Red 3D Beveled "INFORME" Pill
-          const badgeGrad = ctx.createLinearGradient(padX, badgeY, padX, badgeY + badgeH);
-          badgeGrad.addColorStop(0, '#e63946');
-          badgeGrad.addColorStop(0.5, '#d90429');
-          badgeGrad.addColorStop(1, '#9b021a');
-          ctx.fillStyle = badgeGrad;
-          roundRect(ctx, padX, badgeY, badgeW, badgeH, 6);
-          ctx.fill();
-
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          ctx.fillStyle = '#ffffff';
-          const badgeFontSize = Math.round(badgeH * 0.48);
-          ctx.font = `900 ${badgeFontSize}px "Plus Jakarta Sans", sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('📢 INFORME', padX + badgeW / 2, badgeY + badgeH / 2);
-
-          // C) Scrolling Marquee Window
-          const marqueeLeft = padX + badgeW + Math.round(canvasWidth * 0.015);
-          const marqueeRight = canvasWidth - padX;
-          const marqueeWidth = marqueeRight - marqueeLeft;
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(marqueeLeft, tickerTop, marqueeWidth, tickerH);
-          ctx.clip();
-
-          const textFontSize = Math.round(tickerH * 0.42);
-          ctx.font = `900 ${textFontSize}px "Plus Jakarta Sans", sans-serif`;
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle';
-          const oneLoopW = ctx.measureText(fullTickerLoop).width || 800;
-
-          // Scroll continuously at 160 px/sec
-          const scrollSpeed = 160;
-          const scrollPos = ((elapsedMs / 1000) * scrollSpeed) % oneLoopW;
-          const textY = tickerTop + tickerH / 2;
-
-          ctx.fillStyle = '#fef08a'; // Bright supermarket golden-yellow
-          let drawX = marqueeLeft - scrollPos;
-          while (drawX < marqueeRight + oneLoopW) {
-            ctx.fillText(fullTickerLoop, drawX, textY);
-            drawX += oneLoopW;
-          }
-          ctx.restore();
-
-          // D) Sub-Footer Legal Notice
-          ctx.fillStyle = '#050505';
-          ctx.fillRect(0, subFooterTop, canvasWidth, subFooterH);
-          ctx.strokeStyle = '#262626';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(0, subFooterTop);
-          ctx.lineTo(canvasWidth, subFooterTop);
-          ctx.stroke();
-
-          const subFontSize = Math.round(subFooterH * 0.48);
-          ctx.font = `600 ${subFontSize}px "Plus Jakarta Sans", sans-serif`;
-          ctx.textBaseline = 'middle';
-          const subY = subFooterTop + subFooterH / 2;
-
-          ctx.fillStyle = '#d1d5db';
-          ctx.textAlign = 'left';
-          const legal = campaign.legalNotice || 'Imagens meramente ilustrativas; Proibida a venda de bebidas alcoólicas a menores de 18 anos!';
-          ctx.fillText(legal, padX, subY);
-
-          ctx.fillStyle = '#f59e0b'; // Amber-gold brand accent
-          ctx.textAlign = 'right';
-          const brand = campaign.footerBrandText !== undefined && campaign.footerBrandText !== ''
-            ? campaign.footerBrandText
-            : 'Desenvolvido por: playcomunique.com.br';
-          ctx.fillText(brand, canvasWidth - padX, subY);
         }
 
         // ==========================================

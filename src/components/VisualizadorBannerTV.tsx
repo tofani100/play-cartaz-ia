@@ -315,7 +315,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         } flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
-          <div className={`flex flex-col justify-between min-w-0 ${
+          <div id="tv-anim-left-column" className={`flex flex-col justify-between min-w-0 ${
             isVertical 
               ? 'items-center text-center max-w-full' 
               : isTvPlayerMode 
@@ -332,11 +332,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   ? 'text-[13px] sm:text-[15px] md:text-[17px] leading-snug'
                   : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[22px] xl:text-[25px] leading-[1.18]'
               } font-black text-white tracking-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] font-sans break-words`}>
-                <span className={`inline-flex items-center ${
-                  isTvPlayerMode
-                    ? 'px-3.5 py-1 text-sm mr-2.5 rounded-lg'
-                    : 'px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[9px] sm:text-[10px] md:text-xs mr-2 rounded-md'
-                } bg-[#2d523b] bg-gradient-to-r from-[#2d523b] to-[#3e684d] text-[#cbf4d8] border border-[#528d69]/70 font-black uppercase tracking-wider shadow-md align-middle`}>
+                <span 
+                  style={{ backgroundColor: '#2d523b', backgroundImage: 'linear-gradient(90deg, #2d523b 0%, #3e684d 100%)' }}
+                  className={`inline-flex items-center ${
+                    isTvPlayerMode
+                      ? 'px-3.5 py-1 text-sm mr-2.5 rounded-lg'
+                      : 'px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[9px] sm:text-[10px] md:text-xs mr-2 rounded-md'
+                  } text-[#cbf4d8] border border-[#528d69]/70 font-black uppercase tracking-wider shadow-md align-middle`}>
                   {product.badge || 'SUPER OFERTA'}
                 </span>
                 <span className="align-middle">{product.title}</span>
@@ -358,11 +360,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
               {/* Main Supermarket Orange Price Box */}
               <div className="inline-flex items-center">
-                <div className={`relative overflow-hidden bg-[#ea580c] bg-gradient-to-b from-[#f97316] via-[#ea580c] to-[#c2410c] text-white ${
-                  isTvPlayerMode
-                    ? 'rounded-2xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.7)] border-2 border-white/30 gap-3.5'
-                    : 'rounded-xl md:rounded-2xl p-2 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1.5 sm:gap-2'
-                } flex items-center transition-transform hover:scale-[1.02] origin-bottom-left`}>
+                <div 
+                  style={{ backgroundColor: '#ea580c', backgroundImage: 'linear-gradient(180deg, #f97316 0%, #ea580c 50%, #c2410c 100%)' }}
+                  className={`relative overflow-hidden text-white ${
+                    isTvPlayerMode
+                      ? 'rounded-2xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.7)] border-2 border-white/30 gap-3.5'
+                      : 'rounded-xl md:rounded-2xl p-2 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1.5 sm:gap-2'
+                  } flex items-center transition-transform hover:scale-[1.02] origin-bottom-left`}>
                   {/* Glossy top highlight overlay for TV commercial acrylic look */}
                   <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none rounded-t-xl" />
                   
@@ -604,11 +608,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       {product.discountPercentage && product.discountPercentage > 0 && (
                         <div
                           id="tv-anim-stamp-badge"
+                          style={{ backgroundColor: '#ea580c', backgroundImage: 'linear-gradient(45deg, #ea580c 0%, #f97316 100%)' }}
                           className={`absolute ${
                             isTvPlayerMode
                               ? 'w-24 h-24 -top-6 -right-6 border-[3.5px]'
                               : 'w-8 h-8 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-[3px]'
-                          } scale-110 origin-center z-30 rounded-full bg-gradient-to-tr from-[#ea580c] to-[#f97316] text-white border-white shadow-[0_14px_30px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none animate-badge-tilt`}
+                          } scale-110 origin-center z-30 rounded-full text-white border-white shadow-[0_14px_30px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none animate-badge-tilt`}
                         >
                           <span
                             className={`${
