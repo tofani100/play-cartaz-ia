@@ -321,8 +321,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             isVertical 
               ? 'items-center text-center max-w-full' 
               : isTvPlayerMode 
-              ? 'items-start text-left w-[47%] max-w-[47%] h-[92%] max-h-[92%] shrink-0' 
-              : 'items-start text-left max-w-[46%] h-[92%] max-h-[92%]'
+              ? 'items-start text-left w-[48%] max-w-[48%] h-[92%] max-h-[92%] shrink-0' 
+              : 'items-start text-left w-[48%] max-w-[48%] h-[92%] max-h-[92%]'
           }`}>
             {/* Top Block: Title & Promotional Badge - Um na frente do outro com diagramação perfeita e fundo 100% transparente */}
             <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent">
@@ -331,15 +331,15 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 isTvPlayerMode
                   ? 'text-[36px] xl:text-[40px] leading-[1.16]'
                   : isVertical
-                  ? 'text-[13px] sm:text-[15px] md:text-[17px] leading-snug'
-                  : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[22px] xl:text-[25px] leading-[1.18]'
+                  ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug'
+                  : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
               } font-black text-white tracking-tight font-sans break-words bg-transparent`}>
                 <span 
                   style={{ backgroundColor: '#1a472a' }}
                   className={`inline-flex items-center ${
                     isTvPlayerMode
                       ? 'px-3.5 py-1 text-sm mr-2.5 rounded-lg'
-                      : 'px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[9px] sm:text-[10px] md:text-xs mr-2 rounded-md'
+                      : 'px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg'
                   } text-[#d4f7dc] border border-[#3b7a50] font-black uppercase tracking-wider align-middle shadow-sm`}>
                   {product.badge || 'SUPER OFERTA'}
                 </span>
@@ -354,7 +354,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 <div className={`text-white/90 ${
                   isTvPlayerMode
                     ? 'text-lg font-bold mb-1.5'
-                    : 'text-[10px] sm:text-xs md:text-sm font-semibold mb-0.5'
+                    : 'text-xs sm:text-sm md:text-base font-bold mb-1'
                 } tracking-tight bg-transparent`}>
                   De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
@@ -367,7 +367,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   className={`relative overflow-hidden text-white ${
                     isTvPlayerMode
                       ? 'rounded-2xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.7)] border-2 border-white/30 gap-3.5'
-                      : 'rounded-xl md:rounded-2xl p-2 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1.5 sm:gap-2'
+                      : 'rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-2 sm:gap-3'
                   } flex items-center transition-transform hover:scale-[1.02] origin-bottom-left`}>
                   {/* Glossy top highlight overlay for TV commercial acrylic look */}
                   <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none rounded-t-xl" />
@@ -375,12 +375,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   {/* Left: "POR R$" */}
                   <div className="flex flex-col justify-start self-start pt-0.5 leading-none">
                     <span className={`${
-                      isTvPlayerMode ? 'text-xs' : 'text-[8px] sm:text-[9px] md:text-[10px]'
+                      isTvPlayerMode ? 'text-xs' : 'text-[9px] sm:text-[10px] md:text-xs'
                     } font-black uppercase tracking-wider text-white/95`}>
                       POR
                     </span>
                     <span className={`${
-                      isTvPlayerMode ? 'text-xl font-black mt-0.5' : 'text-[11px] sm:text-xs md:text-sm font-black mt-0.5'
+                      isTvPlayerMode ? 'text-xl font-black mt-0.5' : 'text-xs sm:text-sm md:text-base font-black mt-0.5'
                     }`}>
                       R$
                     </span>
@@ -388,7 +388,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                   {/* Big Integer Number */}
                   <div className={`${
-                    isTvPlayerMode ? 'text-[108px]' : 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl'
+                    isTvPlayerMode ? 'text-[108px]' : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl'
                   } font-black leading-none tracking-tighter drop-shadow-sm font-sans`}>
                     {intPrice}
                   </div>
@@ -396,12 +396,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   {/* Right: ",99" and "2L" / unit */}
                   <div className="flex flex-col justify-start self-start pt-0.5 leading-none pl-0.5">
                     <span className={`${
-                      isTvPlayerMode ? 'text-5xl' : 'text-lg sm:text-xl md:text-2xl lg:text-3xl'
+                      isTvPlayerMode ? 'text-5xl' : 'text-xl sm:text-2xl md:text-3xl lg:text-4xl'
                     } font-black leading-none`}>
                       ,{centsPrice}
                     </span>
                     <span className={`${
-                      isTvPlayerMode ? 'text-base mt-1.5' : 'text-[8px] sm:text-[10px] md:text-xs mt-0.5'
+                      isTvPlayerMode ? 'text-base mt-1.5' : 'text-[10px] sm:text-xs md:text-sm font-black mt-1'
                     } font-black uppercase tracking-wider text-white/95`}>
                       {product.unit || '2L'}
                     </span>

@@ -287,11 +287,11 @@ function easeOutCubic(x: number): number {
  * Helper to draw rounded rectangle in Canvas 2D
  */
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
   if (typeof (ctx as any).roundRect === 'function') {
     (ctx as any).roundRect(x, y, w, h, r);
     return;
   }
-  ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
   ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -302,10 +302,11 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 /**
  * Draws a single frame of the layered motion graphics banner onto the 2D canvas.
+ * - ZERO path accumulation (ctx.beginPath called on every shape)
  * - ZERO whitish haze/filter over the photo (100% natural, crisp, saturated colors)
- * - Fine white border (4px) completely surrounding the image perimeter
+ * - Exactly ONE clean white border (4.5px) completely surrounding the image perimeter
  * - Product Title & Tag with 100% transparent background (no muddy dark green shadows)
- * - Large supermarket orange price box with commercial heartbeat pulse
+ * - Large prominent supermarket orange price box with commercial heartbeat pulse
  * - Clean spacious green background artboard with slim legal footer
  */
 function renderCanvasFrame(
@@ -317,6 +318,13 @@ function renderCanvasFrame(
   canvasWidth: number,
   canvasHeight: number
 ) {
+  // 0. RESET ALL CANVAS CONTEXT STATE FOR A 100% CLEAN FRAME
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1.0;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.beginPath();
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
   // Determine current slide
   const currentIdx = Math.min(
     slides.length - 1,
@@ -351,39 +359,21 @@ function renderCanvasFrame(
   ctx.restore();
 
   // 2. ELEMENT: OFFER COLUMN (Tag + Title + Regular Price + Orange Supermarket Price Box)
-  // Kinetic slide from left with damped spring bounce + living price heartbeat pulse
-  // Rendered with pure transparent background: white letters sit directly on the green banner
+  // Clean, prominent commercial presentation with living heartbeat pulse
   if (currentSlide.leftSnap && currentSlide.leftBox) {
-    let lAlpha = slideExitAlpha;
-    let lOffsetX = 0;
-    let lScale = 1.0;
-
-    if (slideT < 0.08) {
-      lAlpha = 0;
-    } else if (slideT < 0.58) {
-      const p = (slideT - 0.08) / 0.50;
-      const spring = springDamped(p, 1.6, 3.8);
-      lAlpha = Math.min(1, p * 3.5) * slideExitAlpha;
-      lOffsetX = -150 * (1 - spring);
-      lScale = 0.90 + 0.10 * spring;
-    }
-
     // Commercial price pulse every 2.0s
     let pulseScale = 1.0;
-    if (slideT >= 1.0) {
-      const beatPhase = slideT % 2.0;
-      if (beatPhase < 0.28) {
-        pulseScale = 1.0 + Math.sin((beatPhase / 0.28) * Math.PI) * 0.035;
-      }
+    const beatPhase = (slideT + 0.3) % 2.0;
+    if (beatPhase < 0.28) {
+      pulseScale = 1.0 + Math.sin((beatPhase / 0.28) * Math.PI) * 0.035;
     }
 
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, lAlpha));
-    const lCx = currentSlide.leftBox.x + lOffsetX + currentSlide.leftBox.w / 2;
+    ctx.globalAlpha = Math.max(0, Math.min(1, slideExitAlpha));
+    const lCx = currentSlide.leftBox.x + currentSlide.leftBox.w / 2;
     const lCy = currentSlide.leftBox.y + currentSlide.leftBox.h / 2;
     ctx.translate(lCx, lCy);
-    const finalLeftScale = lScale * pulseScale;
-    ctx.scale(finalLeftScale, finalLeftScale);
+    ctx.scale(pulseScale, pulseScale);
     ctx.drawImage(
       currentSlide.leftSnap,
       -currentSlide.leftBox.w / 2,
@@ -394,50 +384,30 @@ function renderCanvasFrame(
     ctx.restore();
   }
 
-  // 3. ELEMENT: PRODUCT SHOWCASE CARD (100% Crisp Color Photo + Fine White Border)
-  // Swoop from right with momentum and gentle 3D hover/levitation
-  // NO whitish filter / screen blend over the photo - pure vivid natural colors
-  let cFloatY = 0;
+  // 3. ELEMENT: PRODUCT SHOWCASE CARD (100% Crisp Color Photo + Exactly ONE Fine White Border)
+  // Perfectly seated in broadcast position with subtle breathing levitation (NO wild horizontal flying / trail)
   if (currentSlide.cardBox) {
-    let cAlpha = slideExitAlpha;
-    let cOffsetX = 0;
-    let cScale = 1.0;
-    let cRot = 0;
-
-    if (slideT < 0.04) {
-      cAlpha = 0;
-    } else if (slideT < 0.62) {
-      const p = (slideT - 0.04) / 0.58;
-      const spring = springDamped(p, 1.8, 4.0);
-      cAlpha = Math.min(1, p * 4) * slideExitAlpha;
-      cOffsetX = 180 * (1 - spring);
-      cScale = 0.85 + 0.15 * spring;
-      cRot = -0.03 * (1 - spring);
-    } else {
-      // Gentle living 3D levitation
-      cFloatY = Math.sin((slideT - 0.62) * 2.2) * 5;
-      cRot = Math.sin((slideT - 0.62) * 1.5) * 0.005;
-    }
-
     const cardW = currentSlide.cardBox.w;
     const cardH = currentSlide.cardBox.h;
     const cardX = -cardW / 2;
     const cardY = -cardH / 2;
-    const borderRadius = 20;
+    const borderRadius = 22;
+
+    const cFloatY = Math.sin(slideT * 2.0) * 4;
+    const cScale = 1.0 + Math.sin(slideT * 1.4) * 0.012;
 
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, cAlpha));
-    const cCx = currentSlide.cardBox.x + cOffsetX + cardW / 2;
+    ctx.globalAlpha = Math.max(0, Math.min(1, slideExitAlpha));
+    const cCx = currentSlide.cardBox.x + cardW / 2;
     const cCy = currentSlide.cardBox.y + cFloatY + cardH / 2;
     ctx.translate(cCx, cCy);
-    ctx.rotate(cRot);
     ctx.scale(cScale, cScale);
 
     // 1. Realistic commercial drop shadow on the green wallpaper
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 24;
-    ctx.shadowOffsetY = 10;
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 12;
     ctx.fillStyle = '#080808';
     roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
     ctx.fill();
@@ -463,7 +433,7 @@ function renderCanvasFrame(
       ctx.drawImage(currentSlide.productImgSnap, drawX, drawY, drawW, drawH);
       ctx.restore();
 
-      // 3. FINE WHITE BORDER (Borda fina branca de 4.5px ao redor de todo o perímetro)
+      // 3. FINE WHITE BORDER (Single clean 4.5px white border around perimeter)
       ctx.save();
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 4.5;
