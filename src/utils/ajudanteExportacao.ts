@@ -119,6 +119,7 @@ async function captureProductSlideLayers(
   canvasW: number,
   canvasH: number
 ): Promise<ProductSlideLayers> {
+  const centerContentEl = document.getElementById('tv-banner-center-content');
   const titleEl = document.getElementById('tv-anim-title-block');
   const priceEl = document.getElementById('tv-anim-price-block');
   const cardEl = document.getElementById('tv-anim-product-card');
@@ -146,20 +147,6 @@ async function captureProductSlideLayers(
     }
   }
 
-  let cardSnap: HTMLImageElement | null = null;
-  let cardBox: ElementBox | null = null;
-  if (cardEl) {
-    try {
-      const isStampInside = stampEl && cardEl.contains(stampEl);
-      if (isStampInside && stampEl) stampEl.style.opacity = '0';
-      cardBox = getRelativeBox(cardEl, bannerEl, canvasW, canvasH);
-      cardSnap = await captureDomElementImage(cardEl);
-      if (isStampInside && stampEl) stampEl.style.opacity = '';
-    } catch (e) {
-      console.warn('Falha ao capturar card isolado:', e);
-    }
-  }
-
   let stampSnap: HTMLImageElement | null = null;
   let stampBox: ElementBox | null = null;
   if (stampEl) {
@@ -171,21 +158,45 @@ async function captureProductSlideLayers(
     }
   }
 
-  // Hide foreground elements temporarily to capture pure background and header
-  if (titleEl) titleEl.style.opacity = '0';
-  if (priceEl) priceEl.style.opacity = '0';
-  if (cardEl) cardEl.style.opacity = '0';
-  if (stampEl) stampEl.style.opacity = '0';
+  let cardSnap: HTMLImageElement | null = null;
+  let cardBox: ElementBox | null = null;
+  if (cardEl) {
+    try {
+      // Temporarily hide stamp if inside card so the stamp can animate separately with physics
+      const isStampInside = stampEl && cardEl.contains(stampEl);
+      if (isStampInside && stampEl) stampEl.style.display = 'none';
+      cardBox = getRelativeBox(cardEl, bannerEl, canvasW, canvasH);
+      cardSnap = await captureDomElementImage(cardEl);
+      if (isStampInside && stampEl) stampEl.style.display = '';
+    } catch (e) {
+      console.warn('Falha ao capturar card isolado:', e);
+    }
+  }
+
+  // Hide the entire center container so bgSnap is 100% clean with ZERO ghost frames or shadows
+  if (centerContentEl) {
+    centerContentEl.style.display = 'none';
+  } else {
+    // Fallback if centerContentEl is missing
+    if (titleEl) titleEl.style.opacity = '0';
+    if (priceEl) priceEl.style.opacity = '0';
+    if (cardEl) cardEl.style.opacity = '0';
+    if (stampEl) stampEl.style.opacity = '0';
+  }
 
   let bgSnap: HTMLImageElement;
   try {
     bgSnap = await captureDomElementImage(bannerEl);
   } finally {
     // Restore DOM immediately
-    if (titleEl) titleEl.style.opacity = '';
-    if (priceEl) priceEl.style.opacity = '';
-    if (cardEl) cardEl.style.opacity = '';
-    if (stampEl) stampEl.style.opacity = '';
+    if (centerContentEl) {
+      centerContentEl.style.display = '';
+    } else {
+      if (titleEl) titleEl.style.opacity = '';
+      if (priceEl) priceEl.style.opacity = '';
+      if (cardEl) cardEl.style.opacity = '';
+      if (stampEl) stampEl.style.opacity = '';
+    }
   }
 
   return {
@@ -199,6 +210,16 @@ async function captureProductSlideLayers(
     stampSnap,
     stampBox,
   };
+}
+
+/**
+ * Damped harmonic spring physics for commercial broadcast motion
+ * Natural acceleration, overshoot, and decay
+ */
+function springDamped(p: number, freq: number = 1.8, decay: number = 4.2): number {
+  if (p >= 1) return 1;
+  if (p <= 0) return 0;
+  return 1 - Math.exp(-decay * p) * Math.cos(freq * Math.PI * p);
 }
 
 /**
@@ -345,7 +366,7 @@ async function recordLayeredSlidesToVideo(
 
       const recorder = new MediaRecorder(stream, {
         mimeType: chosenMime,
-        videoBitsPerSecond: 8000000, // 8 Mbps high bitrate Full HD
+        videoBitsPerSecond: 14000000, // 14 Mbps ultra-sharp broadcast Full HD
       });
 
       const chunks: Blob[] = [];
@@ -434,16 +455,37 @@ async function recordLayeredSlidesToVideo(
           ctx.restore();
         } else {
           // ==========================================
-          // 2. ELEMENT: PRODUCT TITLE & BADGE (Slide from Left)
+          // 1.5 COMMERCIAL STAGE SPOTLIGHT (Behind Product Card)
+          // ==========================================
+          if (currentSlide.cardBox) {
+            const spotX = currentSlide.cardBox.x + currentSlide.cardBox.w / 2;
+            const spotY = currentSlide.cardBox.y + currentSlide.cardBox.h / 2;
+            const spotR = Math.max(currentSlide.cardBox.w, currentSlide.cardBox.h) * 0.95;
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, spotR);
+            spotGrad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+            spotGrad.addColorStop(0.35, 'rgba(254, 240, 138, 0.15)');
+            spotGrad.addColorStop(0.65, 'rgba(34, 197, 94, 0.08)');
+            spotGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = spotGrad;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            ctx.restore();
+          }
+
+          // ==========================================
+          // 2. ELEMENT: PRODUCT TITLE & BADGE (Kinetic Slide from Left)
           // ==========================================
           if (currentSlide.titleSnap && currentSlide.titleBox) {
             let tAlpha = slideExitAlpha;
             let tOffsetX = 0;
-            if (slideT < 0.50) {
-              const p = slideT / 0.50;
-              const ease = easeOutCubic(p);
-              tAlpha = ease * slideExitAlpha;
-              tOffsetX = -130 * (1 - ease);
+            if (slideT < 0.18) {
+              tAlpha = 0;
+            } else if (slideT < 0.62) {
+              const p = (slideT - 0.18) / 0.44;
+              const spring = springDamped(p, 1.5, 3.8);
+              tAlpha = Math.min(1, p * 3) * slideExitAlpha;
+              tOffsetX = -150 * (1 - spring);
             }
             ctx.save();
             ctx.globalAlpha = Math.max(0, Math.min(1, tAlpha));
@@ -458,25 +500,28 @@ async function recordLayeredSlidesToVideo(
           }
 
           // ==========================================
-          // 3. ELEMENT: PRODUCT SHOWCASE CARD (Swoop from Right + Hover)
+          // 3. ELEMENT: PRODUCT SHOWCASE CARD (Swoop from Right with Spring Momentum + 3D Levitation)
           // ==========================================
           let cFloatY = 0;
           if (currentSlide.cardSnap && currentSlide.cardBox) {
             let cAlpha = slideExitAlpha;
             let cOffsetX = 0;
             let cScale = 1.0;
+            let cRot = 0;
 
-            if (slideT < 0.12) {
+            if (slideT < 0.08) {
               cAlpha = 0;
-            } else if (slideT < 0.68) {
-              const p = (slideT - 0.12) / 0.56;
-              const ease = easeOutCubic(p);
-              cAlpha = ease * slideExitAlpha;
-              cOffsetX = 170 * (1 - ease);
-              cScale = 0.84 + 0.16 * easeOutBack(p);
+            } else if (slideT < 0.65) {
+              const p = (slideT - 0.08) / 0.57;
+              const spring = springDamped(p, 1.7, 4.0);
+              cAlpha = Math.min(1, p * 4) * slideExitAlpha;
+              cOffsetX = 190 * (1 - spring);
+              cScale = 0.78 + 0.22 * spring;
+              cRot = -0.05 * (1 - spring); // -3 deg dynamic tilt that settles to 0
             } else {
-              // Gentle living 3D hover
-              cFloatY = Math.sin((slideT - 0.68) * 2.2) * 8;
+              // Gentle living 3D levitation & micro-angle
+              cFloatY = Math.sin((slideT - 0.65) * 2.3) * 7;
+              cRot = Math.sin((slideT - 0.65) * 1.5) * 0.008;
             }
 
             ctx.save();
@@ -484,6 +529,7 @@ async function recordLayeredSlidesToVideo(
             const cCx = currentSlide.cardBox.x + cOffsetX + currentSlide.cardBox.w / 2;
             const cCy = currentSlide.cardBox.y + cFloatY + currentSlide.cardBox.h / 2;
             ctx.translate(cCx, cCy);
+            ctx.rotate(cRot);
             ctx.scale(cScale, cScale);
             ctx.drawImage(
               currentSlide.cardSnap,
@@ -496,30 +542,34 @@ async function recordLayeredSlidesToVideo(
           }
 
           // ==========================================
-          // 4. ELEMENT: SUPERMARKET ORANGE PRICE BOX (Spring Bounce Pop + Heartbeat)
+          // 4. ELEMENT: SUPERMARKET ORANGE PRICE BOX (Spring Slam Pop + Heartbeat Pulse)
           // ==========================================
           if (currentSlide.priceSnap && currentSlide.priceBox) {
             let pAlpha = slideExitAlpha;
             let pScale = 1.0;
+            let pOffsetY = 0;
 
-            if (slideT < 0.35) {
+            if (slideT < 0.32) {
               pAlpha = 0;
-            } else if (slideT < 0.85) {
-              const p = (slideT - 0.35) / 0.50;
-              pAlpha = Math.min(1, p * 3) * slideExitAlpha;
-              pScale = Math.max(0, easeOutBack(p));
+            } else if (slideT < 0.82) {
+              const p = (slideT - 0.32) / 0.50;
+              const spring = springDamped(p, 2.0, 4.6);
+              pAlpha = Math.min(1, p * 4) * slideExitAlpha;
+              pScale = 0.25 + 0.75 * spring;
+              pOffsetY = -35 * (1 - spring);
             } else {
-              // Commercial heartbeat pulse at 2.2s and 4.2s
-              const pulse1 = Math.max(0, 1 - Math.abs(slideT - 2.2) / 0.35);
-              const pulse2 = Math.max(0, 1 - Math.abs(slideT - 4.2) / 0.35);
-              const pulse = Math.max(pulse1, pulse2);
-              pScale = 1.0 + Math.sin(pulse * Math.PI) * 0.08;
+              // Continuous retail heartbeat pulse every 2.0 seconds
+              const pulsePhase = (slideT - 0.82) % 2.0;
+              if (pulsePhase < 0.35) {
+                const subP = pulsePhase / 0.35;
+                pScale = 1.0 + Math.sin(subP * Math.PI) * 0.07;
+              }
             }
 
             ctx.save();
             ctx.globalAlpha = Math.max(0, Math.min(1, pAlpha));
             const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
-            const pCy = currentSlide.priceBox.y + currentSlide.priceBox.h / 2;
+            const pCy = currentSlide.priceBox.y + pOffsetY + currentSlide.priceBox.h / 2;
             ctx.translate(pCx, pCy);
             ctx.scale(pScale, pScale);
             ctx.drawImage(
@@ -533,7 +583,7 @@ async function recordLayeredSlidesToVideo(
           }
 
           // ==========================================
-          // 5. ELEMENT: DISCOUNT STAMP BADGE ("OFERTAÇO -XX%") (Drop Down Stamp + Wobble)
+          // 5. ELEMENT: DISCOUNT STAMP BADGE (Rubber Stamp Impact Drop + Wobble)
           // ==========================================
           if (currentSlide.stampSnap && currentSlide.stampBox) {
             let sAlpha = slideExitAlpha;
@@ -541,18 +591,18 @@ async function recordLayeredSlidesToVideo(
             let sRot = 0;
             let sScale = 1.0;
 
-            if (slideT < 0.58) {
+            if (slideT < 0.52) {
               sAlpha = 0;
-            } else if (slideT < 0.92) {
-              const p = (slideT - 0.58) / 0.34;
-              const ease = easeOutBack(p);
-              sAlpha = Math.min(1, p * 3) * slideExitAlpha;
+            } else if (slideT < 0.88) {
+              const p = (slideT - 0.52) / 0.36;
+              const spring = springDamped(p, 2.4, 4.2);
+              sAlpha = Math.min(1, p * 4) * slideExitAlpha;
               sOffsetY = -90 * (1 - easeOutCubic(p));
-              sRot = -0.45 * (1 - easeOutCubic(p)); // -25 deg to 0
-              sScale = 1.4 - 0.4 * ease;
+              sRot = -0.40 * (1 - spring); // -23 deg to 0 with wobble
+              sScale = 1.5 - 0.5 * spring;
             } else {
-              // Dynamic tilt oscillation
-              sRot = Math.sin((slideT - 0.92) * 3.5) * 0.10;
+              // Gentle living tilt oscillation
+              sRot = Math.sin((slideT - 0.88) * 2.8) * 0.08;
             }
 
             ctx.save();
@@ -574,33 +624,33 @@ async function recordLayeredSlidesToVideo(
         }
 
         // ==========================================
-        // 6. METALLIC LIGHT SHEEN SWEEP (Across the Card)
+        // 6. METALLIC LIGHT SHEEN SWEEP (Across the Card & Price)
         // ==========================================
-        const sheenCycle = 2.5;
+        const sheenCycle = 2.4;
         const sheenTime = slideT % sheenCycle;
-        if (sheenTime >= 0.5 && sheenTime <= 1.5) {
-          const sweepProgress = (sheenTime - 0.5) / 1.0;
+        if (sheenTime >= 0.4 && sheenTime <= 1.4) {
+          const sweepProgress = (sheenTime - 0.4) / 1.0;
           const sweepX = -400 + (canvasWidth + 800) * sweepProgress;
 
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
           const sheenGrad = ctx.createLinearGradient(sweepX - 220, 0, sweepX + 220, canvasHeight);
           sheenGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          sheenGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.03)');
-          sheenGrad.addColorStop(0.48, 'rgba(255, 255, 255, 0.28)');
-          sheenGrad.addColorStop(0.50, 'rgba(255, 255, 255, 0.58)');
-          sheenGrad.addColorStop(0.52, 'rgba(255, 255, 255, 0.28)');
-          sheenGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
+          sheenGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.04)');
+          sheenGrad.addColorStop(0.48, 'rgba(255, 255, 255, 0.32)');
+          sheenGrad.addColorStop(0.50, 'rgba(255, 255, 255, 0.65)');
+          sheenGrad.addColorStop(0.52, 'rgba(255, 255, 255, 0.32)');
+          sheenGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
           sheenGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = sheenGrad;
           ctx.fillRect(0, 0, canvasWidth, canvasHeight);
           ctx.restore();
 
           // Diamond sparkle glints
-          if (sheenTime >= 0.8 && sheenTime <= 1.4) {
-            const sparkleProgress = (sheenTime - 0.8) / 0.6;
+          if (sheenTime >= 0.7 && sheenTime <= 1.3) {
+            const sparkleProgress = (sheenTime - 0.7) / 0.6;
             const sparkleAlpha = Math.sin(sparkleProgress * Math.PI);
-            const sparkleSize = 30 * Math.sin(sparkleProgress * Math.PI);
+            const sparkleSize = 32 * sparkleAlpha;
             const sparkleRot = sparkleProgress * Math.PI * 0.75;
 
             const pX = Math.round(canvasWidth * (isVertical ? 0.45 : 0.35));
@@ -614,14 +664,47 @@ async function recordLayeredSlidesToVideo(
         }
 
         // ==========================================
-        // 7. TRANSITION TO NEXT SLIDE (Multi-Product Mode)
+        // 7. TRANSITION TO NEXT SLIDE (Broadcast Commercial Push / Flash)
         // ==========================================
         if (isTransitioning && nextSlide) {
           const fadeP = (timeInSlideMs - transitionStartMs) / transitionDurationMs;
+          const easeP = easeOutCubic(fadeP);
+
           ctx.save();
           ctx.globalAlpha = fadeP;
           ctx.drawImage(nextSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
+
+          if (nextSlide.cardSnap && nextSlide.cardBox) {
+            const nextCardOffsetX = (1 - easeP) * 280;
+            ctx.drawImage(
+              nextSlide.cardSnap,
+              nextSlide.cardBox.x + nextCardOffsetX,
+              nextSlide.cardBox.y,
+              nextSlide.cardBox.w,
+              nextSlide.cardBox.h
+            );
+          }
+          if (nextSlide.priceSnap && nextSlide.priceBox) {
+            const nextPriceOffsetX = (1 - easeP) * -180;
+            ctx.drawImage(
+              nextSlide.priceSnap,
+              nextSlide.priceBox.x + nextPriceOffsetX,
+              nextSlide.priceBox.y,
+              nextSlide.priceBox.w,
+              nextSlide.priceBox.h
+            );
+          }
           ctx.restore();
+
+          // Commercial TV white flash beam at peak transition
+          const flash = Math.sin(fadeP * Math.PI);
+          if (flash > 0.05) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.38})`;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            ctx.restore();
+          }
         }
 
         // ==========================================

@@ -216,7 +216,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             <rect width="100%" height="100%" fill="url(#marketPattern)" />
           </svg>
 
-          {/* Lighting vignette and glow */}
+          {/* Commercial Studio Lighting & Ambient Spotlight */}
+          <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-r from-amber-400/10 via-emerald-400/15 to-transparent rounded-full blur-3xl pointer-events-none" />
           <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-black/40 rounded-full blur-2xl" />
         </div>
@@ -308,7 +309,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
 
         {/* CENTER CONTENT: Perfectly Proportioned - Nunca cortado pelo cabeçalho ou rodapé */}
-        <div className={`relative z-10 flex-1 min-h-0 ${
+        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 ${
           isTvPlayerMode
             ? 'px-14 py-2 gap-10'
             : 'px-3 sm:px-6 md:px-10 py-1 sm:py-2 gap-2 sm:gap-6'
@@ -323,7 +324,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               : 'items-start text-left max-w-[46%] h-[84%] max-h-[84%]'
           }`}>
             {/* Top Block: Title & Promotional Badge */}
-            <div id="tv-anim-title-block" className={`flex flex-col items-start w-full shrink-0 ${
+            <div id="tv-anim-title-block" className={`flex flex-col items-start w-full p-2 -m-2 shrink-0 ${
               isVertical ? 'pt-2' : isTvPlayerMode ? 'pt-2' : 'pt-1 sm:pt-2'
             }`}>
               {/* Product Title */}
@@ -350,9 +351,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             </div>
 
             {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div id="tv-anim-price-block" className={`mt-auto flex flex-col items-start w-full ${
+            <div id="tv-anim-price-block" className={`mt-auto inline-flex flex-col items-start w-fit p-4 -m-4 shrink-0 overflow-visible ${
               isTvPlayerMode ? 'pt-4' : 'pt-2 sm:pt-3'
-            } shrink-0`}>
+            }`}>
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div className={`text-white/85 ${
@@ -366,11 +367,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
               {/* Main Supermarket Orange Price Box */}
               <div className="inline-flex items-center">
-                <div className={`bg-[#ea580c] bg-gradient-to-b from-[#f97316] via-[#ea580c] to-[#c2410c] text-white ${
+                <div className={`relative overflow-hidden bg-[#ea580c] bg-gradient-to-b from-[#f97316] via-[#ea580c] to-[#c2410c] text-white ${
                   isTvPlayerMode
                     ? 'rounded-2xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.7)] border-2 border-white/30 gap-3.5'
                     : 'rounded-xl md:rounded-2xl p-2 sm:p-2.5 md:p-3 shadow-[0_14px_30px_rgba(0,0,0,0.6)] border-2 border-white/20 gap-1.5 sm:gap-2'
                 } flex items-center transition-transform hover:scale-[1.02] origin-bottom-left`}>
+                  {/* Glossy top highlight overlay for TV commercial acrylic look */}
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none rounded-t-xl" />
                   
                   {/* Left: "POR R$" */}
                   <div className="flex flex-col justify-start self-start pt-0.5 leading-none">
