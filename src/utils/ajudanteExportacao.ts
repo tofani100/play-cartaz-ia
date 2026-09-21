@@ -105,7 +105,11 @@ export async function getSafeImageDataUrl(url: string): Promise<string> {
  * Captures a crisp image of a DOM element using html-to-image with fast Retina super-sampling.
  * Optimized for speed (1.5x - 2.0x ratio) and memory efficiency, capturing in ~150-250ms per element.
  */
-async function captureDomElementImage(el: HTMLElement, minTargetWidth: number = 1920): Promise<HTMLImageElement> {
+async function captureDomElementImage(
+  el: HTMLElement,
+  minTargetWidth: number = 1920,
+  excludeIds?: string[]
+): Promise<HTMLImageElement> {
   const rect = el.getBoundingClientRect();
   const calculatedRatio = rect.width > 0 ? minTargetWidth / rect.width : 1.8;
   const pixelRatio = Math.min(2.0, Math.max(1.4, calculatedRatio));
@@ -118,6 +122,7 @@ async function captureDomElementImage(el: HTMLElement, minTargetWidth: number = 
       if (node instanceof HTMLElement) {
         if (node.classList.contains('group-hover:opacity-100')) return false;
         if (node.id && (node.id.startsWith('btn-') || node.id === 'tv-card-toolbar')) return false;
+        if (excludeIds && node.id && excludeIds.includes(node.id)) return false;
       }
       return true;
     },
@@ -231,18 +236,23 @@ async function captureProductSlideLayers(
     }
   }
 
-  // Hide the center container so bgSnap captures clean background artboard with header & legal footer
+  // Hide the center container completely from DOM & guarantee exclusion via filter
+  // so bgSnap captures clean background artboard with header & legal footer (zero cards, zero text)
   if (centerContentEl) {
-    centerContentEl.style.display = 'none';
+    centerContentEl.style.setProperty('display', 'none', 'important');
+    centerContentEl.style.setProperty('visibility', 'hidden', 'important');
+    centerContentEl.style.setProperty('opacity', '0', 'important');
   }
 
   let bgSnap: HTMLImageElement;
   try {
-    bgSnap = await captureDomElementImage(bannerEl, canvasW);
+    bgSnap = await captureDomElementImage(bannerEl, canvasW, ['tv-banner-center-content']);
   } finally {
     // Restore DOM immediately
     if (centerContentEl) {
-      centerContentEl.style.display = '';
+      centerContentEl.style.removeProperty('display');
+      centerContentEl.style.removeProperty('visibility');
+      centerContentEl.style.removeProperty('opacity');
     }
   }
 
@@ -451,18 +461,22 @@ function renderCanvasFrame(
       const drawX = cardX + (cardW - drawW) / 2;
       const drawY = cardY + (cardH - drawH) / 2;
       ctx.drawImage(currentSlide.productImgSnap, drawX, drawY, drawW, drawH);
-    } else if (currentSlide.cardSnap) {
-      ctx.drawImage(currentSlide.cardSnap, cardX, cardY, cardW, cardH);
-    }
-    ctx.restore();
+      ctx.restore();
 
-    // 3. FINE WHITE BORDER (Borda fina branca de 4.5px ao redor de todo o perímetro)
-    ctx.save();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4.5;
-    roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
-    ctx.stroke();
-    ctx.restore();
+      // 3. FINE WHITE BORDER (Borda fina branca de 4.5px ao redor de todo o perímetro)
+      ctx.save();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4.5;
+      roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
+      ctx.stroke();
+      ctx.restore();
+    } else if (currentSlide.cardSnap) {
+      // cardSnap already contains its own CSS border from DOM
+      ctx.drawImage(currentSlide.cardSnap, cardX, cardY, cardW, cardH);
+      ctx.restore();
+    } else {
+      ctx.restore();
+    }
 
     ctx.restore();
   }
@@ -508,25 +522,28 @@ function renderCanvasFrame(
       ctx.save();
       roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
       ctx.clip();
-      if (nextSlide.productImgSnap && nextSlide.productImgSnap.complete) {
+      if (nextSlide.productImgSnap && nextSlide.productImgSnap.complete && nextSlide.productImgSnap.naturalWidth > 0) {
         const imgW = nextSlide.productImgSnap.naturalWidth;
         const imgH = nextSlide.productImgSnap.naturalHeight;
         const ratio = Math.max(nCardW / imgW, nCardH / imgH);
         const drawW = imgW * ratio;
         const drawH = imgH * ratio;
         ctx.drawImage(nextSlide.productImgSnap, nCardX + (nCardW - drawW) / 2, nCardY + (nCardH - drawH) / 2, drawW, drawH);
+        ctx.restore();
+
+        // Next slide fine white border
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4.5;
+        roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
+        ctx.stroke();
+        ctx.restore();
       } else if (nextSlide.cardSnap) {
         ctx.drawImage(nextSlide.cardSnap, nCardX, nCardY, nCardW, nCardH);
+        ctx.restore();
+      } else {
+        ctx.restore();
       }
-      ctx.restore();
-
-      // Next slide fine white border
-      ctx.save();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4.5;
-      roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
-      ctx.stroke();
-      ctx.restore();
     }
     ctx.restore();
 

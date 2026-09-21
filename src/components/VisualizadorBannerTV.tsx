@@ -551,7 +551,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-[48vw] shrink-0 my-auto'
                       } ${
                         isAmbient
-                          ? 'bg-neutral-950 border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)] ring-1 ring-white/30'
+                          ? 'bg-neutral-950 border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
                           : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
                       } ${
                         isTvPlayerMode
