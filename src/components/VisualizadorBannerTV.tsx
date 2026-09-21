@@ -324,8 +324,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               ? 'items-start text-left w-[47%] max-w-[47%] h-[92%] max-h-[92%] shrink-0' 
               : 'items-start text-left max-w-[46%] h-[92%] max-h-[92%]'
           }`}>
-            {/* Top Block: Title & Promotional Badge - Um na frente do outro com diagramação perfeita */}
-            <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0">
+            {/* Top Block: Title & Promotional Badge - Um na frente do outro com diagramação perfeita e fundo 100% transparente */}
+            <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent">
               {/* Product Title with Promotional Tag inline in front of the text */}
               <h2 className={`${
                 isTvPlayerMode
@@ -333,29 +333,29 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   : isVertical
                   ? 'text-[13px] sm:text-[15px] md:text-[17px] leading-snug'
                   : 'text-[13px] sm:text-[16px] md:text-[19px] lg:text-[22px] xl:text-[25px] leading-[1.18]'
-              } font-black text-white tracking-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] font-sans break-words`}>
+              } font-black text-white tracking-tight font-sans break-words bg-transparent`}>
                 <span 
-                  style={{ backgroundColor: '#2d523b', backgroundImage: 'linear-gradient(90deg, #2d523b 0%, #3e684d 100%)' }}
+                  style={{ backgroundColor: '#1a472a' }}
                   className={`inline-flex items-center ${
                     isTvPlayerMode
                       ? 'px-3.5 py-1 text-sm mr-2.5 rounded-lg'
                       : 'px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[9px] sm:text-[10px] md:text-xs mr-2 rounded-md'
-                  } text-[#cbf4d8] border border-[#528d69]/70 font-black uppercase tracking-wider shadow-md align-middle`}>
+                  } text-[#d4f7dc] border border-[#3b7a50] font-black uppercase tracking-wider align-middle shadow-sm`}>
                   {product.badge || 'SUPER OFERTA'}
                 </span>
-                <span className="align-middle">{product.title}</span>
+                <span className="align-middle text-white bg-transparent">{product.title}</span>
               </h2>
             </div>
 
             {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1 shrink-0">
+            <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1 shrink-0 bg-transparent">
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
-                <div className={`text-white/85 ${
+                <div className={`text-white/90 ${
                   isTvPlayerMode
                     ? 'text-lg font-bold mb-1.5'
                     : 'text-[10px] sm:text-xs md:text-sm font-semibold mb-0.5'
-                } tracking-tight drop-shadow`}>
+                } tracking-tight bg-transparent`}>
                   De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
               )}
@@ -608,38 +608,6 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                             referrerPolicy="no-referrer"
                             loading="eager"
                           />
-                        </div>
-                      )}
-
-                      {/* Top-Right Circular Discount Starburst / Stamp Badge - Carimbo Externo Sobreposto */}
-                      {product.discountPercentage && product.discountPercentage > 0 && (
-                        <div
-                          id="tv-anim-stamp-badge"
-                          style={{ backgroundColor: '#ea580c', backgroundImage: 'linear-gradient(45deg, #ea580c 0%, #f97316 100%)' }}
-                          className={`absolute ${
-                            isTvPlayerMode
-                              ? 'w-24 h-24 -top-6 -right-6 border-[3.5px]'
-                              : 'w-8 h-8 sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-3.5 md:-right-3.5 border-2 sm:border-[3px]'
-                          } scale-110 origin-center z-30 rounded-full text-white border-white shadow-[0_14px_30px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center text-center leading-none pointer-events-none select-none animate-badge-tilt`}
-                        >
-                          <span
-                            className={`${
-                              isTvPlayerMode
-                                ? 'text-[11px] font-black'
-                                : 'text-[6px] sm:text-[8px] md:text-[9px] font-black'
-                            } uppercase tracking-wider text-white/95 drop-shadow-sm`}
-                          >
-                            OFERTAÇO
-                          </span>
-                          <span
-                            className={`${
-                              isTvPlayerMode
-                                ? 'text-2xl font-black mt-0.5'
-                                : 'text-[10px] sm:text-xs md:text-sm font-black mt-0.5'
-                            } text-white drop-shadow-sm`}
-                          >
-                            -{product.discountPercentage}%
-                          </span>
                         </div>
                       )}
 

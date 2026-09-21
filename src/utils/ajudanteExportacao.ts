@@ -86,7 +86,7 @@ export async function getSafeImageDataUrl(url: string): Promise<string> {
 
   // 2. High-speed CORS proxy fallback (weserv.nl)
   try {
-    const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=webp&q=88`;
+    const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=webp&q=92`;
     const res = await fetch(proxyUrl);
     if (res.ok) {
       const blob = await res.blob();
@@ -111,7 +111,7 @@ async function captureDomElementImage(el: HTMLElement, minTargetWidth: number = 
   const pixelRatio = Math.min(2.0, Math.max(1.4, calculatedRatio));
 
   const dataUrl = await toPng(el, {
-    quality: 0.98,
+    quality: 1.0,
     pixelRatio,
     cacheBust: false,
     filter: (node) => {
@@ -152,9 +152,9 @@ function getRelativeBox(el: HTMLElement, container: HTMLElement, canvasW: number
 
 /**
  * Captures the banner into clean broadcast layers with 100% fidelity to the base original:
- * 1. Left Column (Tag + Title + Regular Price + Orange Supermarket Price Box) - intact, never separated or lost
- * 2. Framed Product Card (5px White Border + Photo + Discount Stamp Badge) - intact, never missing photo or stamp
- * 3. Product Photo Element (isolated and preloaded as safe CORS image for guaranteed display)
+ * 1. Left Column (Tag + Title + Regular Price + Orange Supermarket Price Box) - intact, with 100% transparent background
+ * 2. Framed Product Card (Photo with pure color and fine white border)
+ * 3. Product Photo Element (isolated and preloaded as safe CORS image for 100% color fidelity)
  * 4. Clean Background Artboard (Header, Client Logo, Wallpaper Texture, and Single Clean Legal Footer)
  */
 async function captureProductSlideLayers(
@@ -292,6 +292,11 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 /**
  * Draws a single frame of the layered motion graphics banner onto the 2D canvas.
+ * - ZERO whitish haze/filter over the photo (100% natural, crisp, saturated colors)
+ * - Fine white border (4px) completely surrounding the image perimeter
+ * - Product Title & Tag with 100% transparent background (no muddy dark green shadows)
+ * - Large supermarket orange price box with commercial heartbeat pulse
+ * - Clean spacious green background artboard with slim legal footer
  */
 function renderCanvasFrame(
   ctx: CanvasRenderingContext2D,
@@ -335,25 +340,9 @@ function renderCanvasFrame(
   ctx.drawImage(currentSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
   ctx.restore();
 
-  // 1.5 COMMERCIAL STAGE SPOTLIGHT (Behind Product Card)
-  if (currentSlide.cardBox) {
-    const spotX = currentSlide.cardBox.x + currentSlide.cardBox.w / 2;
-    const spotY = currentSlide.cardBox.y + currentSlide.cardBox.h / 2;
-    const spotR = Math.max(currentSlide.cardBox.w, currentSlide.cardBox.h) * 0.95;
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, spotR);
-    spotGrad.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
-    spotGrad.addColorStop(0.35, 'rgba(254, 240, 138, 0.12)');
-    spotGrad.addColorStop(0.65, 'rgba(34, 197, 94, 0.05)');
-    spotGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = spotGrad;
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    ctx.restore();
-  }
-
   // 2. ELEMENT: OFFER COLUMN (Tag + Title + Regular Price + Orange Supermarket Price Box)
   // Kinetic slide from left with damped spring bounce + living price heartbeat pulse
+  // Rendered with pure transparent background: white letters sit directly on the green banner
   if (currentSlide.leftSnap && currentSlide.leftBox) {
     let lAlpha = slideExitAlpha;
     let lOffsetX = 0;
@@ -395,10 +384,11 @@ function renderCanvasFrame(
     ctx.restore();
   }
 
-  // 3. ELEMENT: PRODUCT SHOWCASE CARD (White Border + Photo + Discount Stamp)
-  // Swoop from right with momentum, gentle 3D hover/levitation and guaranteed photo
+  // 3. ELEMENT: PRODUCT SHOWCASE CARD (100% Crisp Color Photo + Fine White Border)
+  // Swoop from right with momentum and gentle 3D hover/levitation
+  // NO whitish filter / screen blend over the photo - pure vivid natural colors
   let cFloatY = 0;
-  if (currentSlide.cardSnap && currentSlide.cardBox) {
+  if (currentSlide.cardBox) {
     let cAlpha = slideExitAlpha;
     let cOffsetX = 0;
     let cScale = 1.0;
@@ -411,85 +401,68 @@ function renderCanvasFrame(
       const spring = springDamped(p, 1.8, 4.0);
       cAlpha = Math.min(1, p * 4) * slideExitAlpha;
       cOffsetX = 180 * (1 - spring);
-      cScale = 0.82 + 0.18 * spring;
-      cRot = -0.04 * (1 - spring);
+      cScale = 0.85 + 0.15 * spring;
+      cRot = -0.03 * (1 - spring);
     } else {
       // Gentle living 3D levitation
       cFloatY = Math.sin((slideT - 0.62) * 2.2) * 5;
       cRot = Math.sin((slideT - 0.62) * 1.5) * 0.005;
     }
 
+    const cardW = currentSlide.cardBox.w;
+    const cardH = currentSlide.cardBox.h;
+    const cardX = -cardW / 2;
+    const cardY = -cardH / 2;
+    const borderRadius = 20;
+
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, cAlpha));
-    const cCx = currentSlide.cardBox.x + cOffsetX + currentSlide.cardBox.w / 2;
-    const cCy = currentSlide.cardBox.y + cFloatY + currentSlide.cardBox.h / 2;
+    const cCx = currentSlide.cardBox.x + cOffsetX + cardW / 2;
+    const cCy = currentSlide.cardBox.y + cFloatY + cardH / 2;
     ctx.translate(cCx, cCy);
     ctx.rotate(cRot);
     ctx.scale(cScale, cScale);
 
-    // 1. Draw the card snapshot (complete with 5px white border and discount stamp)
-    ctx.drawImage(
-      currentSlide.cardSnap,
-      -currentSlide.cardBox.w / 2,
-      -currentSlide.cardBox.h / 2,
-      currentSlide.cardBox.w,
-      currentSlide.cardBox.h
-    );
+    // 1. Realistic commercial drop shadow on the green wallpaper
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 10;
+    ctx.fillStyle = '#080808';
+    roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
+    ctx.fill();
+    ctx.restore();
 
-    // 2. Guaranteed Photo Reinforcement: If productImgSnap exists, draw it inside the card frame
+    // 2. 100% PURE, VIVID, NATURAL COLOR PHOTO (Zero Whitish Haze / Filter)
+    ctx.save();
+    roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
+    ctx.clip();
+
     if (
       currentSlide.productImgSnap &&
       currentSlide.productImgSnap.complete &&
       currentSlide.productImgSnap.naturalWidth > 0
     ) {
-      const pad = 6;
-      const innerW = currentSlide.cardBox.w - pad * 2;
-      const innerH = currentSlide.cardBox.h - pad * 2;
-      const innerX = -currentSlide.cardBox.w / 2 + pad;
-      const innerY = -currentSlide.cardBox.h / 2 + pad;
-
-      ctx.save();
-      roundRect(ctx, innerX, innerY, innerW, innerH, 18);
-      ctx.clip();
-
       const imgW = currentSlide.productImgSnap.naturalWidth;
       const imgH = currentSlide.productImgSnap.naturalHeight;
-      const ratio = Math.max(innerW / imgW, innerH / imgH);
+      const ratio = Math.max(cardW / imgW, cardH / imgH);
       const drawW = imgW * ratio;
       const drawH = imgH * ratio;
-      const drawX = innerX + (innerW - drawW) / 2;
-      const drawY = innerY + (innerH - drawH) / 2;
-
+      const drawX = cardX + (cardW - drawW) / 2;
+      const drawY = cardY + (cardH - drawH) / 2;
       ctx.drawImage(currentSlide.productImgSnap, drawX, drawY, drawW, drawH);
-      ctx.restore();
+    } else if (currentSlide.cardSnap) {
+      ctx.drawImage(currentSlide.cardSnap, cardX, cardY, cardW, cardH);
     }
+    ctx.restore();
 
-    // 3.5 METALLIC LIGHT SHEEN SWEEP (Commercial Gloss Flare across the card)
-    const sweepDuration = 0.9;
-    const isSweep1 = slideT >= 1.2 && slideT <= 1.2 + sweepDuration;
-    const isSweep2 = slideT >= 3.2 && slideT <= 3.2 + sweepDuration;
-    if (isSweep1 || isSweep2) {
-      const sweepT = isSweep1 ? (slideT - 1.2) / sweepDuration : (slideT - 3.2) / sweepDuration;
-      const cardX = -currentSlide.cardBox.w / 2;
-      const cardY = -currentSlide.cardBox.h / 2;
-      const cardW = currentSlide.cardBox.w;
-      const cardH = currentSlide.cardBox.h;
-
-      ctx.save();
-      roundRect(ctx, cardX, cardY, cardW, cardH, 20);
-      ctx.clip();
-
-      const flareX = cardX - 120 + sweepT * (cardW + 240);
-      const flareGrad = ctx.createLinearGradient(flareX - 50, cardY, flareX + 50, cardY + cardH);
-      flareGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      flareGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.28)');
-      flareGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-      ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = flareGrad;
-      ctx.fillRect(cardX, cardY, cardW, cardH);
-      ctx.restore();
-    }
+    // 3. FINE WHITE BORDER (Borda fina branca de 4.5px ao redor de todo o perímetro)
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4.5;
+    roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
+    ctx.stroke();
+    ctx.restore();
 
     ctx.restore();
   }
@@ -513,15 +486,47 @@ function renderCanvasFrame(
         nextSlide.leftBox.h
       );
     }
-    if (nextSlide.cardSnap && nextSlide.cardBox) {
+    if (nextSlide.cardBox) {
       const nextCardOffsetX = (1 - easeP) * 200;
-      ctx.drawImage(
-        nextSlide.cardSnap,
-        nextSlide.cardBox.x + nextCardOffsetX,
-        nextSlide.cardBox.y,
-        nextSlide.cardBox.w,
-        nextSlide.cardBox.h
-      );
+      const nCardW = nextSlide.cardBox.w;
+      const nCardH = nextSlide.cardBox.h;
+      const nCardX = nextSlide.cardBox.x + nextCardOffsetX;
+      const nCardY = nextSlide.cardBox.y;
+      const nRadius = 20;
+
+      // Next slide drop shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = '#080808';
+      roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
+      ctx.fill();
+      ctx.restore();
+
+      // Next slide photo
+      ctx.save();
+      roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
+      ctx.clip();
+      if (nextSlide.productImgSnap && nextSlide.productImgSnap.complete) {
+        const imgW = nextSlide.productImgSnap.naturalWidth;
+        const imgH = nextSlide.productImgSnap.naturalHeight;
+        const ratio = Math.max(nCardW / imgW, nCardH / imgH);
+        const drawW = imgW * ratio;
+        const drawH = imgH * ratio;
+        ctx.drawImage(nextSlide.productImgSnap, nCardX + (nCardW - drawW) / 2, nCardY + (nCardH - drawH) / 2, drawW, drawH);
+      } else if (nextSlide.cardSnap) {
+        ctx.drawImage(nextSlide.cardSnap, nCardX, nCardY, nCardW, nCardH);
+      }
+      ctx.restore();
+
+      // Next slide fine white border
+      ctx.save();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4.5;
+      roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
+      ctx.stroke();
+      ctx.restore();
     }
     ctx.restore();
 
@@ -530,7 +535,7 @@ function renderCanvasFrame(
     if (flash > 0.05) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.25})`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.22})`;
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
       ctx.restore();
     }
@@ -886,10 +891,9 @@ async function recordLayeredSlidesToVideo(
  * Generates an animated MP4 video specifically for an INDIVIDUAL PRODUCT (Single Banner).
  * Duration: 5.0 seconds.
  * Fast, energetic commercial motion with staggered animations:
- * - Product Title & Promotional Tag slide in together from left
+ * - Product Title & Promotional Tag slide in together from left with 100% transparent background
  * - Supermarket Price Box slams in and pulses with commercial heartbeat
- * - Product Image Card swoops in with 3D momentum and guaranteed photo
- * - Glossy metallic light sheen sweep across the card
+ * - Product Image Card swoops in with 3D momentum, 100% pure crisp color and fine white border
  */
 export async function gerarVideoAnimadoProdutoIndividual(
   campaign: BannerCampaign,
