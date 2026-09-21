@@ -224,16 +224,16 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
         <div className={`relative z-10 ${
           isTvPlayerMode
-            ? 'pl-12 pr-12 py-3'
-            : 'pl-3 sm:pl-6 md:pl-10 lg:pl-12 pr-3 sm:pr-6 md:pr-10 lg:pr-12 py-2 sm:py-2.5 lg:py-2'
+            ? 'pl-10 pr-10 py-3'
+            : 'pl-3 sm:pl-6 md:pl-8 lg:pl-10 pr-3 sm:pr-6 md:pr-8 lg:pr-10 py-2 sm:py-2.5 lg:py-2'
         } flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
             isTvPlayerMode
-              ? 'w-[320px] max-w-[340px] h-[110px]'
+              ? 'w-[220px] max-w-[240px] h-[90px]'
               : isVertical
-              ? 'w-auto max-w-[280px] h-14 sm:h-18'
-              : 'w-auto max-w-[300px] h-14 sm:h-18 md:h-20 lg:h-24'
+              ? 'w-auto max-w-[220px] h-12 sm:h-16'
+              : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
           }`}>
             {campaign.showClientLogo !== false && (
               isBelissima ? (
@@ -272,22 +272,26 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             )}
           </div>
 
-          {/* Top Center: Campaign Title & Validity - Centralizado com precisão matemática */}
+          {/* Top Center: Campaign Title & Validity - NUNCA corta com reticências (...) */}
           {!isVertical && (
-            <div className={`flex-1 flex flex-col items-center justify-center text-center px-4 min-w-0`}>
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-2 sm:px-4 min-w-0">
               <h1 className={`${
                 isTvPlayerMode
-                  ? 'text-[42px] leading-tight tracking-tight'
-                  : 'text-[15px] sm:text-[20px] md:text-[24px] lg:text-[30px] xl:text-[36px] leading-tight'
-              } font-black uppercase text-amber-400 drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full text-center whitespace-nowrap overflow-hidden text-ellipsis`}>
+                  ? (campaign.campaignTitle && campaign.campaignTitle.length > 35 ? 'text-[28px]' : campaign.campaignTitle && campaign.campaignTitle.length > 25 ? 'text-[34px]' : 'text-[40px]')
+                  : (campaign.campaignTitle && campaign.campaignTitle.length > 35
+                      ? 'text-xs sm:text-sm md:text-base lg:text-xl'
+                      : campaign.campaignTitle && campaign.campaignTitle.length > 25
+                      ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
+                      : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
+              } font-black uppercase text-amber-400 drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full text-center leading-tight tracking-tight break-words`}>
                 {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
               </h1>
               <p className={`${
                 isTvPlayerMode
-                  ? 'text-[17px] mt-1'
+                  ? 'text-[16px] mt-1'
                   : 'text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5'
               } text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none`}>
-                <Calendar className={`${isTvPlayerMode ? 'w-4.5 h-4.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-amber-400 shrink-0`} />
+                <Calendar className={`${isTvPlayerMode ? 'w-4 h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-amber-400 shrink-0`} />
                 <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
               </p>
             </div>
@@ -296,7 +300,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           {/* Right Symmetrical Spacer so Campaign Title is centered across the screen */}
           {!isVertical && (
             <div className={`shrink-0 pointer-events-none hidden md:block ${
-              isTvPlayerMode ? 'w-[320px] max-w-[340px]' : 'w-auto max-w-[300px] h-14'
+              isTvPlayerMode
+                ? 'w-[220px] max-w-[240px]'
+                : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
             }`} />
           )}
         </div>
@@ -317,7 +323,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               : 'items-start text-left max-w-[46%] h-[84%] max-h-[84%]'
           }`}>
             {/* Top Block: Title & Promotional Badge */}
-            <div className={`flex flex-col items-start w-full shrink-0 ${
+            <div id="tv-anim-title-block" className={`flex flex-col items-start w-full shrink-0 ${
               isVertical ? 'pt-2' : isTvPlayerMode ? 'pt-2' : 'pt-1 sm:pt-2'
             }`}>
               {/* Product Title */}
@@ -344,7 +350,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             </div>
 
             {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div className={`mt-auto flex flex-col items-start w-full ${
+            <div id="tv-anim-price-block" className={`mt-auto flex flex-col items-start w-full ${
               isTvPlayerMode ? 'pt-4' : 'pt-2 sm:pt-3'
             } shrink-0`}>
               {/* "De: R$ 10,99" regular price */}
@@ -532,7 +538,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                   return (
                     <div
-                      id={`mini-banner-card-${product.id}`}
+                      id="tv-anim-product-card"
+                      data-card-id={`mini-banner-card-${product.id}`}
                       onPaste={handleCardPaste}
                       tabIndex={0}
                       className={`group relative ${
@@ -602,6 +609,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       {/* Top-Right Circular Discount Starburst / Stamp Badge - Carimbo Externo Sobreposto */}
                       {product.discountPercentage && product.discountPercentage > 0 && (
                         <div
+                          id="tv-anim-stamp-badge"
                           className={`absolute ${
                             isTvPlayerMode
                               ? 'w-24 h-24 -top-6 -right-6 border-[3.5px]'

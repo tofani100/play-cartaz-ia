@@ -1,4 +1,4 @@
-// Utility to capture canvas / DOM elements and record dynamic animated MP4/WebM video or download PNG
+// Utility to capture canvas / DOM elements and record dynamic animated MP4/WebM video with individual element motion
 import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
 import { toPng } from 'html-to-image';
 
@@ -44,9 +44,27 @@ export interface VideoExportResult {
   sizeBytes: number;
 }
 
+interface ElementBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface ProductSlideLayers {
+  bgSnap: HTMLImageElement;
+  titleSnap: HTMLImageElement | null;
+  titleBox: ElementBox | null;
+  cardSnap: HTMLImageElement | null;
+  cardBox: ElementBox | null;
+  priceSnap: HTMLImageElement | null;
+  priceBox: ElementBox | null;
+  stampSnap: HTMLImageElement | null;
+  stampBox: ElementBox | null;
+}
+
 /**
- * Captures a 100% faithful high-resolution image of a DOM element using html-to-image
- * Does not force canvasWidth/Height so html-to-image preserves exact layout proportions
+ * Captures a crisp image of a DOM element using html-to-image
  */
 async function captureDomElementImage(el: HTMLElement): Promise<HTMLImageElement> {
   const dataUrl = await toPng(el, {
@@ -54,7 +72,6 @@ async function captureDomElementImage(el: HTMLElement): Promise<HTMLImageElement
     pixelRatio: 2, // 2x Retina crispness
     cacheBust: true,
     filter: (node) => {
-      // Exclude hover edit bars/buttons so the video is 100% clean broadcast art
       if (node instanceof HTMLElement) {
         if (node.classList.contains('group-hover:opacity-100')) return false;
         if (node.id && node.id.startsWith('btn-')) return false;
@@ -69,6 +86,135 @@ async function captureDomElementImage(el: HTMLElement): Promise<HTMLImageElement
     img.onerror = (e) => reject(e);
     img.src = dataUrl;
   });
+}
+
+/**
+ * Maps element bounding client rect directly into the target broadcast canvas coordinate system
+ */
+function getRelativeBox(el: HTMLElement, container: HTMLElement, canvasW: number, canvasH: number): ElementBox {
+  const eRect = el.getBoundingClientRect();
+  const cRect = container.getBoundingClientRect();
+
+  const scaleX = canvasW / cRect.width;
+  const scaleY = canvasH / cRect.height;
+
+  return {
+    x: (eRect.left - cRect.left) * scaleX,
+    y: (eRect.top - cRect.top) * scaleY,
+    w: eRect.width * scaleX,
+    h: eRect.height * scaleY,
+  };
+}
+
+/**
+ * Captures the banner separated into individual element layers:
+ * 1. Product Title & Promotional Badge block
+ * 2. Supermarket Price Tag box
+ * 3. Product Image Card
+ * 4. Discount Stamp Badge ("OFERTAÇO -XX%")
+ * 5. Clean Background Artboard (with client logo, full title, and green texture)
+ */
+async function captureProductSlideLayers(
+  bannerEl: HTMLElement,
+  canvasW: number,
+  canvasH: number
+): Promise<ProductSlideLayers> {
+  const titleEl = document.getElementById('tv-anim-title-block');
+  const priceEl = document.getElementById('tv-anim-price-block');
+  const cardEl = document.getElementById('tv-anim-product-card');
+  const stampEl = document.getElementById('tv-anim-stamp-badge');
+
+  let titleSnap: HTMLImageElement | null = null;
+  let titleBox: ElementBox | null = null;
+  if (titleEl) {
+    try {
+      titleBox = getRelativeBox(titleEl, bannerEl, canvasW, canvasH);
+      titleSnap = await captureDomElementImage(titleEl);
+    } catch (e) {
+      console.warn('Falha ao capturar title block isolado:', e);
+    }
+  }
+
+  let priceSnap: HTMLImageElement | null = null;
+  let priceBox: ElementBox | null = null;
+  if (priceEl) {
+    try {
+      priceBox = getRelativeBox(priceEl, bannerEl, canvasW, canvasH);
+      priceSnap = await captureDomElementImage(priceEl);
+    } catch (e) {
+      console.warn('Falha ao capturar price block isolado:', e);
+    }
+  }
+
+  let cardSnap: HTMLImageElement | null = null;
+  let cardBox: ElementBox | null = null;
+  if (cardEl) {
+    try {
+      const isStampInside = stampEl && cardEl.contains(stampEl);
+      if (isStampInside && stampEl) stampEl.style.opacity = '0';
+      cardBox = getRelativeBox(cardEl, bannerEl, canvasW, canvasH);
+      cardSnap = await captureDomElementImage(cardEl);
+      if (isStampInside && stampEl) stampEl.style.opacity = '';
+    } catch (e) {
+      console.warn('Falha ao capturar card isolado:', e);
+    }
+  }
+
+  let stampSnap: HTMLImageElement | null = null;
+  let stampBox: ElementBox | null = null;
+  if (stampEl) {
+    try {
+      stampBox = getRelativeBox(stampEl, bannerEl, canvasW, canvasH);
+      stampSnap = await captureDomElementImage(stampEl);
+    } catch (e) {
+      console.warn('Falha ao capturar stamp isolado:', e);
+    }
+  }
+
+  // Hide foreground elements temporarily to capture pure background and header
+  if (titleEl) titleEl.style.opacity = '0';
+  if (priceEl) priceEl.style.opacity = '0';
+  if (cardEl) cardEl.style.opacity = '0';
+  if (stampEl) stampEl.style.opacity = '0';
+
+  let bgSnap: HTMLImageElement;
+  try {
+    bgSnap = await captureDomElementImage(bannerEl);
+  } finally {
+    // Restore DOM immediately
+    if (titleEl) titleEl.style.opacity = '';
+    if (priceEl) priceEl.style.opacity = '';
+    if (cardEl) cardEl.style.opacity = '';
+    if (stampEl) stampEl.style.opacity = '';
+  }
+
+  return {
+    bgSnap,
+    titleSnap,
+    titleBox,
+    cardSnap,
+    cardBox,
+    priceSnap,
+    priceBox,
+    stampSnap,
+    stampBox,
+  };
+}
+
+/**
+ * Standard cubic ease-out curve
+ */
+function easeOutCubic(x: number): number {
+  return 1 - Math.pow(1 - x, 3);
+}
+
+/**
+ * Elastic spring overshoot curve for commercial pop & bounce impacts
+ */
+function easeOutBack(x: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
 }
 
 /**
@@ -136,18 +282,18 @@ function drawCommercialSparkle(
 }
 
 /**
- * High-End Broadcast Motion Graphics Recording Engine.
- * Takes 100% faithful DOM snapshots and animates them with:
- * 1. Punchy Commercial Intro Zoom (scale 1.07 -> 1.00 with ease-out cubic)
- * 2. Metallic Light Flare / Sheen Sweep across the banner and price tag every 2.4s
- * 3. Dynamic Live Scrolling Marquee Ticker at the bottom at 30 FPS
- * 4. Diamond Sparkle Glints rotating over the price tag and discount badges
- * 5. Continuous Broadcast Living Breathing Camera Float
- * 6. Smooth Commercial Transitions with wipes/crossfades between products
+ * True Layered Motion Graphics Video Recording Engine.
+ * Animates each element INDEPENDENTLY with staggered keyframes:
+ * 1. Product Title: slides in from the left (0.0s - 0.5s)
+ * 2. Product Showcase Card: swoops in from the right with momentum and gentle 3D hover/float (0.12s - 0.70s)
+ * 3. Supermarket Price Box: slams in with an elastic commercial spring bounce pop and pulses (0.35s - 0.85s)
+ * 4. Discount Stamp: drops down from above like an official retail stamp and wobbles (0.55s - 0.90s)
+ * 5. Marquee Ticker: continuous live scrolling at 160 px/sec across the bottom
+ * 6. Metallic Light Flare / Sheen Sweep: sweeps across the card at 1.5s and 3.8s
  */
-async function recordSnapshotsToVideo(
+async function recordLayeredSlidesToVideo(
   campaign: BannerCampaign,
-  snapshots: HTMLImageElement[],
+  slides: ProductSlideLayers[],
   canvasWidth: number,
   canvasHeight: number,
   totalDurationSec: number,
@@ -157,11 +303,10 @@ async function recordSnapshotsToVideo(
 ): Promise<VideoExportResult> {
   return new Promise(async (resolve, reject) => {
     try {
-      if (!snapshots || snapshots.length === 0) {
-        throw new Error('Nenhum quadro capturado para gravação do vídeo.');
+      if (!slides || slides.length === 0) {
+        throw new Error('Nenhum slide capturado para gravação.');
       }
 
-      // Ensure fonts are ready
       try {
         if (typeof document !== 'undefined' && document.fonts) {
           await document.fonts.ready;
@@ -176,8 +321,8 @@ async function recordSnapshotsToVideo(
         throw new Error('Não foi possível inicializar contexto 2D para gravação de vídeo.');
       }
 
-      // Draw initial frame
-      ctx.drawImage(snapshots[0], 0, 0, canvasWidth, canvasHeight);
+      // Draw initial background
+      ctx.drawImage(slides[0].bgSnap, 0, 0, canvasWidth, canvasHeight);
 
       const stream = canvas.captureStream(30); // 30 FPS broadcast quality
       const mimeTypes = [
@@ -242,75 +387,199 @@ async function recordSnapshotsToVideo(
         currentFrame++;
         const elapsedMs = currentFrame * frameDurationMs;
         const progressRatio = Math.min(1, currentFrame / totalFrames);
-        const t = elapsedMs / 1000;
 
         if (onProgress) {
-          // Progress smoothly advances from 25% to 96%
           onProgress(Math.round(25 + progressRatio * 71));
         }
 
-        // Active snapshot
+        // Determine current slide
         const currentIdx = Math.min(
-          snapshots.length - 1,
+          slides.length - 1,
           Math.floor(elapsedMs / (perProductSec * 1000))
         );
-        const currentSnap = snapshots[currentIdx];
+        const currentSlide = slides[currentIdx];
 
         // Slide timing
         const timeInSlideMs = elapsedMs % (perProductSec * 1000);
         const slideT = timeInSlideMs / 1000;
         const transitionDurationMs = 700;
         const transitionStartMs = perProductSec * 1000 - transitionDurationMs;
-        const isTransitioning = snapshots.length > 1 && timeInSlideMs >= transitionStartMs;
-        const nextIdx = (currentIdx + 1) % snapshots.length;
-        const nextSnap = snapshots[nextIdx];
+        const isTransitioning = slides.length > 1 && timeInSlideMs >= transitionStartMs;
+        const nextIdx = (currentIdx + 1) % slides.length;
+        const nextSlide = slides[nextIdx];
 
-        // 1. DYNAMIC ENTRANCE REVEAL + COMMERCIAL LIVING CAMERA MOTION
-        let scale = 1.0;
-        let alpha = 1.0;
-        if (slideT < 0.8) {
-          const p = slideT / 0.8;
-          const ease = 1 - Math.pow(1 - p, 3); // ease-out cubic
-          scale = 1.065 - 0.065 * ease; // Starts 6.5% larger with punchy snap in
-          alpha = 0.5 + 0.5 * ease;
-        } else {
-          // Subtle commercial living breathing camera float (1.0% wave)
-          scale = 1.0 + Math.sin(slideT * 1.6) * 0.010;
+        // Global slide fade (if transitioning between products)
+        let slideExitAlpha = 1.0;
+        if (isTransitioning) {
+          const fadeP = (timeInSlideMs - transitionStartMs) / transitionDurationMs;
+          slideExitAlpha = 1.0 - fadeP;
         }
 
-        const zW = canvasWidth * scale;
-        const zH = canvasHeight * scale;
-        const zX = (canvasWidth - zW) / 2;
-        const zY = (canvasHeight - zH) / 2;
-
-        // Clear canvas
+        // ==========================================
+        // 1. DRAW BACKGROUND & HEADER LAYER
+        // ==========================================
         ctx.fillStyle = '#06331e';
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-        // Draw active 100% faithful product snapshot with animated scale
         ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.drawImage(currentSnap, zX, zY, zW, zH);
-
-        // Smooth crossfade to next product if transitioning
-        if (isTransitioning && nextSnap) {
-          const fadeProgress = (timeInSlideMs - transitionStartMs) / transitionDurationMs;
-          const nextScale = 1.05 - 0.05 * fadeProgress;
-          const nW = canvasWidth * nextScale;
-          const nH = canvasHeight * nextScale;
-          const nX = (canvasWidth - nW) / 2;
-          const nY = (canvasHeight - nH) / 2;
-
-          ctx.globalAlpha = Math.min(1, Math.max(0, fadeProgress));
-          ctx.drawImage(nextSnap, nX, nY, nW, nH);
-        }
+        ctx.globalAlpha = 1.0;
+        ctx.drawImage(currentSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
         ctx.restore();
 
-        // 2. METALLIC LIGHT FLARE / SHEEN SWEEP (Brilho Comercial em 45 Graus)
+        // If elements are not separated, draw entire fallback cleanly
+        if (!currentSlide.titleBox || !currentSlide.cardBox || !currentSlide.priceBox) {
+          ctx.save();
+          ctx.globalAlpha = 1.0;
+          ctx.drawImage(currentSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
+          ctx.restore();
+        } else {
+          // ==========================================
+          // 2. ELEMENT: PRODUCT TITLE & BADGE (Slide from Left)
+          // ==========================================
+          if (currentSlide.titleSnap && currentSlide.titleBox) {
+            let tAlpha = slideExitAlpha;
+            let tOffsetX = 0;
+            if (slideT < 0.50) {
+              const p = slideT / 0.50;
+              const ease = easeOutCubic(p);
+              tAlpha = ease * slideExitAlpha;
+              tOffsetX = -130 * (1 - ease);
+            }
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, Math.min(1, tAlpha));
+            ctx.drawImage(
+              currentSlide.titleSnap,
+              currentSlide.titleBox.x + tOffsetX,
+              currentSlide.titleBox.y,
+              currentSlide.titleBox.w,
+              currentSlide.titleBox.h
+            );
+            ctx.restore();
+          }
+
+          // ==========================================
+          // 3. ELEMENT: PRODUCT SHOWCASE CARD (Swoop from Right + Hover)
+          // ==========================================
+          let cFloatY = 0;
+          if (currentSlide.cardSnap && currentSlide.cardBox) {
+            let cAlpha = slideExitAlpha;
+            let cOffsetX = 0;
+            let cScale = 1.0;
+
+            if (slideT < 0.12) {
+              cAlpha = 0;
+            } else if (slideT < 0.68) {
+              const p = (slideT - 0.12) / 0.56;
+              const ease = easeOutCubic(p);
+              cAlpha = ease * slideExitAlpha;
+              cOffsetX = 170 * (1 - ease);
+              cScale = 0.84 + 0.16 * easeOutBack(p);
+            } else {
+              // Gentle living 3D hover
+              cFloatY = Math.sin((slideT - 0.68) * 2.2) * 8;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, Math.min(1, cAlpha));
+            const cCx = currentSlide.cardBox.x + cOffsetX + currentSlide.cardBox.w / 2;
+            const cCy = currentSlide.cardBox.y + cFloatY + currentSlide.cardBox.h / 2;
+            ctx.translate(cCx, cCy);
+            ctx.scale(cScale, cScale);
+            ctx.drawImage(
+              currentSlide.cardSnap,
+              -currentSlide.cardBox.w / 2,
+              -currentSlide.cardBox.h / 2,
+              currentSlide.cardBox.w,
+              currentSlide.cardBox.h
+            );
+            ctx.restore();
+          }
+
+          // ==========================================
+          // 4. ELEMENT: SUPERMARKET ORANGE PRICE BOX (Spring Bounce Pop + Heartbeat)
+          // ==========================================
+          if (currentSlide.priceSnap && currentSlide.priceBox) {
+            let pAlpha = slideExitAlpha;
+            let pScale = 1.0;
+
+            if (slideT < 0.35) {
+              pAlpha = 0;
+            } else if (slideT < 0.85) {
+              const p = (slideT - 0.35) / 0.50;
+              pAlpha = Math.min(1, p * 3) * slideExitAlpha;
+              pScale = Math.max(0, easeOutBack(p));
+            } else {
+              // Commercial heartbeat pulse at 2.2s and 4.2s
+              const pulse1 = Math.max(0, 1 - Math.abs(slideT - 2.2) / 0.35);
+              const pulse2 = Math.max(0, 1 - Math.abs(slideT - 4.2) / 0.35);
+              const pulse = Math.max(pulse1, pulse2);
+              pScale = 1.0 + Math.sin(pulse * Math.PI) * 0.08;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, Math.min(1, pAlpha));
+            const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
+            const pCy = currentSlide.priceBox.y + currentSlide.priceBox.h / 2;
+            ctx.translate(pCx, pCy);
+            ctx.scale(pScale, pScale);
+            ctx.drawImage(
+              currentSlide.priceSnap,
+              -currentSlide.priceBox.w / 2,
+              -currentSlide.priceBox.h / 2,
+              currentSlide.priceBox.w,
+              currentSlide.priceBox.h
+            );
+            ctx.restore();
+          }
+
+          // ==========================================
+          // 5. ELEMENT: DISCOUNT STAMP BADGE ("OFERTAÇO -XX%") (Drop Down Stamp + Wobble)
+          // ==========================================
+          if (currentSlide.stampSnap && currentSlide.stampBox) {
+            let sAlpha = slideExitAlpha;
+            let sOffsetY = 0;
+            let sRot = 0;
+            let sScale = 1.0;
+
+            if (slideT < 0.58) {
+              sAlpha = 0;
+            } else if (slideT < 0.92) {
+              const p = (slideT - 0.58) / 0.34;
+              const ease = easeOutBack(p);
+              sAlpha = Math.min(1, p * 3) * slideExitAlpha;
+              sOffsetY = -90 * (1 - easeOutCubic(p));
+              sRot = -0.45 * (1 - easeOutCubic(p)); // -25 deg to 0
+              sScale = 1.4 - 0.4 * ease;
+            } else {
+              // Dynamic tilt oscillation
+              sRot = Math.sin((slideT - 0.92) * 3.5) * 0.10;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, Math.min(1, sAlpha));
+            const sCx = currentSlide.stampBox.x + currentSlide.stampBox.w / 2;
+            const sCy = currentSlide.stampBox.y + sOffsetY + currentSlide.stampBox.h / 2 + cFloatY;
+            ctx.translate(sCx, sCy);
+            ctx.rotate(sRot);
+            ctx.scale(sScale, sScale);
+            ctx.drawImage(
+              currentSlide.stampSnap,
+              -currentSlide.stampBox.w / 2,
+              -currentSlide.stampBox.h / 2,
+              currentSlide.stampBox.w,
+              currentSlide.stampBox.h
+            );
+            ctx.restore();
+          }
+        }
+
+        // ==========================================
+        // 6. METALLIC LIGHT SHEEN SWEEP (Across the Card)
+        // ==========================================
         const sheenCycle = 2.5;
         const sheenTime = slideT % sheenCycle;
         if (sheenTime >= 0.5 && sheenTime <= 1.5) {
-          const sweepProgress = (sheenTime - 0.5) / 1.0; // 0 to 1
+          const sweepProgress = (sheenTime - 0.5) / 1.0;
           const sweepX = -400 + (canvasWidth + 800) * sweepProgress;
 
           ctx.save();
@@ -326,33 +595,43 @@ async function recordSnapshotsToVideo(
           ctx.fillStyle = sheenGrad;
           ctx.fillRect(0, 0, canvasWidth, canvasHeight);
           ctx.restore();
+
+          // Diamond sparkle glints
+          if (sheenTime >= 0.8 && sheenTime <= 1.4) {
+            const sparkleProgress = (sheenTime - 0.8) / 0.6;
+            const sparkleAlpha = Math.sin(sparkleProgress * Math.PI);
+            const sparkleSize = 30 * Math.sin(sparkleProgress * Math.PI);
+            const sparkleRot = sparkleProgress * Math.PI * 0.75;
+
+            const pX = Math.round(canvasWidth * (isVertical ? 0.45 : 0.35));
+            const pY = Math.round(canvasHeight * (isVertical ? 0.70 : 0.78));
+            drawCommercialSparkle(ctx, pX, pY, sparkleSize, sparkleRot, sparkleAlpha);
+
+            const bX = Math.round(canvasWidth * (isVertical ? 0.82 : 0.88));
+            const bY = Math.round(canvasHeight * (isVertical ? 0.30 : 0.25));
+            drawCommercialSparkle(ctx, bX, bY, sparkleSize * 0.85, -sparkleRot, sparkleAlpha);
+          }
         }
 
-        // 3. DIAMOND SPARKLE GLINTS (Brilho Cintilante sobre o Preço e o Selo de Oferta)
-        if (sheenTime >= 0.8 && sheenTime <= 1.4) {
-          const sparkleProgress = (sheenTime - 0.8) / 0.6;
-          const sparkleAlpha = Math.sin(sparkleProgress * Math.PI);
-          const sparkleSize = 30 * Math.sin(sparkleProgress * Math.PI);
-          const sparkleRot = sparkleProgress * Math.PI * 0.75;
-
-          // Glint on price box
-          const pX = Math.round(canvasWidth * (isVertical ? 0.45 : 0.35));
-          const pY = Math.round(canvasHeight * (isVertical ? 0.70 : 0.78));
-          drawCommercialSparkle(ctx, pX, pY, sparkleSize, sparkleRot, sparkleAlpha);
-
-          // Glint on promotional discount badge
-          const bX = Math.round(canvasWidth * (isVertical ? 0.82 : 0.88));
-          const bY = Math.round(canvasHeight * (isVertical ? 0.30 : 0.25));
-          drawCommercialSparkle(ctx, bX, bY, sparkleSize * 0.85, -sparkleRot, sparkleAlpha);
+        // ==========================================
+        // 7. TRANSITION TO NEXT SLIDE (Multi-Product Mode)
+        // ==========================================
+        if (isTransitioning && nextSlide) {
+          const fadeP = (timeInSlideMs - transitionStartMs) / transitionDurationMs;
+          ctx.save();
+          ctx.globalAlpha = fadeP;
+          ctx.drawImage(nextSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
+          ctx.restore();
         }
 
-        // 4. LIVE ANIMATED SCROLLING MARQUEE TICKER (Letreiro Dinâmico em Tempo Real)
+        // ==========================================
+        // 8. LIVE ANIMATED SCROLLING MARQUEE TICKER (Ultra-Crisp Vector)
+        // ==========================================
         if (campaign.showMarqueeTicker !== false) {
           // A) Black Ticker Background Bar
           ctx.fillStyle = '#050505';
           ctx.fillRect(0, tickerTop, canvasWidth, tickerH);
 
-          // Top hairline separator
           ctx.strokeStyle = '#262626';
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -416,13 +695,11 @@ async function recordSnapshotsToVideo(
           ctx.textBaseline = 'middle';
           const subY = subFooterTop + subFooterH / 2;
 
-          // Legal text
           ctx.fillStyle = '#9ca3af';
           ctx.textAlign = 'left';
           const legal = campaign.legalNotice || 'Imagens meramente ilustrativas. Proibida a venda de bebidas alcoólicas a menores de 18 anos.';
           ctx.fillText(legal, padX, subY);
 
-          // Brand signature
           ctx.fillStyle = '#d1d5db';
           ctx.textAlign = 'right';
           const brand = campaign.footerBrandText !== undefined && campaign.footerBrandText !== ''
@@ -431,7 +708,9 @@ async function recordSnapshotsToVideo(
           ctx.fillText(brand, canvasWidth - padX, subY);
         }
 
-        // Check completion
+        // ==========================================
+        // 9. CHECK COMPLETION
+        // ==========================================
         if (currentFrame >= totalFrames) {
           isFinished = true;
           clearInterval(recordTimer);
@@ -440,7 +719,6 @@ async function recordSnapshotsToVideo(
             onProgress(98);
           }
 
-          // Safe buffer drain before stopping
           setTimeout(() => {
             try {
               if (recorder.state === 'recording') {
@@ -496,8 +774,14 @@ async function recordSnapshotsToVideo(
 
 /**
  * Generates an animated MP4 video specifically for an INDIVIDUAL PRODUCT (Single Banner).
- * Duration: 6.0 seconds (optimal for WhatsApp Status, Instagram Reels/Stories, and TV promos).
- * Includes punchy commercial zoom intro, metallic light sheen, diamond sparkles, and live scrolling marquee.
+ * Duration: 6.0 seconds.
+ * Features true independent element motion:
+ * - Product Title slides from left
+ * - Product Image swoops from right and hovers in 3D
+ * - Supermarket Price Box slams in with an elastic spring bounce and pulses
+ * - Discount Stamp slams down from above and wobbles
+ * - Marquee Ticker scrolls live at the bottom
+ * - Metallic Light Flare sweeps across the card
  */
 export async function gerarVideoAnimadoProdutoIndividual(
   campaign: BannerCampaign,
@@ -514,27 +798,15 @@ export async function gerarVideoAnimadoProdutoIndividual(
   // 1. Switch active product in DOM if needed and wait for layout to render
   if (onSelectProductIndex) {
     onSelectProductIndex(productIndex);
-    await new Promise((r) => setTimeout(r, 380));
+    await new Promise((r) => setTimeout(r, 400));
   } else {
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 120));
   }
 
   const bannerEl = document.getElementById('tv-banner-capture');
   if (!bannerEl) {
     if (onSelectProductIndex) onSelectProductIndex(originalIndex);
     throw new Error('Elemento do banner (#tv-banner-capture) não encontrado.');
-  }
-
-  if (onProgress) onProgress(15);
-
-  // 2. Capture snapshot of this single product banner
-  const snap = await captureDomElementImage(bannerEl);
-
-  if (onProgress) onProgress(25);
-
-  // Restore original product selection if different
-  if (onSelectProductIndex && originalIndex !== productIndex) {
-    onSelectProductIndex(originalIndex);
   }
 
   // Calculate canvas dimensions based on aspect ratio
@@ -551,6 +823,18 @@ export async function gerarVideoAnimadoProdutoIndividual(
     canvasHeight = 1350;
   }
 
+  if (onProgress) onProgress(15);
+
+  // 2. Capture individual element layers
+  const slideLayers = await captureProductSlideLayers(bannerEl, canvasWidth, canvasHeight);
+
+  if (onProgress) onProgress(25);
+
+  // Restore original product selection if different
+  if (onSelectProductIndex && originalIndex !== productIndex) {
+    onSelectProductIndex(originalIndex);
+  }
+
   const prod = campaign.products[productIndex];
   const cleanTitle = (prod?.title || `produto-${productIndex + 1}`)
     .toLowerCase()
@@ -561,10 +845,10 @@ export async function gerarVideoAnimadoProdutoIndividual(
 
   const filename = `banner-animado-${cleanTitle}-${Date.now()}.mp4`;
 
-  // 3. Record dynamic video of this single banner with broadcast motion graphics
-  return recordSnapshotsToVideo(
+  // 3. Record dynamic video with individual element motion graphics
+  return recordLayeredSlidesToVideo(
     campaign,
-    [snap],
+    [slideLayers],
     canvasWidth,
     canvasHeight,
     slideDurationSec,
@@ -576,7 +860,7 @@ export async function gerarVideoAnimadoProdutoIndividual(
 
 /**
  * Generates an animated MP4 video across all active products with commercial rotation and transitions.
- * Features a full TV commercial duration (15+ seconds) so the video is complete and does not cut short.
+ * Features full commercial duration (15+ seconds) with individual element motion on every slide.
  */
 export async function gerarVideoAnimadoBanner(
   campaign: BannerCampaign,
@@ -590,7 +874,7 @@ export async function gerarVideoAnimadoBanner(
     throw new Error('Banner de TV (#tv-banner-capture) não encontrado no DOM.');
   }
 
-  // Filter only active (non-hidden) products for the commercial video rotation
+  // Filter only active (non-hidden) products
   const allProducts = campaign.products && campaign.products.length > 0 ? campaign.products : [];
   const visibleIndices = allProducts
     .map((p, idx) => (!p.hidden ? idx : -1))
@@ -599,7 +883,7 @@ export async function gerarVideoAnimadoBanner(
   const totalProducts = targetIndices.length;
   const originalIndex = campaign.activeProductIndex || 0;
 
-  // 1. STANDARD BROADCAST DIMENSIONS (strictly even numbers to ensure 100% video encoder compatibility)
+  // Standard broadcast dimensions
   let canvasWidth = 1920;
   let canvasHeight = 1080;
   if (campaign.format === '9:16') {
@@ -613,8 +897,8 @@ export async function gerarVideoAnimadoBanner(
     canvasHeight = 1350;
   }
 
-  // 2. CAPTURE DOM SNAPSHOTS: 100% exact copy of each visible product in the campaign
-  const snapshots: HTMLImageElement[] = [];
+  // Capture layers for each visible product
+  const slides: ProductSlideLayers[] = [];
 
   for (let i = 0; i < totalProducts; i++) {
     const prodIndex = targetIndices[i];
@@ -622,17 +906,16 @@ export async function gerarVideoAnimadoBanner(
       onProgress(Math.round(5 + (i / totalProducts) * 20));
     }
 
-    // If multi-product, switch index and wait for React & animations to settle
     if (onSelectProductIndex && totalProducts > 1) {
       onSelectProductIndex(prodIndex);
       await new Promise((r) => setTimeout(r, 450));
     } else {
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise((r) => setTimeout(r, 100));
     }
 
     const currentEl = document.getElementById('tv-banner-capture') || bannerEl;
-    const img = await captureDomElementImage(currentEl);
-    snapshots.push(img);
+    const slide = await captureProductSlideLayers(currentEl, canvasWidth, canvasHeight);
+    slides.push(slide);
   }
 
   // Restore active product index in editor
@@ -640,18 +923,18 @@ export async function gerarVideoAnimadoBanner(
     onSelectProductIndex(originalIndex);
   }
 
-  if (snapshots.length === 0) {
+  if (slides.length === 0) {
     throw new Error('Falha ao capturar quadros do banner.');
   }
 
-  // 3. BROADCAST DURATION: Minimum 15.0 seconds complete TV commercial loop
+  // Duration
   let perProductSec = 6.0;
   if (totalProducts === 1) {
-    perProductSec = 15.0; // 15 seconds full TV ad
+    perProductSec = 15.0;
   } else if (totalProducts === 2) {
-    perProductSec = 8.0; // 16s total
+    perProductSec = 8.0;
   } else if (totalProducts === 3) {
-    perProductSec = 6.0; // 18s total
+    perProductSec = 6.0;
   } else {
     perProductSec = Math.max(5.0, slideDurationSec);
   }
@@ -666,10 +949,10 @@ export async function gerarVideoAnimadoBanner(
     .slice(0, 25);
   const filename = `playcomunique-tv-${campaign.format || '16x9'}-${cleanTitle}-${Date.now()}.mp4`;
 
-  // 4. Record using unified broadcast motion graphics engine
-  return recordSnapshotsToVideo(
+  // Record using layered motion graphics engine
+  return recordLayeredSlidesToVideo(
     campaign,
-    snapshots,
+    slides,
     canvasWidth,
     canvasHeight,
     totalDurationSec,
