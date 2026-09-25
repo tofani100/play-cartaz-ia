@@ -313,28 +313,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               ? 'items-center text-center max-w-full' 
               : 'items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
           }`}>
-            {/* Top Block: 1º Selo Promocional, Nome Comercial do Produto e 2º Selo Promocional Centralizado */}
-            <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent">
-              {/* 1º Selo Promocional: Posição original fixa no topo */}
-              {product.badge && (
-                <div className="flex items-center shrink-0">
-                  <span 
-                    style={{ 
-                      backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
-                      color: effectiveStyles.badgeTextColor || '#d4f7dc',
-                      borderColor: effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}88` : '#3b7a50',
-                      whiteSpace: 'nowrap',
-                      display: 'inline-flex',
-                      flexShrink: 0,
-                    }}
-                    className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none"
-                  >
-                    {product.badge}
-                  </span>
-                </div>
-              )}
-
-              {/* Nome Comercial do Produto: Começa 2 linhas abaixo do topo original, sem empurrar elementos */}
+            {/* Top Block: Nome Comercial do Produto com 1º Selo na mesma linha à frente, mantendo a altura exata */}
+            <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent mt-3 sm:mt-5 md:mt-6">
+              {/* Nome Comercial do Produto com o 1º Selo Promocional ocupando o início da primeira linha à frente do texto */}
               <h2 
                 style={{
                   color: effectiveStyles.productTitleColor || '#ffffff',
@@ -342,15 +323,35 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 }}
                 className={`${
                   isVertical
-                    ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug mt-2'
+                    ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug'
                     : (product.title || '').length > 40
                       ? 'text-[15px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[28px] leading-[1.14]'
                       : (product.title || '').length > 25
                         ? 'text-[16px] sm:text-[19px] md:text-[23px] lg:text-[27px] xl:text-[31px] leading-[1.15]'
                         : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
-                } font-black tracking-tight break-words bg-transparent mt-3 sm:mt-5 md:mt-6 line-clamp-3`}
+                } font-black tracking-tight break-words bg-transparent line-clamp-3`}
               >
-                {product.title}
+                {product.badge && (
+                  <span 
+                    style={{ 
+                      backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
+                      color: effectiveStyles.badgeTextColor || '#d4f7dc',
+                      borderColor: effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}88` : '#3b7a50',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      lineHeight: 1.15,
+                    }}
+                    className="inline-flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none overflow-hidden"
+                  >
+                    <span className="truncate block leading-tight">{product.badge}</span>
+                  </span>
+                )}
+                <span className="align-middle bg-transparent">{product.title}</span>
               </h2>
 
               {/* 2º Selo Promocional: Quando flegado, posicionado mais abaixo do nome comercial do produto e centralizado */}
@@ -363,10 +364,14 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       borderColor: effectiveStyles.secondBadgeBgColor 
                         ? `${effectiveStyles.secondBadgeBgColor}aa` 
                         : (effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}aa` : '#3b7a50'),
+                      boxSizing: 'border-box',
                     }}
-                    className="w-full max-w-[96%] py-1 sm:py-1.5 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none"
+                    className="w-full max-w-[96%] py-1 sm:py-1.5 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none overflow-hidden"
                   >
-                    <span className="text-[10px] sm:text-xs md:text-sm lg:text-[14px] font-black uppercase tracking-wider truncate">
+                    <span 
+                      style={{ lineHeight: 1.2 }}
+                      className="text-[10px] sm:text-xs md:text-sm lg:text-[14px] font-black uppercase tracking-wider truncate max-w-full block"
+                    >
                       {product.secondBadge}
                     </span>
                   </div>
