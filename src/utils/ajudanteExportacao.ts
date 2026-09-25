@@ -222,6 +222,13 @@ async function captureProductSlideLayers(
     try {
       priceBox = getRelativeBox(priceBlockEl, bannerEl, canvasW, canvasH);
       priceSnap = await captureDomElementImage(priceBlockEl, canvasW);
+
+      // Broadcast Safe-Area Clamping: ensure price card is NEVER cut off at the bottom by footer or canvas edge
+      const safeBottom = canvasH * 0.942;
+      if (priceBox && (priceBox.y + priceBox.h > safeBottom)) {
+        const overflow = (priceBox.y + priceBox.h) - safeBottom;
+        priceBox.y = Math.max(canvasH * 0.2, priceBox.y - overflow);
+      }
     } catch (e) {
       console.warn('Falha ao capturar price block isolado:', e);
     }
@@ -435,8 +442,14 @@ function renderCanvasFrame(
     }
 
     const finalPriceScale = priceScale * pulseScale;
+    let drawW = currentSlide.priceBox.w;
+    let drawH = currentSlide.priceBox.h;
+    if (currentSlide.priceSnap.naturalWidth > 0 && currentSlide.priceSnap.naturalHeight > 0) {
+      drawH = drawW * (currentSlide.priceSnap.naturalHeight / currentSlide.priceSnap.naturalWidth);
+    }
+
     const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
-    const pCy = currentSlide.priceBox.y + currentSlide.priceBox.h / 2;
+    const pCy = currentSlide.priceBox.y + drawH / 2;
 
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, priceAlpha));
@@ -444,10 +457,10 @@ function renderCanvasFrame(
     ctx.scale(finalPriceScale, finalPriceScale);
     ctx.drawImage(
       currentSlide.priceSnap,
-      -currentSlide.priceBox.w / 2,
-      -currentSlide.priceBox.h / 2,
-      currentSlide.priceBox.w,
-      currentSlide.priceBox.h
+      -drawW / 2,
+      -drawH / 2,
+      drawW,
+      drawH
     );
     ctx.restore();
   } else if (currentSlide.leftSnap && currentSlide.leftBox) {
@@ -572,12 +585,17 @@ function renderCanvasFrame(
         nextSlide.titleBox.w,
         nextSlide.titleBox.h
       );
+      let nextPriceDrawW = nextSlide.priceBox.w;
+      let nextPriceDrawH = nextSlide.priceBox.h;
+      if (nextSlide.priceSnap.naturalWidth > 0 && nextSlide.priceSnap.naturalHeight > 0) {
+        nextPriceDrawH = nextPriceDrawW * (nextSlide.priceSnap.naturalHeight / nextSlide.priceSnap.naturalWidth);
+      }
       ctx.drawImage(
         nextSlide.priceSnap,
         nextSlide.priceBox.x,
         nextSlide.priceBox.y,
-        nextSlide.priceBox.w,
-        nextSlide.priceBox.h
+        nextPriceDrawW,
+        nextPriceDrawH
       );
     } else if (nextSlide.leftSnap && nextSlide.leftBox) {
       const nextLeftOffsetX = (1 - easeP) * -160;

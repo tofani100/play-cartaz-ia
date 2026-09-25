@@ -304,13 +304,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
 
         {/* CENTER CONTENT: Perfectly Proportioned - Nunca cortado pelo cabeçalho ou rodapé */}
-        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 px-3 sm:px-6 md:px-10 py-2 sm:py-3 gap-2 sm:gap-6 flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
+        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5 gap-2 sm:gap-6 flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-visible`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
           <div id="tv-anim-left-column" className={`flex flex-col justify-between min-w-0 ${
             isVertical 
               ? 'items-center text-center max-w-full' 
-              : 'items-start text-left w-[48%] max-w-[48%] h-[92%] max-h-[92%]'
+              : 'items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
           }`}>
             {/* Top Block: Title & Promotional Badge - Um na frente do outro com diagramação perfeita e fundo 100% transparente */}
             <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent">
@@ -323,7 +323,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 className={`${
                   isVertical
                     ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug'
-                    : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
+                    : (product.title || '').length > 40
+                      ? 'text-[15px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[28px] leading-[1.14]'
+                      : (product.title || '').length > 25
+                        ? 'text-[16px] sm:text-[19px] md:text-[23px] lg:text-[27px] xl:text-[31px] leading-[1.15]'
+                        : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
                 } font-black tracking-tight font-sans break-words bg-transparent`}
               >
                 <span 
@@ -341,7 +345,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             </div>
 
             {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1 shrink-0 bg-transparent">
+            <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1.5 sm:pb-2.5 shrink-0 bg-transparent">
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div 
@@ -378,7 +382,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   </div>
 
                   {/* Big Integer Number */}
-                  <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black leading-none tracking-tighter drop-shadow-sm font-sans">
+                  <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[76px] font-black leading-none tracking-tighter drop-shadow-sm font-sans">
                     {intPrice}
                   </div>
 
