@@ -32,9 +32,9 @@ export const ModalPlayerTvIndoor: React.FC<ModalPlayerTvIndoorProps> = ({
 
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Reference logical resolution for pixel-perfect broadcast signage
-  const targetWidth = campaign.format === '9:16' ? 1080 : campaign.format === '1:1' ? 1080 : campaign.format === '4:5' ? 1080 : 1920;
-  const targetHeight = campaign.format === '9:16' ? 1920 : campaign.format === '1:1' ? 1080 : campaign.format === '4:5' ? 1350 : 1080;
+  // Canonical reference resolution matching exactly the Mini Player's golden proportions (Image 1)
+  const targetWidth = campaign.format === '9:16' ? 440 : campaign.format === '1:1' ? 680 : campaign.format === '4:5' ? 540 : 1120;
+  const targetHeight = campaign.format === '9:16' ? 782 : campaign.format === '1:1' ? 680 : campaign.format === '4:5' ? 675 : 630;
 
   // Safe area multiplier state (default: 'safe' = 0.96 for anti-overscan protection on TVs)
   const [safeAreaMode, setSafeAreaMode] = useState<'safe' | 'full' | 'legacy'>(() => {

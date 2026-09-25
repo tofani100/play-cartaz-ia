@@ -56,6 +56,10 @@ interface ProductSlideLayers {
   bgSnap: HTMLImageElement;
   leftSnap: HTMLImageElement | null;
   leftBox: ElementBox | null;
+  titleSnap?: HTMLImageElement | null;
+  titleBox?: ElementBox | null;
+  priceSnap?: HTMLImageElement | null;
+  priceBox?: ElementBox | null;
   cardSnap: HTMLImageElement | null;
   cardBox: ElementBox | null;
   productImgSnap: HTMLImageElement | null;
@@ -170,6 +174,8 @@ async function captureProductSlideLayers(
 ): Promise<ProductSlideLayers> {
   const centerContentEl = document.getElementById('tv-banner-center-content');
   const leftColEl = document.getElementById('tv-anim-left-column');
+  const titleBlockEl = document.getElementById('tv-anim-title-block');
+  const priceBlockEl = document.getElementById('tv-anim-price-block');
   const cardEl = document.getElementById('tv-anim-product-card');
 
   // Guarantee 100% opacity and no animation transform interference
@@ -196,6 +202,28 @@ async function captureProductSlideLayers(
       leftSnap = await captureDomElementImage(leftColEl, canvasW);
     } catch (e) {
       console.warn('Falha ao capturar left column isolada:', e);
+    }
+  }
+
+  let titleSnap: HTMLImageElement | null = null;
+  let titleBox: ElementBox | null = null;
+  if (titleBlockEl) {
+    try {
+      titleBox = getRelativeBox(titleBlockEl, bannerEl, canvasW, canvasH);
+      titleSnap = await captureDomElementImage(titleBlockEl, canvasW);
+    } catch (e) {
+      console.warn('Falha ao capturar title block isolado:', e);
+    }
+  }
+
+  let priceSnap: HTMLImageElement | null = null;
+  let priceBox: ElementBox | null = null;
+  if (priceBlockEl) {
+    try {
+      priceBox = getRelativeBox(priceBlockEl, bannerEl, canvasW, canvasH);
+      priceSnap = await captureDomElementImage(priceBlockEl, canvasW);
+    } catch (e) {
+      console.warn('Falha ao capturar price block isolado:', e);
     }
   }
 
@@ -260,6 +288,10 @@ async function captureProductSlideLayers(
     bgSnap,
     leftSnap,
     leftBox,
+    titleSnap,
+    titleBox,
+    priceSnap,
+    priceBox,
     cardSnap,
     cardBox,
     productImgSnap,
@@ -358,10 +390,68 @@ function renderCanvasFrame(
   ctx.drawImage(currentSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
   ctx.restore();
 
-  // 2. ELEMENT: OFFER COLUMN (Tag + Title + Regular Price + Orange Supermarket Price Box)
-  // Clean, prominent commercial presentation with living heartbeat pulse
-  if (currentSlide.leftSnap && currentSlide.leftBox) {
+  // 2. ELEMENT: OFFER COLUMN (Title + Tag, Regular Price & Supermarket Orange Price Box)
+  // Perfectly proportioned and animated individually with commercial heartbeat pulse
+  if (currentSlide.titleSnap && currentSlide.titleBox && currentSlide.priceSnap && currentSlide.priceBox) {
+    // 2A. Product Title & Tag Entrance (Smooth slide & fade from left in first 0.40s)
+    let titleAlpha = slideExitAlpha;
+    let titleOffsetX = 0;
+    if (slideT < 0.40) {
+      const p = Math.min(1, slideT / 0.40);
+      const ease = easeOutCubic(p);
+      titleAlpha = Math.min(1, p * 2.5) * slideExitAlpha;
+      titleOffsetX = -50 * (1 - ease);
+    }
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, titleAlpha));
+    ctx.drawImage(
+      currentSlide.titleSnap,
+      currentSlide.titleBox.x + titleOffsetX,
+      currentSlide.titleBox.y,
+      currentSlide.titleBox.w,
+      currentSlide.titleBox.h
+    );
+    ctx.restore();
+
+    // 2B. Price Block Entrance & Heartbeat Pulse
+    let priceAlpha = slideExitAlpha;
+    let priceScale = 1.0;
+    if (slideT < 0.15) {
+      priceAlpha = 0;
+      priceScale = 0.90;
+    } else if (slideT < 0.50) {
+      const p = (slideT - 0.15) / 0.35;
+      const ease = easeOutCubic(p);
+      priceAlpha = Math.min(1, p * 2.8) * slideExitAlpha;
+      priceScale = 0.90 + 0.10 * ease;
+    }
+
     // Commercial price pulse every 2.0s
+    let pulseScale = 1.0;
+    const beatPhase = (slideT + 0.3) % 2.0;
+    if (beatPhase < 0.28) {
+      pulseScale = 1.0 + Math.sin((beatPhase / 0.28) * Math.PI) * 0.035;
+    }
+
+    const finalPriceScale = priceScale * pulseScale;
+    const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
+    const pCy = currentSlide.priceBox.y + currentSlide.priceBox.h / 2;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, priceAlpha));
+    ctx.translate(pCx, pCy);
+    ctx.scale(finalPriceScale, finalPriceScale);
+    ctx.drawImage(
+      currentSlide.priceSnap,
+      -currentSlide.priceBox.w / 2,
+      -currentSlide.priceBox.h / 2,
+      currentSlide.priceBox.w,
+      currentSlide.priceBox.h
+    );
+    ctx.restore();
+  } else if (currentSlide.leftSnap && currentSlide.leftBox) {
+    // Fallback: unified left column
     let pulseScale = 1.0;
     const beatPhase = (slideT + 0.3) % 2.0;
     if (beatPhase < 0.28) {
@@ -385,7 +475,7 @@ function renderCanvasFrame(
   }
 
   // 3. ELEMENT: PRODUCT SHOWCASE CARD (100% Crisp Color Photo + Exactly ONE Fine White Border)
-  // Perfectly seated in broadcast position with subtle breathing levitation (NO wild horizontal flying / trail)
+  // Perfectly seated in broadcast position with subtle breathing levitation
   if (currentSlide.cardBox) {
     const cardW = currentSlide.cardBox.w;
     const cardH = currentSlide.cardBox.h;
@@ -393,11 +483,24 @@ function renderCanvasFrame(
     const cardY = -cardH / 2;
     const borderRadius = 22;
 
+    // Card entrance: smooth scale & fade-in (0.05s - 0.50s)
+    let cardEntranceAlpha = slideExitAlpha;
+    let cardEntranceScale = 1.0;
+    if (slideT < 0.05) {
+      cardEntranceAlpha = 0;
+      cardEntranceScale = 0.92;
+    } else if (slideT < 0.50) {
+      const p = (slideT - 0.05) / 0.45;
+      const ease = easeOutCubic(p);
+      cardEntranceAlpha = Math.min(1, p * 2.8) * slideExitAlpha;
+      cardEntranceScale = 0.92 + 0.08 * ease;
+    }
+
     const cFloatY = Math.sin(slideT * 2.0) * 4;
-    const cScale = 1.0 + Math.sin(slideT * 1.4) * 0.012;
+    const cScale = cardEntranceScale * (1.0 + Math.sin(slideT * 1.4) * 0.012);
 
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, slideExitAlpha));
+    ctx.globalAlpha = Math.max(0, Math.min(1, cardEntranceAlpha));
     const cCx = currentSlide.cardBox.x + cardW / 2;
     const cCy = currentSlide.cardBox.y + cFloatY + cardH / 2;
     ctx.translate(cCx, cCy);
@@ -460,7 +563,23 @@ function renderCanvasFrame(
     ctx.globalAlpha = fadeP;
     ctx.drawImage(nextSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
 
-    if (nextSlide.leftSnap && nextSlide.leftBox) {
+    if (nextSlide.titleSnap && nextSlide.titleBox && nextSlide.priceSnap && nextSlide.priceBox) {
+      const nextTitleOffsetX = (1 - easeP) * -80;
+      ctx.drawImage(
+        nextSlide.titleSnap,
+        nextSlide.titleBox.x + nextTitleOffsetX,
+        nextSlide.titleBox.y,
+        nextSlide.titleBox.w,
+        nextSlide.titleBox.h
+      );
+      ctx.drawImage(
+        nextSlide.priceSnap,
+        nextSlide.priceBox.x,
+        nextSlide.priceBox.y,
+        nextSlide.priceBox.w,
+        nextSlide.priceBox.h
+      );
+    } else if (nextSlide.leftSnap && nextSlide.leftBox) {
       const nextLeftOffsetX = (1 - easeP) * -160;
       ctx.drawImage(
         nextSlide.leftSnap,

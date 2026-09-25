@@ -63,6 +63,7 @@ export interface BannerCampaign {
   format: BannerFormat;
   themeId: ThemePresetId;
   customColors?: Partial<ThemeColors>;
+  customStyles?: BannerCustomStyles;
   products: ProductItem[];
   activeProductIndex: number;
   animationStyle: AnimationEffect;
@@ -73,6 +74,19 @@ export interface BannerCampaign {
   qrCodeUrl?: string;
   phoneWhatsapp?: string;
   storeAddress?: string;
+}
+
+export interface BannerCustomStyles {
+  bannerBgColor?: string;
+  bannerBgGradient?: string;
+  campaignTitleColor?: string;
+  campaignTitleFont?: string;
+  productTitleColor?: string;
+  productTitleFont?: string;
+  badgeBgColor?: string;
+  badgeTextColor?: string;
+  priceBoxBgColor?: string;
+  priceBoxTextColor?: string;
 }
 
 export interface ClientProfile {

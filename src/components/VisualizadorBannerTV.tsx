@@ -78,29 +78,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   // Contenção estrita para o banner
   const getBannerContainerStyle = (): React.CSSProperties => {
     if (isTvPlayerMode) {
-      if (campaign.format === '9:16') {
-        return {
-          width: '1080px',
-          height: '1920px',
-        };
-      }
-      if (campaign.format === '1:1') {
-        return {
-          width: '1080px',
-          height: '1080px',
-        };
-      }
-      if (campaign.format === '4:5') {
-        return {
-          width: '1080px',
-          height: '1350px',
-        };
-      }
-
-      // No modo TV para 16:9 (horizontal padrão): artboard Full HD de transmissão exato 1920x1080
       return {
-        width: '1920px',
-        height: '1080px',
+        width: '100%',
+        height: '100%',
       };
     }
 
@@ -196,8 +176,15 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           style={{ contain: 'strict', willChange: 'contents', transform: 'translateZ(0)' }}
           className="absolute inset-0 pointer-events-none overflow-hidden"
         >
-          {/* Deep Green Texture Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#06331e] via-[#083c24] to-[#042214]" />
+          {/* Deep Green Texture Background / Custom Background */}
+          <div 
+            style={{
+              background: campaign.customStyles?.bannerBgGradient || (campaign.customStyles?.bannerBgColor 
+                ? `radial-gradient(circle at 60% 50%, ${campaign.customStyles.bannerBgColor}ee, ${campaign.customStyles.bannerBgColor} 70%, #000000 100%)` 
+                : undefined)
+            }}
+            className={`absolute inset-0 ${!campaign.customStyles?.bannerBgGradient && !campaign.customStyles?.bannerBgColor ? 'bg-gradient-to-br from-[#06331e] via-[#083c24] to-[#042214]' : ''}`} 
+          />
 
           {/* Subtle Watermark Geometric/Botanical Texture Pattern */}
           <svg className="absolute inset-0 w-full h-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
@@ -221,17 +208,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-black/40 rounded-full blur-2xl" />
         </div>
 
-        {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
-        <div className={`relative z-10 ${
-          isTvPlayerMode
-            ? 'pl-10 pr-10 py-3'
-            : 'pl-3 sm:pl-6 md:pl-8 lg:pl-10 pr-3 sm:pr-6 md:pr-8 lg:pr-10 py-2 sm:py-2.5 lg:py-2'
-        } flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
+        {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
+        <div className={`relative z-10 pl-3 sm:pl-6 md:pl-8 lg:pl-10 pr-3 sm:pr-6 md:pr-8 lg:pr-10 py-2 sm:py-2.5 lg:py-2 flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
-            isTvPlayerMode
-              ? 'w-[220px] max-w-[240px] h-[90px]'
-              : isVertical
+            isVertical
               ? 'w-auto max-w-[220px] h-12 sm:h-16'
               : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
           }`}>
@@ -277,23 +258,23 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           {/* Top Center: Campaign Title & Validity - NUNCA corta com reticências (...) */}
           {!isVertical && (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-2 sm:px-4 min-w-0">
-              <h1 className={`${
-                isTvPlayerMode
-                  ? (campaign.campaignTitle && campaign.campaignTitle.length > 35 ? 'text-[28px]' : campaign.campaignTitle && campaign.campaignTitle.length > 25 ? 'text-[34px]' : 'text-[40px]')
-                  : (campaign.campaignTitle && campaign.campaignTitle.length > 35
-                      ? 'text-xs sm:text-sm md:text-base lg:text-xl'
-                      : campaign.campaignTitle && campaign.campaignTitle.length > 25
-                      ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
-                      : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
-              } font-black uppercase text-amber-400 drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full text-center leading-tight tracking-tight break-words`}>
+              <h1 
+                style={{
+                  color: campaign.customStyles?.campaignTitleColor || '#fbbf24',
+                  fontFamily: campaign.customStyles?.campaignTitleFont || undefined,
+                }}
+                className={`${
+                  campaign.campaignTitle && campaign.campaignTitle.length > 35
+                    ? 'text-xs sm:text-sm md:text-base lg:text-xl'
+                    : campaign.campaignTitle && campaign.campaignTitle.length > 25
+                    ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
+                    : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]'
+                } font-black uppercase drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full text-center leading-tight tracking-tight break-words`}
+              >
                 {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
               </h1>
-              <p className={`${
-                isTvPlayerMode
-                  ? 'text-[16px] mt-1'
-                  : 'text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5'
-              } text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none`}>
-                <Calendar className={`${isTvPlayerMode ? 'w-4 h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-amber-400 shrink-0`} />
+              <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
+                <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
                 <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
               </p>
             </div>
@@ -301,49 +282,44 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
           {/* Right Symmetrical Spacer so Campaign Title is centered across the screen */}
           {!isVertical && (
-            <div className={`shrink-0 pointer-events-none hidden md:block ${
-              isTvPlayerMode
-                ? 'w-[220px] max-w-[240px]'
-                : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
-            }`} />
+            <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20" />
           )}
         </div>
 
         {/* CENTER CONTENT: Perfectly Proportioned - Nunca cortado pelo cabeçalho ou rodapé */}
-        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 ${
-          isTvPlayerMode
-            ? 'px-14 py-3 gap-10'
-            : 'px-3 sm:px-6 md:px-10 py-2 sm:py-3 gap-2 sm:gap-6'
-        } flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
+        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 px-3 sm:px-6 md:px-10 py-2 sm:py-3 gap-2 sm:gap-6 flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
           <div id="tv-anim-left-column" className={`flex flex-col justify-between min-w-0 ${
             isVertical 
               ? 'items-center text-center max-w-full' 
-              : isTvPlayerMode 
-              ? 'items-start text-left w-[48%] max-w-[48%] h-[92%] max-h-[92%] shrink-0' 
               : 'items-start text-left w-[48%] max-w-[48%] h-[92%] max-h-[92%]'
           }`}>
             {/* Top Block: Title & Promotional Badge - Um na frente do outro com diagramação perfeita e fundo 100% transparente */}
             <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent">
               {/* Product Title with Promotional Tag inline in front of the text */}
-              <h2 className={`${
-                isTvPlayerMode
-                  ? 'text-[36px] xl:text-[40px] leading-[1.16]'
-                  : isVertical
-                  ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug'
-                  : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
-              } font-black text-white tracking-tight font-sans break-words bg-transparent`}>
+              <h2 
+                style={{
+                  color: campaign.customStyles?.productTitleColor || '#ffffff',
+                  fontFamily: campaign.customStyles?.productTitleFont || undefined,
+                }}
+                className={`${
+                  isVertical
+                    ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug'
+                    : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
+                } font-black tracking-tight font-sans break-words bg-transparent`}
+              >
                 <span 
-                  style={{ backgroundColor: '#1a472a' }}
-                  className={`inline-flex items-center ${
-                    isTvPlayerMode
-                      ? 'px-3.5 py-1 text-sm mr-2.5 rounded-lg'
-                      : 'px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg'
-                  } text-[#d4f7dc] border border-[#3b7a50] font-black uppercase tracking-wider align-middle shadow-sm`}>
+                  style={{ 
+                    backgroundColor: campaign.customStyles?.badgeBgColor || '#1a472a',
+                    color: campaign.customStyles?.badgeTextColor || '#d4f7dc',
+                    borderColor: campaign.customStyles?.badgeBgColor ? `${campaign.customStyles.badgeBgColor}88` : '#3b7a50',
+                  }}
+                  className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm"
+                >
                   {product.badge || 'SUPER OFERTA'}
                 </span>
-                <span className="align-middle text-white bg-transparent">{product.title}</span>
+                <span className="align-middle bg-transparent">{product.title}</span>
               </h2>
             </div>
 
@@ -351,11 +327,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1 shrink-0 bg-transparent">
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
-                <div className={`text-white/90 ${
-                  isTvPlayerMode
-                    ? 'text-lg font-bold mb-1.5'
-                    : 'text-xs sm:text-sm md:text-base font-bold mb-1'
-                } tracking-tight bg-transparent`}>
+                <div className="text-white/90 text-xs sm:text-sm md:text-base font-bold mb-1 tracking-tight bg-transparent">
                   De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
               )}
@@ -363,46 +335,39 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               {/* Main Supermarket Orange Price Box */}
               <div className="inline-flex items-center">
                 <div 
-                  style={{ backgroundColor: '#ea580c', backgroundImage: 'linear-gradient(180deg, #f97316 0%, #ea580c 50%, #c2410c 100%)' }}
-                  className={`relative overflow-hidden text-white ${
-                    isTvPlayerMode
-                      ? 'rounded-2xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.7)] border-2 border-white/30 gap-3.5'
-                      : 'rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-2 sm:gap-3'
-                  } flex items-center transition-transform hover:scale-[1.02] origin-bottom-left`}>
+                  style={{ 
+                    backgroundColor: campaign.customStyles?.priceBoxBgColor || '#ea580c', 
+                    backgroundImage: campaign.customStyles?.priceBoxBgColor 
+                      ? `linear-gradient(180deg, ${campaign.customStyles.priceBoxBgColor}dd 0%, ${campaign.customStyles.priceBoxBgColor} 50%, #00000033 100%)`
+                      : 'linear-gradient(180deg, #f97316 0%, #ea580c 50%, #c2410c 100%)',
+                    color: campaign.customStyles?.priceBoxTextColor || '#ffffff',
+                  }}
+                  className="relative overflow-hidden rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-2 sm:gap-3 flex items-center transition-transform hover:scale-[1.02] origin-bottom-left"
+                >
                   {/* Glossy top highlight overlay for TV commercial acrylic look */}
                   <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none rounded-t-xl" />
                   
                   {/* Left: "POR R$" */}
                   <div className="flex flex-col justify-start self-start pt-0.5 leading-none">
-                    <span className={`${
-                      isTvPlayerMode ? 'text-xs' : 'text-[9px] sm:text-[10px] md:text-xs'
-                    } font-black uppercase tracking-wider text-white/95`}>
+                    <span className="text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-wider opacity-95">
                       POR
                     </span>
-                    <span className={`${
-                      isTvPlayerMode ? 'text-xl font-black mt-0.5' : 'text-xs sm:text-sm md:text-base font-black mt-0.5'
-                    }`}>
+                    <span className="text-xs sm:text-sm md:text-base font-black mt-0.5">
                       R$
                     </span>
                   </div>
 
                   {/* Big Integer Number */}
-                  <div className={`${
-                    isTvPlayerMode ? 'text-[108px]' : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl'
-                  } font-black leading-none tracking-tighter drop-shadow-sm font-sans`}>
+                  <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black leading-none tracking-tighter drop-shadow-sm font-sans">
                     {intPrice}
                   </div>
 
                   {/* Right: ",99" and "2L" / unit */}
                   <div className="flex flex-col justify-start self-start pt-0.5 leading-none pl-0.5">
-                    <span className={`${
-                      isTvPlayerMode ? 'text-5xl' : 'text-xl sm:text-2xl md:text-3xl lg:text-4xl'
-                    } font-black leading-none`}>
+                    <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black leading-none">
                       ,{centsPrice}
                     </span>
-                    <span className={`${
-                      isTvPlayerMode ? 'text-base mt-1.5' : 'text-[10px] sm:text-xs md:text-sm font-black mt-1'
-                    } font-black uppercase tracking-wider text-white/95`}>
+                    <span className="text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider opacity-95 mt-1">
                       {product.unit || '2L'}
                     </span>
                   </div>
@@ -546,18 +511,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       className={`group relative ${
                         isVertical
                           ? 'w-full max-w-[340px] sm:max-w-[420px] aspect-[4/3] my-auto'
-                          : isTvPlayerMode
-                          ? 'w-full max-w-[840px] max-h-[640px] aspect-[4/3] shrink-0 my-auto'
                           : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-[48vw] shrink-0 my-auto'
                       } ${
                         isAmbient
                           ? 'bg-neutral-950 border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
                           : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
-                      } ${
-                        isTvPlayerMode
-                          ? 'rounded-3xl p-3'
-                          : 'rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-2'
-                      } flex flex-col items-center justify-between overflow-visible select-none outline-none focus:ring-2 focus:ring-amber-400`}
+                      } rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-2 flex flex-col items-center justify-between overflow-visible select-none outline-none focus:ring-2 focus:ring-amber-400`}
                     >
                       {/* Toast Notification */}
                       <AnimatePresence>
@@ -576,7 +535,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                       {/* MODE 1: AMBIENT FULL-BLEED (Fotografia Comercial Ambientada Limpa de Alta Definição) */}
                       {isAmbient ? (
-                        <div className={`absolute inset-1 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-[10px] sm:rounded-[14px] md:rounded-[18px]'} overflow-hidden pointer-events-none`}>
+                        <div className="absolute inset-1 rounded-[10px] sm:rounded-[14px] md:rounded-[18px] overflow-hidden pointer-events-none">
                           {/* Ambient Photography Background Layer - Full Bleed */}
                           <img
                             id="tv-anim-product-img"
@@ -594,7 +553,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         </div>
                       ) : (
                         /* MODE 2: CLASSIC WHITE STUDIO CUTOUT PACKSHOT */
-                        <div className={`absolute inset-1 ${isTvPlayerMode ? 'rounded-2xl md:rounded-3xl' : 'rounded-[10px] sm:rounded-[14px] md:rounded-[18px]'} overflow-hidden flex items-center justify-center p-2 sm:p-3 md:p-4 pointer-events-none`}>
+                        <div className="absolute inset-1 rounded-[10px] sm:rounded-[14px] md:rounded-[18px] overflow-hidden flex items-center justify-center p-2 sm:p-3 md:p-4 pointer-events-none">
                           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white/80 to-slate-100/60 pointer-events-none" />
 
                           <div className="absolute bottom-2 sm:bottom-3 w-3/5 h-3 sm:h-5 bg-black/25 rounded-full blur-md pointer-events-none" />
@@ -705,11 +664,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
 
         {/* BOTTOM FOOTER: Slim Broadcast Legal Bar - Fundo Preto Limpo sem Letreiro */}
-        <div className={`relative z-10 ${
-          isTvPlayerMode
-            ? 'px-12 py-2 text-xs'
-            : 'px-3 sm:px-6 py-1 sm:py-1.5 text-[9px] sm:text-[10px] md:text-[11px]'
-        } bg-[#050505] text-neutral-300 flex items-center justify-between border-t border-neutral-800/80 shrink-0 w-full`}>
+        <div className="relative z-10 px-3 sm:px-6 py-1 sm:py-1.5 text-[9px] sm:text-[10px] md:text-[11px] bg-[#050505] text-neutral-300 flex items-center justify-between border-t border-neutral-800/80 shrink-0 w-full">
           <span className="truncate max-w-[75%] font-medium">
             {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibida a venda de bebidas alcoólicas a menores de 18 anos!'}
           </span>
