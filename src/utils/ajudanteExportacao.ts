@@ -1,7 +1,9 @@
 // Utility to capture canvas / DOM elements and record dynamic animated MP4/WebM video with individual element motion
+// Arquitetura de 7 Pilares de Alta Fidelidade (Base44.com) com Captura Única em Retina e Recorte por Camadas
 import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
 import { toPng } from 'html-to-image';
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+import html2canvas from 'html2canvas';
 
 /**
  * Downloads the visual banner directly as a crisp high-resolution PNG using html-to-image
@@ -53,23 +55,20 @@ interface ElementBox {
 }
 
 interface ProductSlideLayers {
-  bgSnap: HTMLImageElement;
-  leftSnap: HTMLImageElement | null;
-  leftBox: ElementBox | null;
-  titleSnap?: HTMLImageElement | null;
-  titleBox?: ElementBox | null;
-  priceSnap?: HTMLImageElement | null;
-  priceBox?: ElementBox | null;
-  cardSnap: HTMLImageElement | null;
-  cardBox: ElementBox | null;
-  productImgSnap: HTMLImageElement | null;
-  productImgBox: ElementBox | null;
+  fullCanvas: HTMLCanvasElement;
+  bgCanvas: HTMLCanvasElement;
+  titleCrop: HTMLCanvasElement | null;
+  titleRect: ElementBox | null;
+  cardCrop: HTMLCanvasElement | null;
+  cardRect: ElementBox | null;
+  priceCrop: HTMLCanvasElement | null;
+  priceRect: ElementBox | null;
 }
 
 /**
  * Ensures any image URL is safely converted to a same-origin Data URL (base64)
  * using direct fetch with fallback to the high-speed weserv.nl CORS proxy.
- * Once an image is a Data URL, html-to-image and Canvas NEVER fail to render it.
+ * Once an image is a Data URL, html2canvas and Canvas NEVER fail to render it.
  */
 export async function getSafeImageDataUrl(url: string): Promise<string> {
   if (!url || typeof url !== 'string') return '';
@@ -106,567 +105,365 @@ export async function getSafeImageDataUrl(url: string): Promise<string> {
 }
 
 /**
- * Captures a crisp image of a DOM element using html-to-image with fast Retina super-sampling.
- * Optimized for speed (1.5x - 2.0x ratio) and memory efficiency, capturing in ~150-250ms per element.
+ * Pilar 1 do Base44: Captura única do banner completo em escala 2x (retina).
+ * Essa é a fonte de verdade absoluta — o que você vê no MP4 é exatamente o que o browser renderizou.
  */
-async function captureDomElementImage(
-  el: HTMLElement,
-  minTargetWidth: number = 1920,
-  excludeIds?: string[]
-): Promise<HTMLImageElement> {
+async function captureFullBannerCanvas(el: HTMLElement, targetW: number, targetH: number): Promise<HTMLCanvasElement> {
   const rect = el.getBoundingClientRect();
-  const calculatedRatio = rect.width > 0 ? minTargetWidth / rect.width : 1.8;
-  const pixelRatio = Math.min(2.0, Math.max(1.4, calculatedRatio));
+  const scale = Math.max(2, targetW / (rect.width || 1));
 
+  try {
+    const canvas = await html2canvas(el, {
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: null,
+      logging: false,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
+      ignoreElements: (node) => {
+        if (node instanceof HTMLElement) {
+          if (node.id === 'tv-card-toolbar' || node.classList.contains('group-hover:opacity-100')) {
+            return true;
+          }
+          if (node.id && node.id.startsWith('btn-')) {
+            return true;
+          }
+        }
+        return false;
+      },
+    });
+
+    if (canvas && canvas.width > 100 && canvas.height > 100) {
+      return canvas;
+    }
+  } catch (err) {
+    console.warn('html2canvas falhou na captura do banner, acionando fallback toPng:', err);
+  }
+
+  // Fallback de alta fidelidade com toPng (html-to-image)
   const dataUrl = await toPng(el, {
     quality: 1.0,
-    pixelRatio,
+    pixelRatio: scale,
     cacheBust: false,
     filter: (node) => {
       if (node instanceof HTMLElement) {
-        if (node.classList.contains('group-hover:opacity-100')) return false;
-        if (node.id && (node.id.startsWith('btn-') || node.id === 'tv-card-toolbar')) return false;
-        if (excludeIds && node.id && excludeIds.includes(node.id)) return false;
+        if (node.id === 'tv-card-toolbar' || node.classList.contains('group-hover:opacity-100')) {
+          return false;
+        }
+        if (node.id && node.id.startsWith('btn-')) {
+          return false;
+        }
       }
       return true;
     },
   });
 
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = (e) => reject(e);
-    img.src = dataUrl;
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.crossOrigin = 'anonymous';
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
   });
+
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = img.naturalWidth || targetW;
+  outCanvas.height = img.naturalHeight || targetH;
+  const outCtx = outCanvas.getContext('2d')!;
+  outCtx.drawImage(img, 0, 0, outCanvas.width, outCanvas.height);
+  return outCanvas;
 }
 
 /**
- * Maps element bounding client rect directly into target broadcast canvas coordinate system
+ * Pilar 2 do Base44: Recorte por camadas (layered crops) em resolução real.
+ * A regra de ouro: cada crop é sempre recortado e desenhado em sua largura/altura real, nunca esticado.
  */
-function getRelativeBox(el: HTMLElement, container: HTMLElement, canvasW: number, canvasH: number): ElementBox {
-  const eRect = el.getBoundingClientRect();
-  const cRect = container.getBoundingClientRect();
+function cropFromCanvas(
+  fullCanvas: HTMLCanvasElement,
+  bannerEl: HTMLElement,
+  element: HTMLElement,
+  targetCanvasW: number,
+  targetCanvasH: number
+): { crop: HTMLCanvasElement; rect: ElementBox } | null {
+  const bannerRect = bannerEl.getBoundingClientRect();
+  const elRect = element.getBoundingClientRect();
 
-  const scaleX = canvasW / (cRect.width || 1);
-  const scaleY = canvasH / (cRect.height || 1);
+  if (bannerRect.width <= 0 || bannerRect.height <= 0 || elRect.width <= 0 || elRect.height <= 0) {
+    return null;
+  }
 
-  return {
-    x: (eRect.left - cRect.left) * scaleX,
-    y: (eRect.top - cRect.top) * scaleY,
-    w: eRect.width * scaleX,
-    h: eRect.height * scaleY,
+  // Frações relativas (0.0 a 1.0) dentro do container do banner
+  const rx = (elRect.left - bannerRect.left) / bannerRect.width;
+  const ry = (elRect.top - bannerRect.top) / bannerRect.height;
+  const rw = elRect.width / bannerRect.width;
+  const rh = elRect.height / bannerRect.height;
+
+  // Coordenadas em pixels na fonte de verdade (fullCanvas)
+  const sx = Math.max(0, Math.round(rx * fullCanvas.width));
+  const sy = Math.max(0, Math.round(ry * fullCanvas.height));
+  const sw = Math.min(fullCanvas.width - sx, Math.round(rw * fullCanvas.width));
+  const sh = Math.min(fullCanvas.height - sy, Math.round(rh * fullCanvas.height));
+
+  if (sw <= 0 || sh <= 0) return null;
+
+  // Caixa de destino no canvas final de saída (ex: 1920x1080)
+  const destRect: ElementBox = {
+    x: rx * targetCanvasW,
+    y: ry * targetCanvasH,
+    w: rw * targetCanvasW,
+    h: rh * targetCanvasH,
   };
+
+  const crop = document.createElement('canvas');
+  crop.width = sw;
+  crop.height = sh;
+  const cropCtx = crop.getContext('2d');
+  if (!cropCtx) return null;
+  cropCtx.imageSmoothingEnabled = true;
+  cropCtx.imageSmoothingQuality = 'high';
+
+  cropCtx.drawImage(
+    fullCanvas,
+    sx,
+    sy,
+    sw,
+    sh,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  return { crop, rect: destRect };
 }
 
 /**
- * Captures the banner into clean broadcast layers with 100% fidelity to the base original:
- * 1. Left Column (Tag + Title + Regular Price + Orange Supermarket Price Box) - intact, with 100% transparent background
- * 2. Framed Product Card (Photo with pure color and fine white border)
- * 3. Product Photo Element (isolated and preloaded as safe CORS image for 100% color fidelity)
- * 4. Clean Background Artboard (Header, Client Logo, Wallpaper Texture, and Single Clean Legal Footer)
+ * Pilar 3 do Base44: Camada base limpa + crops dos elementos animados.
+ * Garante que nada corte, nada deforme e que a segunda tag/selo e preço estejam 100% íntegros.
  */
 async function captureProductSlideLayers(
   bannerEl: HTMLElement,
   canvasW: number,
   canvasH: number,
-  productImageUrl?: string
+  _productImageUrl?: string
 ): Promise<ProductSlideLayers> {
+  try {
+    if (typeof document !== 'undefined' && document.fonts) {
+      await document.fonts.ready;
+    }
+  } catch {}
+
   const centerContentEl = document.getElementById('tv-banner-center-content');
-  const leftColEl = document.getElementById('tv-anim-left-column');
   const titleBlockEl = document.getElementById('tv-anim-title-block');
   const priceBlockEl = document.getElementById('tv-anim-price-block');
   const cardEl = document.getElementById('tv-anim-product-card');
 
-  // Guarantee 100% opacity and no animation transform interference
-  if (cardEl) {
-    cardEl.style.opacity = '1';
-    cardEl.style.visibility = 'visible';
-    if (cardEl.parentElement) {
-      cardEl.parentElement.style.opacity = '1';
-      cardEl.parentElement.style.visibility = 'visible';
-      (cardEl.parentElement as HTMLElement).style.transform = 'none';
+  // Garante opacidade 1 e visibilidade normal em todos os elementos
+  [titleBlockEl, priceBlockEl, cardEl, centerContentEl].forEach((el) => {
+    if (el) {
+      el.style.opacity = '1';
+      el.style.visibility = 'visible';
     }
-  }
+  });
 
-  if (leftColEl) {
-    leftColEl.style.opacity = '1';
-    leftColEl.style.visibility = 'visible';
-  }
+  await new Promise((r) => setTimeout(r, 60));
 
-  let leftSnap: HTMLImageElement | null = null;
-  let leftBox: ElementBox | null = null;
-  if (leftColEl) {
-    try {
-      leftBox = getRelativeBox(leftColEl, bannerEl, canvasW, canvasH);
-      leftSnap = await captureDomElementImage(leftColEl, canvasW);
-    } catch (e) {
-      console.warn('Falha ao capturar left column isolada:', e);
-    }
-  }
+  // 1. Captura ÚNICA do banner completo (fonte da verdade)
+  const fullCanvas = await captureFullBannerCanvas(bannerEl, canvasW, canvasH);
 
-  let titleSnap: HTMLImageElement | null = null;
-  let titleBox: ElementBox | null = null;
-  if (titleBlockEl) {
-    try {
-      titleBox = getRelativeBox(titleBlockEl, bannerEl, canvasW, canvasH);
-      titleSnap = await captureDomElementImage(titleBlockEl, canvasW);
-    } catch (e) {
-      console.warn('Falha ao capturar title block isolado:', e);
-    }
-  }
-
-  let priceSnap: HTMLImageElement | null = null;
-  let priceBox: ElementBox | null = null;
-  if (priceBlockEl) {
-    try {
-      priceBox = getRelativeBox(priceBlockEl, bannerEl, canvasW, canvasH);
-      priceSnap = await captureDomElementImage(priceBlockEl, canvasW);
-
-      // Broadcast Safe-Area Clamping: ensure price card is NEVER cut off at the bottom by footer or canvas edge
-      const safeBottom = canvasH * 0.942;
-      if (priceBox && (priceBox.y + priceBox.h > safeBottom)) {
-        const overflow = (priceBox.y + priceBox.h) - safeBottom;
-        priceBox.y = Math.max(canvasH * 0.2, priceBox.y - overflow);
-      }
-    } catch (e) {
-      console.warn('Falha ao capturar price block isolado:', e);
-    }
-  }
-
-  let cardSnap: HTMLImageElement | null = null;
-  let cardBox: ElementBox | null = null;
-  let productImgSnap: HTMLImageElement | null = null;
-  let productImgBox: ElementBox | null = null;
-
-  if (cardEl) {
-    try {
-      cardBox = getRelativeBox(cardEl, bannerEl, canvasW, canvasH);
-
-      // Pre-load safe product photo clone as a direct layer
-      const targetUrl = productImageUrl || (cardEl.querySelector('img') as HTMLImageElement)?.src;
-      if (targetUrl) {
-        try {
-          const safeData = await getSafeImageDataUrl(targetUrl);
-          const imgEl = cardEl.querySelector('img') as HTMLImageElement;
-          if (imgEl && safeData.startsWith('data:')) {
-            imgEl.src = safeData;
-            productImgBox = getRelativeBox(imgEl, bannerEl, canvasW, canvasH);
-          }
-          productImgSnap = await new Promise<HTMLImageElement>((resolve) => {
-            const clone = new Image();
-            clone.crossOrigin = 'anonymous';
-            clone.onload = () => resolve(clone);
-            clone.onerror = () => resolve(clone);
-            clone.src = safeData;
-          });
-        } catch (e) {
-          console.warn('Erro ao clonar imagem do produto:', e);
-        }
-      }
-
-      cardSnap = await captureDomElementImage(cardEl, canvasW);
-    } catch (e) {
-      console.warn('Falha ao capturar card isolado:', e);
-    }
-  }
-
-  // Hide the center container completely from DOM & guarantee exclusion via filter
-  // so bgSnap captures clean background artboard with header & legal footer (zero cards, zero text)
+  // 2. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé limpos)
+  let bgCanvas: HTMLCanvasElement;
   if (centerContentEl) {
-    centerContentEl.style.setProperty('display', 'none', 'important');
     centerContentEl.style.setProperty('visibility', 'hidden', 'important');
-    centerContentEl.style.setProperty('opacity', '0', 'important');
+    try {
+      bgCanvas = await captureFullBannerCanvas(bannerEl, canvasW, canvasH);
+    } finally {
+      centerContentEl.style.removeProperty('visibility');
+    }
+  } else {
+    bgCanvas = fullCanvas;
   }
 
-  let bgSnap: HTMLImageElement;
-  try {
-    bgSnap = await captureDomElementImage(bannerEl, canvasW, ['tv-banner-center-content']);
-  } finally {
-    // Restore DOM immediately
-    if (centerContentEl) {
-      centerContentEl.style.removeProperty('display');
-      centerContentEl.style.removeProperty('visibility');
-      centerContentEl.style.removeProperty('opacity');
+  // 3. Recorte por camadas em resolução real direta (Pilar 2)
+  let titleCrop: HTMLCanvasElement | null = null;
+  let titleRect: ElementBox | null = null;
+  if (titleBlockEl) {
+    const res = cropFromCanvas(fullCanvas, bannerEl, titleBlockEl, canvasW, canvasH);
+    if (res) {
+      titleCrop = res.crop;
+      titleRect = res.rect;
+    }
+  }
+
+  let cardCrop: HTMLCanvasElement | null = null;
+  let cardRect: ElementBox | null = null;
+  if (cardEl) {
+    const res = cropFromCanvas(fullCanvas, bannerEl, cardEl, canvasW, canvasH);
+    if (res) {
+      cardCrop = res.crop;
+      cardRect = res.rect;
+    }
+  }
+
+  let priceCrop: HTMLCanvasElement | null = null;
+  let priceRect: ElementBox | null = null;
+  if (priceBlockEl) {
+    const res = cropFromCanvas(fullCanvas, bannerEl, priceBlockEl, canvasW, canvasH);
+    if (res) {
+      priceCrop = res.crop;
+      priceRect = res.rect;
     }
   }
 
   return {
-    bgSnap,
-    leftSnap,
-    leftBox,
-    titleSnap,
-    titleBox,
-    priceSnap,
-    priceBox,
-    cardSnap,
-    cardBox,
-    productImgSnap,
-    productImgBox,
+    fullCanvas,
+    bgCanvas,
+    titleCrop,
+    titleRect,
+    cardCrop,
+    cardRect,
+    priceCrop,
+    priceRect,
   };
-}
-
-/**
- * Damped harmonic spring physics for commercial broadcast motion
- */
-function springDamped(p: number, freq: number = 1.8, decay: number = 4.2): number {
-  if (p >= 1) return 1;
-  if (p <= 0) return 0;
-  return 1 - Math.exp(-decay * p) * Math.cos(freq * Math.PI * p);
 }
 
 /**
  * Standard cubic ease-out curve
  */
 function easeOutCubic(x: number): number {
-  return 1 - Math.pow(1 - x, 3);
+  return 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
 }
 
 /**
- * Helper to draw rounded rectangle in Canvas 2D
+ * Desenha um crop em seu retângulo real de destino com suporte a translate, scale e alpha
  */
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  if (typeof (ctx as any).roundRect === 'function') {
-    (ctx as any).roundRect(x, y, w, h, r);
-    return;
-  }
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
+function drawCrop(
+  ctx: CanvasRenderingContext2D,
+  cropCanvas: HTMLCanvasElement,
+  destRect: ElementBox,
+  params: { dx?: number; dy?: number; scale?: number; alpha?: number } = {}
+) {
+  const { dx = 0, dy = 0, scale = 1, alpha = 1 } = params;
+  if (alpha <= 0 || destRect.w <= 0 || destRect.h <= 0) return;
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  const cx = destRect.x + destRect.w / 2 + dx;
+  const cy = destRect.y + destRect.h / 2 + dy;
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.drawImage(cropCanvas, -destRect.w / 2, -destRect.h / 2, destRect.w, destRect.h);
+  ctx.restore();
 }
 
 /**
- * Draws a single frame of the layered motion graphics banner onto the 2D canvas.
- * - ZERO path accumulation (ctx.beginPath called on every shape)
- * - ZERO whitish haze/filter over the photo (100% natural, crisp, saturated colors)
- * - Exactly ONE clean white border (4.5px) completely surrounding the image perimeter
- * - Product Title & Tag with 100% transparent background (no muddy dark green shadows)
- * - Large prominent supermarket orange price box with commercial heartbeat pulse
- * - Clean spacious green background artboard with slim legal footer
+ * Pilar 6 do Base44: Timeline com easing, frame a frame.
+ * Renderiza cada quadro com fidelidade total à posição, fonte e proporção do mini player.
  */
 function renderCanvasFrame(
   ctx: CanvasRenderingContext2D,
   slides: ProductSlideLayers[],
   elapsedMs: number,
-  _totalDurationSec: number,
+  totalDurationSec: number,
   perProductSec: number,
   canvasWidth: number,
   canvasHeight: number
 ) {
-  // 0. RESET ALL CANVAS CONTEXT STATE FOR A 100% CLEAN FRAME
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = 1.0;
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.beginPath();
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  if (!slides || slides.length === 0) return;
 
-  // Determine current slide
+  const totalDurationMs = totalDurationSec * 1000;
+  const slideDurationMs = perProductSec * 1000;
+  const clampedElapsed = Math.min(elapsedMs, totalDurationMs);
+
   const currentIdx = Math.min(
     slides.length - 1,
-    Math.floor(elapsedMs / (perProductSec * 1000))
+    Math.floor(clampedElapsed / slideDurationMs)
   );
   const currentSlide = slides[currentIdx];
-
-  // Slide timing
-  const timeInSlideMs = elapsedMs % (perProductSec * 1000);
+  const timeInSlideMs = clampedElapsed - currentIdx * slideDurationMs;
   const slideT = timeInSlideMs / 1000;
-  const transitionDurationMs = 600;
-  const transitionStartMs = perProductSec * 1000 - transitionDurationMs;
-  const isTransitioning = slides.length > 1 && timeInSlideMs >= transitionStartMs;
-  const nextIdx = (currentIdx + 1) % slides.length;
-  const nextSlide = slides[nextIdx];
 
-  // Global slide fade (if transitioning between products)
-  let slideExitAlpha = 1.0;
-  if (isTransitioning) {
-    const fadeP = (timeInSlideMs - transitionStartMs) / transitionDurationMs;
-    slideExitAlpha = 1.0 - fadeP;
+  // Transição entre produtos (últimos 450ms do slide)
+  const transitionDurationMs = 450;
+  const transitionStartMs = slideDurationMs - transitionDurationMs;
+  const isTransitioning = slides.length > 1 && timeInSlideMs >= transitionStartMs && currentIdx < slides.length - 1;
+  const nextSlide = isTransitioning ? slides[currentIdx + 1] : null;
+  const fadeP = isTransitioning ? (timeInSlideMs - transitionStartMs) / transitionDurationMs : 0;
+  const slideExitAlpha = 1.0 - fadeP;
+
+  // 0. Limpa o canvas de saída
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  // 1. Camada Base (papel de parede, cabeçalho e rodapé oficial íntegros)
+  ctx.drawImage(currentSlide.bgCanvas, 0, 0, canvasWidth, canvasHeight);
+
+  // 2. Timeline de animação (0.0s - 0.40s: entrada suave)
+  let titleAlpha = slideExitAlpha;
+  let titleDx = 0;
+  let cardAlpha = slideExitAlpha;
+  let cardScale = 1.0;
+  let priceAlpha = slideExitAlpha;
+  let priceScale = 1.0;
+
+  if (slideT < 0.40) {
+    const p = Math.min(1, slideT / 0.40);
+    const ease = easeOutCubic(p);
+    titleAlpha = p * slideExitAlpha;
+    titleDx = -40 * (1 - ease);
+    cardAlpha = p * slideExitAlpha;
+    cardScale = 0.94 + 0.06 * ease;
+    priceAlpha = p * slideExitAlpha;
+    priceScale = 0.94 + 0.06 * ease;
   }
 
-  // 1. BASE BACKGROUND & BROADCAST STAGE
-  // Fundo verde limpo e espaçoso com cabeçalho no topo e barra legal preta embaixo
-  ctx.fillStyle = '#06331e';
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-  ctx.save();
-  ctx.globalAlpha = 1.0;
-  ctx.drawImage(currentSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
-  ctx.restore();
-
-  // 2. ELEMENT: OFFER COLUMN (Title + Tag, Regular Price & Supermarket Orange Price Box)
-  // Perfectly proportioned and animated individually with commercial heartbeat pulse
-  if (currentSlide.titleSnap && currentSlide.titleBox && currentSlide.priceSnap && currentSlide.priceBox) {
-    // 2A. Product Title & Tag Entrance (Smooth slide & fade from left in first 0.35s)
-    let titleAlpha = slideExitAlpha;
-    let titleOffsetX = 0;
-    if (slideT < 0.35) {
-      const p = Math.min(1, slideT / 0.35);
-      const ease = easeOutCubic(p);
-      titleOffsetX = -35 * (1 - ease);
-    }
-
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, titleAlpha));
-    ctx.drawImage(
-      currentSlide.titleSnap,
-      currentSlide.titleBox.x + titleOffsetX,
-      currentSlide.titleBox.y,
-      currentSlide.titleBox.w,
-      currentSlide.titleBox.h
-    );
-    ctx.restore();
-
-    // 2B. Price Block Entrance & Heartbeat Pulse (Full visibility from frame 0 for thumbnails)
-    let priceAlpha = slideExitAlpha;
-    let priceScale = 1.0;
-    if (slideT < 0.35) {
-      const p = Math.min(1, slideT / 0.35);
-      const ease = easeOutCubic(p);
-      priceScale = 0.92 + 0.08 * ease;
-    }
-
-    // Commercial price pulse every 2.0s
-    let pulseScale = 1.0;
-    const beatPhase = (slideT + 0.3) % 2.0;
-    if (beatPhase < 0.28) {
-      pulseScale = 1.0 + Math.sin((beatPhase / 0.28) * Math.PI) * 0.035;
-    }
-
-    const finalPriceScale = priceScale * pulseScale;
-    let drawW = currentSlide.priceBox.w;
-    let drawH = currentSlide.priceBox.h;
-    if (currentSlide.priceSnap.naturalWidth > 0 && currentSlide.priceSnap.naturalHeight > 0) {
-      drawH = drawW * (currentSlide.priceSnap.naturalHeight / currentSlide.priceSnap.naturalWidth);
-    }
-
-    const bottomY = currentSlide.priceBox.y + currentSlide.priceBox.h;
-    const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
-    const pCy = bottomY - drawH / 2;
-
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, priceAlpha));
-    ctx.translate(pCx, pCy);
-    ctx.scale(finalPriceScale, finalPriceScale);
-    ctx.drawImage(
-      currentSlide.priceSnap,
-      -drawW / 2,
-      -drawH / 2,
-      drawW,
-      drawH
-    );
-    ctx.restore();
-  } else if (currentSlide.leftSnap && currentSlide.leftBox) {
-    // Fallback: unified left column
-    let pulseScale = 1.0;
-    const beatPhase = (slideT + 0.3) % 2.0;
-    if (beatPhase < 0.28) {
-      pulseScale = 1.0 + Math.sin((beatPhase / 0.28) * Math.PI) * 0.035;
-    }
-
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, slideExitAlpha));
-    const lCx = currentSlide.leftBox.x + currentSlide.leftBox.w / 2;
-    const lCy = currentSlide.leftBox.y + currentSlide.leftBox.h / 2;
-    ctx.translate(lCx, lCy);
-    ctx.scale(pulseScale, pulseScale);
-    ctx.drawImage(
-      currentSlide.leftSnap,
-      -currentSlide.leftBox.w / 2,
-      -currentSlide.leftBox.h / 2,
-      currentSlide.leftBox.w,
-      currentSlide.leftBox.h
-    );
-    ctx.restore();
+  // Pulso comercial de heartbeat no bloco de preço a cada 2.0s
+  let pulseScale = 1.0;
+  const beatPhase = (slideT + 0.2) % 2.0;
+  if (beatPhase < 0.26) {
+    pulseScale = 1.0 + Math.sin((beatPhase / 0.26) * Math.PI) * 0.035;
   }
 
-  // 3. ELEMENT: PRODUCT SHOWCASE CARD (100% Crisp Color Photo + Exactly ONE Fine White Border)
-  // Perfectly seated in broadcast position with subtle breathing levitation
-  if (currentSlide.cardBox) {
-    const cardW = currentSlide.cardBox.w;
-    const cardH = currentSlide.cardBox.h;
-    const cardX = -cardW / 2;
-    const cardY = -cardH / 2;
-    const borderRadius = 22;
+  // Flutuação sutil de levitação no card de produto
+  const cFloatY = Math.sin(slideT * 2.0) * 3;
 
-    // Card entrance: smooth scale & fade-in (0.05s - 0.50s)
-    let cardEntranceAlpha = slideExitAlpha;
-    let cardEntranceScale = 1.0;
-    if (slideT < 0.05) {
-      cardEntranceAlpha = 0;
-      cardEntranceScale = 0.92;
-    } else if (slideT < 0.50) {
-      const p = (slideT - 0.05) / 0.45;
-      const ease = easeOutCubic(p);
-      cardEntranceAlpha = Math.min(1, p * 2.8) * slideExitAlpha;
-      cardEntranceScale = 0.92 + 0.08 * ease;
-    }
-
-    const cFloatY = Math.sin(slideT * 2.0) * 4;
-    const cScale = cardEntranceScale * (1.0 + Math.sin(slideT * 1.4) * 0.012);
-
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, cardEntranceAlpha));
-    const cCx = currentSlide.cardBox.x + cardW / 2;
-    const cCy = currentSlide.cardBox.y + cFloatY + cardH / 2;
-    ctx.translate(cCx, cCy);
-    ctx.scale(cScale, cScale);
-
-    // 1. Realistic commercial drop shadow on the green wallpaper
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 26;
-    ctx.shadowOffsetY = 12;
-    ctx.fillStyle = '#080808';
-    roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
-    ctx.fill();
-    ctx.restore();
-
-    // 2. 100% PURE, VIVID, NATURAL COLOR PHOTO (Zero Whitish Haze / Filter)
-    ctx.save();
-    roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
-    ctx.clip();
-
-    if (
-      currentSlide.productImgSnap &&
-      currentSlide.productImgSnap.complete &&
-      currentSlide.productImgSnap.naturalWidth > 0
-    ) {
-      const imgW = currentSlide.productImgSnap.naturalWidth;
-      const imgH = currentSlide.productImgSnap.naturalHeight;
-      const ratio = Math.max(cardW / imgW, cardH / imgH);
-      const drawW = imgW * ratio;
-      const drawH = imgH * ratio;
-      const drawX = cardX + (cardW - drawW) / 2;
-      const drawY = cardY + (cardH - drawH) / 2;
-      ctx.drawImage(currentSlide.productImgSnap, drawX, drawY, drawW, drawH);
-      ctx.restore();
-
-      // 3. FINE WHITE BORDER (Single clean 4.5px white border around perimeter)
-      ctx.save();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4.5;
-      roundRect(ctx, cardX, cardY, cardW, cardH, borderRadius);
-      ctx.stroke();
-      ctx.restore();
-    } else if (currentSlide.cardSnap) {
-      // cardSnap already contains its own CSS border from DOM
-      ctx.drawImage(currentSlide.cardSnap, cardX, cardY, cardW, cardH);
-      ctx.restore();
-    } else {
-      ctx.restore();
-    }
-
-    ctx.restore();
+  // 3. Desenha Crop do Título (com 1º selo na mesma linha, exatamente como no mini player)
+  if (currentSlide.titleCrop && currentSlide.titleRect) {
+    drawCrop(ctx, currentSlide.titleCrop, currentSlide.titleRect, {
+      dx: titleDx,
+      alpha: titleAlpha,
+    });
   }
 
-  // 4. TRANSITION TO NEXT SLIDE (Broadcast Push / Soft Flash)
+  // 4. Desenha Crop do Card de Produto
+  if (currentSlide.cardCrop && currentSlide.cardRect) {
+    drawCrop(ctx, currentSlide.cardCrop, currentSlide.cardRect, {
+      dy: cFloatY,
+      scale: cardScale,
+      alpha: cardAlpha,
+    });
+  }
+
+  // 5. Desenha Crop do Bloco de Preço (Preço "De:", Card de Preço "POR R$" e 2º Selo Promocional 100% visíveis!)
+  if (currentSlide.priceCrop && currentSlide.priceRect) {
+    drawCrop(ctx, currentSlide.priceCrop, currentSlide.priceRect, {
+      scale: priceScale * pulseScale,
+      alpha: priceAlpha,
+    });
+  }
+
+  // 6. Transição suave para o próximo slide
   if (isTransitioning && nextSlide) {
-    const fadeP = (timeInSlideMs - transitionStartMs) / transitionDurationMs;
-    const easeP = easeOutCubic(fadeP);
-
     ctx.save();
-    ctx.globalAlpha = fadeP;
-    ctx.drawImage(nextSlide.bgSnap, 0, 0, canvasWidth, canvasHeight);
-
-    if (nextSlide.titleSnap && nextSlide.titleBox && nextSlide.priceSnap && nextSlide.priceBox) {
-      const nextTitleOffsetX = (1 - easeP) * -80;
-      ctx.drawImage(
-        nextSlide.titleSnap,
-        nextSlide.titleBox.x + nextTitleOffsetX,
-        nextSlide.titleBox.y,
-        nextSlide.titleBox.w,
-        nextSlide.titleBox.h
-      );
-      let nextPriceDrawW = nextSlide.priceBox.w;
-      let nextPriceDrawH = nextSlide.priceBox.h;
-      if (nextSlide.priceSnap.naturalWidth > 0 && nextSlide.priceSnap.naturalHeight > 0) {
-        nextPriceDrawH = nextPriceDrawW * (nextSlide.priceSnap.naturalHeight / nextSlide.priceSnap.naturalWidth);
-      }
-      const nextBottomY = nextSlide.priceBox.y + nextSlide.priceBox.h;
-      ctx.drawImage(
-        nextSlide.priceSnap,
-        nextSlide.priceBox.x,
-        nextBottomY - nextPriceDrawH,
-        nextPriceDrawW,
-        nextPriceDrawH
-      );
-    } else if (nextSlide.leftSnap && nextSlide.leftBox) {
-      const nextLeftOffsetX = (1 - easeP) * -160;
-      ctx.drawImage(
-        nextSlide.leftSnap,
-        nextSlide.leftBox.x + nextLeftOffsetX,
-        nextSlide.leftBox.y,
-        nextSlide.leftBox.w,
-        nextSlide.leftBox.h
-      );
-    }
-    if (nextSlide.cardBox) {
-      const nextCardOffsetX = (1 - easeP) * 200;
-      const nCardW = nextSlide.cardBox.w;
-      const nCardH = nextSlide.cardBox.h;
-      const nCardX = nextSlide.cardBox.x + nextCardOffsetX;
-      const nCardY = nextSlide.cardBox.y;
-      const nRadius = 20;
-
-      // Next slide drop shadow
-      ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-      ctx.shadowBlur = 24;
-      ctx.shadowOffsetY = 10;
-      ctx.fillStyle = '#080808';
-      roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
-      ctx.fill();
-      ctx.restore();
-
-      // Next slide photo
-      ctx.save();
-      roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
-      ctx.clip();
-      if (nextSlide.productImgSnap && nextSlide.productImgSnap.complete && nextSlide.productImgSnap.naturalWidth > 0) {
-        const imgW = nextSlide.productImgSnap.naturalWidth;
-        const imgH = nextSlide.productImgSnap.naturalHeight;
-        const ratio = Math.max(nCardW / imgW, nCardH / imgH);
-        const drawW = imgW * ratio;
-        const drawH = imgH * ratio;
-        ctx.drawImage(nextSlide.productImgSnap, nCardX + (nCardW - drawW) / 2, nCardY + (nCardH - drawH) / 2, drawW, drawH);
-        ctx.restore();
-
-        // Next slide fine white border
-        ctx.save();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4.5;
-        roundRect(ctx, nCardX, nCardY, nCardW, nCardH, nRadius);
-        ctx.stroke();
-        ctx.restore();
-      } else if (nextSlide.cardSnap) {
-        ctx.drawImage(nextSlide.cardSnap, nCardX, nCardY, nCardW, nCardH);
-        ctx.restore();
-      } else {
-        ctx.restore();
-      }
-    }
+    ctx.globalAlpha = easeOutCubic(fadeP);
+    ctx.drawImage(nextSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
     ctx.restore();
-
-    // Broadcast transition soft light wash
-    const flash = Math.sin(fadeP * Math.PI);
-    if (flash > 0.05) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.22})`;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-      ctx.restore();
-    }
   }
 }
 
 /**
- * WebCodecs + MP4 Muxer High-Speed Video Engine.
- * Encodes directly from Canvas frames to standard H.264 MP4 in 1-3 seconds.
- * Produces 100% valid, non-zero, universally playable MP4 broadcast video files.
+ * Pilar 4 e 5: WebCodecs + MP4 Muxer High-Speed Video Engine a 12 Mbps (qualidade máxima sem perda).
+ * Encodes directly from Canvas frames to standard H.264 MP4.
  */
 async function recordWithWebCodecs(
   slides: ProductSlideLayers[],
@@ -712,7 +509,7 @@ async function recordWithWebCodecs(
         codec: c,
         width: canvasWidth,
         height: canvasHeight,
-        bitrate: 7_000_000,
+        bitrate: 12_000_000,
         framerate: FPS,
       });
       if (check.supported) {
@@ -735,11 +532,11 @@ async function recordWithWebCodecs(
     codec: chosenCodec,
     width: canvasWidth,
     height: canvasHeight,
-    bitrate: 7_000_000, // 7 Mbps broadcast Full HD
+    bitrate: 12_000_000, // 12 Mbps broadcast qualidade de estúdio (Pilar 5)
     framerate: FPS,
   });
 
-  // Encode frames rapidly in a non-blocking loop
+  // Renderiza e codifica quadro a quadro com exatidão matemática
   for (let f = 0; f < totalFrames; f++) {
     if (encoderError) {
       throw encoderError;
@@ -758,7 +555,7 @@ async function recordWithWebCodecs(
     encoder.encode(videoFrame, { keyFrame: isKey });
     videoFrame.close();
 
-    // Yield to UI thread every 4 frames so progress updates smoothly
+    // Atualiza progresso sem travar a interface
     if (f % 4 === 0 || f === totalFrames - 1) {
       if (onProgress) {
         onProgress(Math.round(25 + (f / totalFrames) * 70));
@@ -797,8 +594,8 @@ async function recordWithWebCodecs(
 }
 
 /**
- * Universal MediaRecorder Fallback Video Engine.
- * Used when WebCodecs is unavailable.
+ * Pilar 5 e 7: Universal MediaRecorder com Anti-Throttling a 12 Mbps (Base44).
+ * Dual redraw (rAF + setInterval fallback) ancorado no tempo real (performance.now()).
  */
 async function recordWithMediaRecorder(
   slides: ProductSlideLayers[],
@@ -821,7 +618,7 @@ async function recordWithMediaRecorder(
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
-      // Draw initial frame
+      // Desenha frame inicial
       renderCanvasFrame(ctx, slides, 0, totalDurationSec, perProductSec, canvasWidth, canvasHeight);
 
       const stream = canvas.captureStream(30);
@@ -843,7 +640,7 @@ async function recordWithMediaRecorder(
 
       const recorder = new MediaRecorder(stream, {
         mimeType: chosenMime,
-        videoBitsPerSecond: 8000000,
+        videoBitsPerSecond: 12000000, // 12 Mbps — qualidade sem perda (Pilar 5)
       });
 
       const chunks: Blob[] = [];
@@ -858,56 +655,70 @@ async function recordWithMediaRecorder(
         reject(new Error('Erro durante a gravação de vídeo no navegador.'));
       };
 
-      const FPS = 30;
-      const frameDurationMs = 1000 / FPS;
-      const totalFrames = Math.round(totalDurationSec * FPS);
-      let currentFrame = 0;
-      let isFinished = false;
+      const startTime = performance.now();
+      const TOTAL = totalDurationSec;
+      let stopped = false;
 
-      const recordTimer = setInterval(() => {
-        if (isFinished) return;
-
-        currentFrame++;
-        const elapsedMs = currentFrame * frameDurationMs;
-        const progressRatio = Math.min(1, currentFrame / totalFrames);
-
-        if (onProgress) {
-          onProgress(Math.round(25 + progressRatio * 71));
-        }
-
+      const drawFrame = (currentT: number) => {
+        const elapsedMs = currentT * 1000;
         renderCanvasFrame(ctx, slides, elapsedMs, totalDurationSec, perProductSec, canvasWidth, canvasHeight);
-
-        // Force frame request if supported by track
         try {
           const track = stream.getVideoTracks()[0] as any;
           if (track && typeof track.requestFrame === 'function') {
             track.requestFrame();
           }
         } catch {}
+      };
 
-        if (currentFrame >= totalFrames) {
-          isFinished = true;
-          clearInterval(recordTimer);
+      // DUAS fontes de redraw (Pilar 7 do Base44 — anti-throttling)
+      const animate = () => {
+        if (stopped) return;
+        const elapsed = (performance.now() - startTime) / 1000;
+        const t = Math.min(elapsed, TOTAL);
+        drawFrame(t);
+        if (onProgress) {
+          onProgress(Math.round(25 + (t / TOTAL) * 70));
+        }
+        if (!stopped) {
+          requestAnimationFrame(animate);
+        }
+      };
+      requestAnimationFrame(animate);
 
-          if (onProgress) onProgress(98);
+      // Fallback setInterval para garantir frames mesmo se rAF pausar em segundo plano
+      const intervalFallback = setInterval(() => {
+        if (stopped) {
+          clearInterval(intervalFallback);
+          return;
+        }
+        const elapsed = (performance.now() - startTime) / 1000;
+        const t = Math.min(elapsed, TOTAL);
+        drawFrame(t);
+      }, 1000 / 30);
 
+      // Stop ancorado no relógio de parede real (Pilar 7)
+      setTimeout(() => {
+        stopped = true;
+        clearInterval(intervalFallback);
+        drawFrame(TOTAL);
+        if (onProgress) onProgress(98);
+
+        try {
+          if (recorder.state === 'recording') {
+            recorder.requestData();
+          }
+        } catch {}
+
+        setTimeout(() => {
           try {
             if (recorder.state === 'recording') {
-              recorder.requestData();
+              recorder.stop();
             }
-          } catch {}
-
-          setTimeout(() => {
-            try {
-              if (recorder.state === 'recording') {
-                recorder.stop();
-              }
-            } catch (e) {
-              reject(e);
-            }
-          }, 150);
-        }
-      }, frameDurationMs);
+          } catch (e) {
+            reject(e);
+          }
+        }, 150);
+      }, TOTAL * 1000 + 300);
 
       recorder.onstop = () => {
         if (chunks.length === 0) {
@@ -954,8 +765,8 @@ async function recordWithMediaRecorder(
 /**
  * Records layered slides to MP4 video.
  * Automatically chooses the best engine:
- * 1. WebCodecs + mp4-muxer (primary: instant hardware encoding, 100% MP4, no 0-byte bugs)
- * 2. MediaRecorder (fallback: safe codecs & validation)
+ * 1. WebCodecs + mp4-muxer (primary: instant hardware encoding, 100% MP4, 12 Mbps)
+ * 2. MediaRecorder (fallback: safe codecs & anti-throttling timing)
  */
 async function recordLayeredSlidesToVideo(
   slides: ProductSlideLayers[],
@@ -1011,10 +822,7 @@ async function recordLayeredSlidesToVideo(
 /**
  * Generates an animated MP4 video specifically for an INDIVIDUAL PRODUCT (Single Banner).
  * Duration: 5.0 seconds.
- * Fast, energetic commercial motion with staggered animations:
- * - Product Title & Promotional Tag slide in together from left with 100% transparent background
- * - Supermarket Price Box slams in and pulses with commercial heartbeat
- * - Product Image Card swoops in with 3D momentum, 100% pure crisp color and fine white border
+ * 100% fiel ao mini player com a arquitetura de 7 pilares do Base44.
  */
 export async function gerarVideoAnimadoProdutoIndividual(
   campaign: BannerCampaign,
@@ -1076,7 +884,7 @@ export async function gerarVideoAnimadoProdutoIndividual(
 
   if (onProgress) onProgress(15);
 
-  // 2. Capture individual element layers with guaranteed photo
+  // 2. Capture individual element layers via single retina snapshot & layered crops
   const slideLayers = await captureProductSlideLayers(bannerEl, canvasWidth, canvasHeight, prod?.imageUrl);
 
   if (onProgress) onProgress(25);
