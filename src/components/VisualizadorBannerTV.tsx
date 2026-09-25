@@ -19,6 +19,7 @@ import {
 import { BannerCampaign, ProductItem, ThemeColors, BannerCustomStyles } from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
 import { handleImageError } from '../utils/imageFallback';
+import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
 
 interface VisualizadorBannerTVProps {
   campaign: BannerCampaign;
@@ -457,28 +458,31 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
                   const handleCopyGeminiPrompt = async () => {
                     try {
-                      const res = await fetch('/api/gemini/build-commercial-prompt', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          title: product.title,
-                          brand: product.brand,
-                          category: product.category,
-                          unit: product.unit,
-                          businessSegment: campaign.segment,
-                        }),
+                      // Geração instantânea e confiável do prompt publicitário no cliente (sem depender de servidor)
+                      const prompts = buildCommercialProductPrompts({
+                        title: product.title,
+                        brand: product.brand,
+                        category: product.category,
+                        unit: product.unit,
+                        businessSegment: campaign.segment,
                       });
-                      const data = await res.json();
-                      if (data && data.success && data.geminiWebPrompt) {
-                        await navigator.clipboard.writeText(data.geminiWebPrompt);
+
+                      const promptText = prompts.geminiWebPrompt;
+                      const copied = await copyTextToClipboard(promptText);
+
+                      if (copied) {
                         setIsCopied(true);
                         setToastMessage('📋 Prompt copiado! Cole no seu Gemini Pro (web) para criar a arte.');
                         setTimeout(() => {
                           setIsCopied(false);
                           setToastMessage(null);
                         }, 4000);
+                      } else {
+                        setToastMessage('⚠️ Erro ao copiar prompt.');
+                        setTimeout(() => setToastMessage(null), 3000);
                       }
                     } catch (err) {
+                      console.error('Erro ao gerar/copiar prompt:', err);
                       setToastMessage('⚠️ Erro ao copiar prompt.');
                       setTimeout(() => setToastMessage(null), 3000);
                     }

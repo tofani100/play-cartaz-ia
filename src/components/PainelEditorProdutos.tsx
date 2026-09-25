@@ -28,6 +28,7 @@ import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual } from '../utils/ajudanteExportacao';
+import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
 
 interface PainelEditorProdutosProps {
   products: ProductItem[];
@@ -203,19 +204,15 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   const handleCopyGeminiPrompt = async () => {
     if (!activeProduct) return;
     try {
-      const res = await fetch('/api/gemini/build-commercial-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: activeProduct.title,
-          brand: activeProduct.brand,
-          category: activeProduct.category,
-          unit: activeProduct.unit,
-        }),
+      const prompts = buildCommercialProductPrompts({
+        title: activeProduct.title,
+        brand: activeProduct.brand,
+        category: activeProduct.category,
+        unit: activeProduct.unit,
+        businessSegment: campaign?.segment,
       });
-      const data = await res.json();
-      if (data && data.success && data.geminiWebPrompt) {
-        await navigator.clipboard.writeText(data.geminiWebPrompt);
+      const ok = await copyTextToClipboard(prompts.geminiWebPrompt);
+      if (ok) {
         setIsPromptCopied(true);
         setTimeout(() => setIsPromptCopied(false), 3000);
       }

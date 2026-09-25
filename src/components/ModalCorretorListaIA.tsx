@@ -17,6 +17,7 @@ import {
 import { ProductItem } from '../tiposGeradorBanner';
 import { buscarMelhorImagemProduto } from '../data/bancoProdutosComerciais';
 import { parseLocalRetailList } from '../utils/retailNlpParser';
+import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
 
 interface ModalCorretorListaIAProps {
   isOpen: boolean;
@@ -205,20 +206,15 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
 
   const handleCopyItemPrompt = async (item: any, idx: number) => {
     try {
-      const res = await fetch('/api/gemini/build-commercial-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: item.title,
-          brand: item.brand,
-          category: item.category,
-          unit: item.unit,
-          businessSegment: segment,
-        }),
+      const prompts = buildCommercialProductPrompts({
+        title: item.title,
+        brand: item.brand,
+        category: item.category,
+        unit: item.unit,
+        businessSegment: segment,
       });
-      const data = await res.json();
-      if (data && data.success && data.geminiWebPrompt) {
-        await navigator.clipboard.writeText(data.geminiWebPrompt);
+      const ok = await copyTextToClipboard(prompts.geminiWebPrompt);
+      if (ok) {
         setCopiedIdx(idx);
         setTimeout(() => setCopiedIdx(null), 3000);
       }

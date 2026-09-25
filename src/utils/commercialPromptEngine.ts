@@ -207,3 +207,42 @@ export function buildCommercialProductPrompts(item: ProductPromptContext): Gener
     ambienceArchetype: archetype
   };
 }
+
+/**
+ * Utilitário universal para cópia para área de transferência com fallback automático
+ * Funciona em HTTP, HTTPS, iframes e contextos restritos.
+ */
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+
+  // Tentativa 1: API moderna do navegador
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) {
+    console.warn('[Clipboard] navigator.clipboard falhou, tentando fallback textarea:', e);
+  }
+
+  // Tentativa 2: Fallback universal via textarea + execCommand
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '-9999px';
+    textArea.style.opacity = '0';
+    textArea.setAttribute('readonly', '');
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error('[Clipboard] Falha geral ao copiar texto:', err);
+    return false;
+  }
+}
+
