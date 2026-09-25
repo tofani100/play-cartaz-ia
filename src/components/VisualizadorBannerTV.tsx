@@ -353,34 +353,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 )}
                 <span className="align-middle bg-transparent">{product.title}</span>
               </h2>
-
-              {/* 2º Selo Promocional: Quando flegado, posicionado mais abaixo do nome comercial do produto e centralizado */}
-              {product.secondBadgeEnabled && product.secondBadge && (
-                <div id="tv-anim-second-badge" className="w-full flex items-center justify-center mt-2.5 sm:mt-3.5 md:mt-4 shrink-0">
-                  <div 
-                    style={{ 
-                      backgroundColor: effectiveStyles.secondBadgeBgColor || effectiveStyles.badgeBgColor || '#1a472a',
-                      color: effectiveStyles.secondBadgeTextColor || effectiveStyles.badgeTextColor || '#d4f7dc',
-                      borderColor: effectiveStyles.secondBadgeBgColor 
-                        ? `${effectiveStyles.secondBadgeBgColor}aa` 
-                        : (effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}aa` : '#3b7a50'),
-                      boxSizing: 'border-box',
-                    }}
-                    className="w-full max-w-[96%] py-1 sm:py-1.5 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none overflow-hidden"
-                  >
-                    <span 
-                      style={{ lineHeight: 1.2 }}
-                      className="text-[10px] sm:text-xs md:text-sm lg:text-[14px] font-black uppercase tracking-wider truncate max-w-full block"
-                    >
-                      {product.secondBadge}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Bottom Block: Regular Price & Supermarket Price Box - Posição 100% fixa e inalterada */}
-            <div id="tv-anim-price-block" className="flex flex-col items-start w-fit pb-1.5 sm:pb-2.5 shrink-0 bg-transparent mt-auto">
+            {/* Bottom Block: Regular Price & Supermarket Price Box */}
+            <div 
+              id="tv-anim-price-block" 
+              className={`flex flex-col ${isVertical ? 'items-center' : 'items-start mb-[calc(4%+2px)] sm:mb-[calc(4%+6px)]'} w-fit shrink-0 bg-transparent mt-auto`}
+            >
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div 
@@ -432,6 +411,30 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* 2º Selo Promocional: Logo abaixo do card do preço, alinhado com a base da imagem do produto */}
+              {product.secondBadgeEnabled && product.secondBadge && (
+                <div id="tv-anim-second-badge" className="w-full flex items-center justify-center mt-1.5 sm:mt-2 shrink-0">
+                  <div 
+                    style={{ 
+                      backgroundColor: effectiveStyles.secondBadgeBgColor || effectiveStyles.badgeBgColor || '#1a472a',
+                      color: effectiveStyles.secondBadgeTextColor || effectiveStyles.badgeTextColor || '#d4f7dc',
+                      borderColor: effectiveStyles.secondBadgeBgColor 
+                        ? `${effectiveStyles.secondBadgeBgColor}aa` 
+                        : (effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}aa` : '#3b7a50'),
+                      boxSizing: 'border-box',
+                    }}
+                    className="w-full py-1 sm:py-1.5 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none overflow-hidden"
+                  >
+                    <span 
+                      style={{ lineHeight: 1.2 }}
+                      className="text-[10px] sm:text-xs md:text-sm lg:text-[14px] font-black uppercase tracking-wider truncate max-w-full block"
+                    >
+                      {product.secondBadge}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

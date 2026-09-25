@@ -219,9 +219,6 @@ async function captureProductSlideLayers(
   let priceSnap: HTMLImageElement | null = null;
   let priceBox: ElementBox | null = null;
   if (priceBlockEl) {
-    const prevMarginTop = priceBlockEl.style.marginTop;
-    priceBlockEl.style.marginTop = '0px';
-    priceBlockEl.classList.remove('mt-auto');
     try {
       priceBox = getRelativeBox(priceBlockEl, bannerEl, canvasW, canvasH);
       priceSnap = await captureDomElementImage(priceBlockEl, canvasW);
@@ -234,8 +231,6 @@ async function captureProductSlideLayers(
       }
     } catch (e) {
       console.warn('Falha ao capturar price block isolado:', e);
-    } finally {
-      priceBlockEl.style.marginTop = prevMarginTop;
     }
   }
 
@@ -448,8 +443,9 @@ function renderCanvasFrame(
       drawH = drawW * (currentSlide.priceSnap.naturalHeight / currentSlide.priceSnap.naturalWidth);
     }
 
+    const bottomY = currentSlide.priceBox.y + currentSlide.priceBox.h;
     const pCx = currentSlide.priceBox.x + currentSlide.priceBox.w / 2;
-    const pCy = currentSlide.priceBox.y + drawH / 2;
+    const pCy = bottomY - drawH / 2;
 
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, priceAlpha));
@@ -590,10 +586,11 @@ function renderCanvasFrame(
       if (nextSlide.priceSnap.naturalWidth > 0 && nextSlide.priceSnap.naturalHeight > 0) {
         nextPriceDrawH = nextPriceDrawW * (nextSlide.priceSnap.naturalHeight / nextSlide.priceSnap.naturalWidth);
       }
+      const nextBottomY = nextSlide.priceBox.y + nextSlide.priceBox.h;
       ctx.drawImage(
         nextSlide.priceSnap,
         nextSlide.priceBox.x,
-        nextSlide.priceBox.y,
+        nextBottomY - nextPriceDrawH,
         nextPriceDrawW,
         nextPriceDrawH
       );
