@@ -16,7 +16,7 @@ import {
   SlidersHorizontal,
   Wand2
 } from 'lucide-react';
-import { BannerCampaign, ProductItem, ThemeColors } from '../tiposGeradorBanner';
+import { BannerCampaign, ProductItem, ThemeColors, BannerCustomStyles } from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
 import { handleImageError } from '../utils/imageFallback';
 
@@ -56,6 +56,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
     discountPercentage: 19,
     badge: 'OFERTA DO DIA',
     imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=1000&auto=format&fit=crop&q=85',
+  };
+
+  // Fusão de estilos: Estilos específicos do produto têm prioridade sobre os estilos globais da campanha
+  const effectiveStyles: BannerCustomStyles = {
+    ...(campaign.customStyles || {}),
+    ...(product.customStyles || {}),
   };
 
   const isVertical = campaign.format === '9:16' || campaign.format === '4:5';
@@ -176,15 +182,26 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           style={{ contain: 'strict', willChange: 'contents', transform: 'translateZ(0)' }}
           className="absolute inset-0 pointer-events-none overflow-hidden"
         >
-          {/* Deep Green Texture Background / Custom Background */}
-          <div 
-            style={{
-              background: campaign.customStyles?.bannerBgGradient || (campaign.customStyles?.bannerBgColor 
-                ? `radial-gradient(circle at 60% 50%, ${campaign.customStyles.bannerBgColor}ee, ${campaign.customStyles.bannerBgColor} 70%, #000000 100%)` 
-                : undefined)
-            }}
-            className={`absolute inset-0 ${!campaign.customStyles?.bannerBgGradient && !campaign.customStyles?.bannerBgColor ? 'bg-gradient-to-br from-[#06331e] via-[#083c24] to-[#042214]' : ''}`} 
-          />
+          {/* Deep Green Texture Background / Custom Background / Custom Background Image */}
+          {effectiveStyles.bannerBgImageUrl ? (
+            <div 
+              style={{
+                backgroundImage: `url(${effectiveStyles.bannerBgImageUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+              className="absolute inset-0"
+            />
+          ) : (
+            <div 
+              style={{
+                background: effectiveStyles.bannerBgGradient || (effectiveStyles.bannerBgColor 
+                  ? `radial-gradient(circle at 60% 50%, ${effectiveStyles.bannerBgColor}ee, ${effectiveStyles.bannerBgColor} 70%, #000000 100%)` 
+                  : undefined)
+              }}
+              className={`absolute inset-0 ${!effectiveStyles.bannerBgGradient && !effectiveStyles.bannerBgColor ? 'bg-gradient-to-br from-[#06331e] via-[#083c24] to-[#042214]' : ''}`} 
+            />
+          )}
 
           {/* Subtle Watermark Geometric/Botanical Texture Pattern */}
           <svg className="absolute inset-0 w-full h-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
@@ -260,8 +277,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             <div className="flex-1 flex flex-col items-center justify-center text-center px-2 sm:px-4 min-w-0">
               <h1 
                 style={{
-                  color: campaign.customStyles?.campaignTitleColor || '#fbbf24',
-                  fontFamily: campaign.customStyles?.campaignTitleFont || undefined,
+                  color: effectiveStyles.campaignTitleColor || '#fbbf24',
+                  fontFamily: effectiveStyles.campaignTitleFont || undefined,
                 }}
                 className={`${
                   campaign.campaignTitle && campaign.campaignTitle.length > 35
@@ -300,8 +317,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               {/* Product Title with Promotional Tag inline in front of the text */}
               <h2 
                 style={{
-                  color: campaign.customStyles?.productTitleColor || '#ffffff',
-                  fontFamily: campaign.customStyles?.productTitleFont || undefined,
+                  color: effectiveStyles.productTitleColor || '#ffffff',
+                  fontFamily: effectiveStyles.productTitleFont || undefined,
                 }}
                 className={`${
                   isVertical
@@ -311,9 +328,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               >
                 <span 
                   style={{ 
-                    backgroundColor: campaign.customStyles?.badgeBgColor || '#1a472a',
-                    color: campaign.customStyles?.badgeTextColor || '#d4f7dc',
-                    borderColor: campaign.customStyles?.badgeBgColor ? `${campaign.customStyles.badgeBgColor}88` : '#3b7a50',
+                    backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
+                    color: effectiveStyles.badgeTextColor || '#d4f7dc',
+                    borderColor: effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}88` : '#3b7a50',
                   }}
                   className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm"
                 >
@@ -327,7 +344,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1 shrink-0 bg-transparent">
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
-                <div className="text-white/90 text-xs sm:text-sm md:text-base font-bold mb-1 tracking-tight bg-transparent">
+                <div 
+                  style={{ color: effectiveStyles.priceOriginalColor || 'rgba(255, 255, 255, 0.9)' }}
+                  className="text-xs sm:text-sm md:text-base font-bold mb-1 tracking-tight bg-transparent"
+                >
                   De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
               )}
@@ -336,11 +356,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               <div className="inline-flex items-center">
                 <div 
                   style={{ 
-                    backgroundColor: campaign.customStyles?.priceBoxBgColor || '#ea580c', 
-                    backgroundImage: campaign.customStyles?.priceBoxBgColor 
-                      ? `linear-gradient(180deg, ${campaign.customStyles.priceBoxBgColor}dd 0%, ${campaign.customStyles.priceBoxBgColor} 50%, #00000033 100%)`
+                    backgroundColor: effectiveStyles.priceBoxBgColor || '#ea580c', 
+                    backgroundImage: effectiveStyles.priceBoxBgColor 
+                      ? `linear-gradient(180deg, ${effectiveStyles.priceBoxBgColor}dd 0%, ${effectiveStyles.priceBoxBgColor} 50%, #00000033 100%)`
                       : 'linear-gradient(180deg, #f97316 0%, #ea580c 50%, #c2410c 100%)',
-                    color: campaign.customStyles?.priceBoxTextColor || '#ffffff',
+                    color: effectiveStyles.priceBoxTextColor || '#ffffff',
                   }}
                   className="relative overflow-hidden rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-2 sm:gap-3 flex items-center transition-transform hover:scale-[1.02] origin-bottom-left"
                 >
@@ -514,9 +534,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-[48vw] shrink-0 my-auto'
                       } ${
                         isAmbient
-                          ? 'bg-neutral-950 border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
-                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-[4px] sm:border-[5px] border-white shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
+                          ? 'bg-neutral-950 border-[4px] sm:border-[5px] shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
+                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-[4px] sm:border-[5px] shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
                       } rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-2 flex flex-col items-center justify-between overflow-visible select-none outline-none focus:ring-2 focus:ring-amber-400`}
+                      style={{
+                        borderColor: effectiveStyles.cardBorderColor || '#ffffff',
+                      }}
                     >
                       {/* Toast Notification */}
                       <AnimatePresence>

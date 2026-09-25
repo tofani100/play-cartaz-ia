@@ -17,10 +17,15 @@ import {
   EyeOff,
   Download,
   Film,
-  Loader2
+  Loader2,
+  Palette,
+  ChevronDown,
+  ChevronUp,
+  Type
 } from 'lucide-react';
-import { ProductItem, CuratedProduct, BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
+import { ProductItem, CuratedProduct, BannerCampaign, ThemeColors, BannerCustomStyles } from '../tiposGeradorBanner';
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
+import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual } from '../utils/ajudanteExportacao';
 
@@ -36,6 +41,7 @@ interface PainelEditorProdutosProps {
   clientName?: string;
   campaign?: BannerCampaign;
   theme?: ThemeColors;
+  onUpdateCampaign?: (updated: Partial<BannerCampaign>) => void;
 }
 
 export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
@@ -50,6 +56,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   clientName,
   campaign,
   theme,
+  onUpdateCampaign,
 }) => {
   const [showCatalogModal, setShowCatalogModal] = useState<boolean>(false);
   const [catalogSearch, setCatalogSearch] = useState<string>('');
@@ -60,7 +67,10 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
   const [recordingVideoIndex, setRecordingVideoIndex] = useState<number | null>(null);
   const [recordingVideoProgress, setRecordingVideoProgress] = useState<number>(0);
+  const [customizationScope, setCustomizationScope] = useState<'single' | 'all'>('single');
+  const [isStyleExpanded, setIsStyleExpanded] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const productBgInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadIndividualBanner = async (idx: number) => {
     setDownloadingIndex(idx);
@@ -257,6 +267,32 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   };
 
   const activeProduct = products[currentProductIndex] || products[0];
+
+  const currentEffectiveStyles: BannerCustomStyles = customizationScope === 'single'
+    ? { ...(campaign?.customStyles || {}), ...(activeProduct?.customStyles || {}) }
+    : (campaign?.customStyles || {});
+
+  const handleApplyCustomStyle = (updates: Partial<BannerCustomStyles>) => {
+    if (customizationScope === 'single') {
+      const existingStyles = activeProduct?.customStyles || {};
+      onUpdateProduct(currentProductIndex, {
+        customStyles: {
+          ...existingStyles,
+          ...updates,
+        },
+      });
+    } else {
+      if (onUpdateCampaign && campaign) {
+        const existingStyles = campaign.customStyles || {};
+        onUpdateCampaign({
+          customStyles: {
+            ...existingStyles,
+            ...updates,
+          },
+        });
+      }
+    }
+  };
 
   return (
     <div className="w-full bg-neutral-900 border-t sm:border-t-0 sm:border-l border-neutral-800 p-4 flex flex-col gap-4">
@@ -666,6 +702,278 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   </span>
                 </button>
               </div>
+            </div>
+
+            {/* Seção Completa de Personalização Visual do Banner (Individual ou Todos os Banners) */}
+            <div className="mt-3 pt-3 border-t border-neutral-800 space-y-3">
+              {/* Header com Toggle de Recolher/Expandir */}
+              <div 
+                onClick={() => setIsStyleExpanded(!isStyleExpanded)}
+                className="flex items-center justify-between cursor-pointer group select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-md bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                    <Palette className="w-3 h-3" />
+                  </div>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-white group-hover:text-amber-300">
+                    Estilo Visual & Modelos do Banner
+                  </span>
+                </div>
+                <div className="text-neutral-400 group-hover:text-white">
+                  {isStyleExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
+              </div>
+
+              {isStyleExpanded && (
+                <div className="space-y-3 pt-1">
+                  {/* Scope Selector: Apenas este banner vs Todos os banners */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                      Onde aplicar as alterações de estilo:
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-800">
+                      <button
+                        type="button"
+                        onClick={() => setCustomizationScope('single')}
+                        className={`py-1.5 px-2 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center justify-center gap-1 text-center cursor-pointer ${
+                          customizationScope === 'single'
+                            ? 'bg-amber-400 text-black shadow-md'
+                            : 'text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <span>Apenas neste banner (#{currentProductIndex + 1})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCustomizationScope('all')}
+                        className={`py-1.5 px-2 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center justify-center gap-1 text-center cursor-pointer ${
+                          customizationScope === 'all'
+                            ? 'bg-amber-400 text-black shadow-md'
+                            : 'text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <span>Todos os banners</span>
+                      </button>
+                    </div>
+
+                    {customizationScope === 'single' && activeProduct.customStyles && (
+                      <div className="flex items-center justify-between text-[10px] text-amber-300 bg-amber-500/10 px-2.5 py-1.5 rounded-lg border border-amber-500/25 mt-1.5">
+                        <span>Banner com estilo exclusivo ativo</span>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateProduct(currentProductIndex, { customStyles: undefined })}
+                          className="text-amber-400 hover:underline font-bold cursor-pointer"
+                        >
+                          Restaurar padrão
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 10 Modelos Rápidos de Mercado */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1 flex items-center justify-between">
+                      <span>10 Modelos de Mercado:</span>
+                      <span className="text-[9px] text-amber-400 font-normal">Clique para aplicar</span>
+                    </label>
+
+                    <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                      {MODELOS_BANNERS_MERCADO.map((mod) => {
+                        const isSelected = currentEffectiveStyles.presetThemeId === mod.id;
+                        return (
+                          <button
+                            key={mod.id}
+                            type="button"
+                            onClick={() => handleApplyCustomStyle(mod.styles)}
+                            className={`p-2 rounded-lg border text-left flex items-center gap-2 transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-neutral-800 border-amber-400 ring-1 ring-amber-400/50'
+                                : 'bg-neutral-900 hover:bg-neutral-800/80 border-neutral-800'
+                            }`}
+                          >
+                            <div 
+                              style={{ background: mod.previewBg }}
+                              className="w-6 h-6 rounded-md shrink-0 border border-white/20 shadow-sm"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[10px] font-bold text-white truncate leading-tight">
+                                {mod.nome}
+                              </div>
+                              <div className="text-[8px] text-amber-400 truncate">
+                                {mod.segmento.split('/')[0]}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Fundo do Banner (Upload ou Cor) */}
+                  <div className="p-2.5 bg-neutral-900/90 rounded-lg border border-neutral-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-neutral-300 uppercase">Fundo do Banner:</span>
+                      {currentEffectiveStyles.bannerBgImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleApplyCustomStyle({ bannerBgImageUrl: undefined })}
+                          className="text-[9px] text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                          <span>Remover Imagem de Fundo</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      ref={productBgInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            if (ev.target?.result) {
+                              handleApplyCustomStyle({ bannerBgImageUrl: ev.target.result as string });
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => productBgInputRef.current?.click()}
+                        className="flex-1 py-1.5 px-2 bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-[10px] rounded-lg border border-neutral-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Upload className="w-3 h-3 text-amber-400" />
+                        <span>{currentEffectiveStyles.bannerBgImageUrl ? 'Trocar Imagem Fundo' : 'Subir Imagem Fundo'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input
+                          type="color"
+                          value={currentEffectiveStyles.bannerBgColor || '#06331e'}
+                          onChange={(e) => handleApplyCustomStyle({ bannerBgColor: e.target.value, bannerBgGradient: undefined })}
+                          className="w-7 h-7 rounded border border-neutral-700 bg-neutral-900 cursor-pointer"
+                          title="Cor de Fundo"
+                        />
+                        <span className="text-[9px] font-mono text-neutral-400">Cor</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Borda do Card & Caixa Preço */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                        Borda do Card:
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="color"
+                          value={currentEffectiveStyles.cardBorderColor || '#ffffff'}
+                          onChange={(e) => handleApplyCustomStyle({ cardBorderColor: e.target.value })}
+                          className="w-7 h-7 rounded border border-neutral-700 bg-neutral-900 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={currentEffectiveStyles.cardBorderColor || '#ffffff'}
+                          onChange={(e) => handleApplyCustomStyle({ cardBorderColor: e.target.value })}
+                          className="w-full bg-neutral-900 border border-neutral-800 rounded px-1.5 py-1 text-[10px] text-white font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                        Caixa Preço ("POR"):
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="color"
+                          value={currentEffectiveStyles.priceBoxBgColor || '#ea580c'}
+                          onChange={(e) => handleApplyCustomStyle({ priceBoxBgColor: e.target.value })}
+                          className="w-7 h-7 rounded border border-neutral-700 bg-neutral-900 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={currentEffectiveStyles.priceBoxBgColor || '#ea580c'}
+                          onChange={(e) => handleApplyCustomStyle({ priceBoxBgColor: e.target.value })}
+                          className="w-full bg-neutral-900 border border-neutral-800 rounded px-1.5 py-1 text-[10px] text-white font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fontes & Cores de Texto */}
+                  <div className="p-2.5 bg-neutral-900/90 rounded-lg border border-neutral-800 space-y-2">
+                    <span className="text-[10px] font-bold text-neutral-300 uppercase block">
+                      Tipografia & Cores:
+                    </span>
+
+                    {/* Fonte do Nome do Produto */}
+                    <div className="grid grid-cols-3 gap-1.5 items-center">
+                      <span className="text-[10px] text-neutral-400 col-span-1">Fonte Produto:</span>
+                      <select
+                        value={currentEffectiveStyles.productTitleFont || "'Montserrat', sans-serif"}
+                        onChange={(e) => handleApplyCustomStyle({ productTitleFont: e.target.value })}
+                        className="col-span-2 bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[10px] text-white"
+                      >
+                        {FONTES_COMERCIAIS_RECOMENDADAS.map((f) => (
+                          <option key={f.id} value={f.fontFamily}>
+                            {f.nome.split(' (')[0]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Cores: Nome do Produto e Título */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[9px] text-neutral-400 mb-0.5">Cor Nome Produto:</label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="color"
+                            value={currentEffectiveStyles.productTitleColor || '#ffffff'}
+                            onChange={(e) => handleApplyCustomStyle({ productTitleColor: e.target.value })}
+                            className="w-6 h-6 rounded border border-neutral-700 bg-neutral-900 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={currentEffectiveStyles.productTitleColor || '#ffffff'}
+                            onChange={(e) => handleApplyCustomStyle({ productTitleColor: e.target.value })}
+                            className="w-full bg-neutral-950 border border-neutral-800 rounded px-1 py-0.5 text-[9px] text-white font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] text-neutral-400 mb-0.5">Cor Título Topo:</label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="color"
+                            value={currentEffectiveStyles.campaignTitleColor || '#fbbf24'}
+                            onChange={(e) => handleApplyCustomStyle({ campaignTitleColor: e.target.value })}
+                            className="w-6 h-6 rounded border border-neutral-700 bg-neutral-900 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={currentEffectiveStyles.campaignTitleColor || '#fbbf24'}
+                            onChange={(e) => handleApplyCustomStyle({ campaignTitleColor: e.target.value })}
+                            className="w-full bg-neutral-950 border border-neutral-800 rounded px-1 py-0.5 text-[9px] text-white font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Individual Product Action Toolbar (Download Banner & TV Visibility) */}

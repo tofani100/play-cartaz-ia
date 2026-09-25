@@ -46,6 +46,7 @@ export interface ProductItem {
   imageDisplayMode?: 'ambient' | 'contain'; // 'ambient' for cinematic commercial full-bleed, 'contain' for classic cutout packshot
   aiPromptUsed?: string;
   hidden?: boolean; // Oculto da rotação na playlist da TV sem deletar
+  customStyles?: BannerCustomStyles; // Estilo customizado exclusivo para este banner individual
 }
 
 export interface BannerCampaign {
@@ -79,6 +80,7 @@ export interface BannerCampaign {
 export interface BannerCustomStyles {
   bannerBgColor?: string;
   bannerBgGradient?: string;
+  bannerBgImageUrl?: string;
   campaignTitleColor?: string;
   campaignTitleFont?: string;
   productTitleColor?: string;
@@ -87,6 +89,9 @@ export interface BannerCustomStyles {
   badgeTextColor?: string;
   priceBoxBgColor?: string;
   priceBoxTextColor?: string;
+  priceOriginalColor?: string;
+  cardBorderColor?: string;
+  presetThemeId?: string;
 }
 
 export interface ClientProfile {

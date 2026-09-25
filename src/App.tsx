@@ -472,6 +472,7 @@ export default function App() {
             clientName={campaign.clientName}
             campaign={campaign}
             theme={activeTheme}
+            onUpdateCampaign={(updated) => setCampaign((p) => ({ ...p, ...updated }))}
           />
         </aside>
       </main>
