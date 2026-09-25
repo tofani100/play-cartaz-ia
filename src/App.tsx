@@ -250,17 +250,37 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [campaign]);
 
-  // Saved clients list with local storage persistence
+  // Saved clients list with local storage persistence and per-client banners
   const [clients, setClients] = useState<ClientProfile[]>(() => {
     try {
       const saved = localStorage.getItem('playcomunique_clientes');
+      const savedCampaignRaw = localStorage.getItem('playcomunique_campanha');
+      const savedCampaign = savedCampaignRaw ? JSON.parse(savedCampaignRaw) : null;
+
       if (saved) {
         const parsed: ClientProfile[] = JSON.parse(saved);
-        return parsed.map((c) =>
-          c.id === 'cli-belissima'
-            ? { ...c, logoUrl: '/logos/belissima-casa-di-frutas.png' }
-            : c
-        );
+        return parsed.map((c) => {
+          const predefined = CLIENTES_PREDEFINIDOS.find((p) => p.id === c.id || p.name.toLowerCase() === c.name.toLowerCase());
+          
+          let clientProducts = c.products;
+          if (!clientProducts || clientProducts.length === 0) {
+            if ((c.name === 'Belíssima Casa di Frutas' || c.id === 'cli-belissima') && savedCampaign?.products?.length > 0) {
+              clientProducts = savedCampaign.products;
+            } else {
+              clientProducts = predefined?.products || [];
+            }
+          }
+
+          return {
+            ...predefined,
+            ...c,
+            logoUrl:
+              c.id === 'cli-belissima' || c.name === 'Belíssima Casa di Frutas'
+                ? (c.logoUrl || '/logos/belissima-casa-di-frutas.png')
+                : c.logoUrl,
+            products: clientProducts,
+          };
+        });
       }
     } catch {
       // Fallback
@@ -273,24 +293,48 @@ export default function App() {
       const exists = prev.some((c) => c.id === newOrUpdatedClient.id);
       let updated: ClientProfile[];
       if (exists) {
-        updated = prev.map((c) => (c.id === newOrUpdatedClient.id ? newOrUpdatedClient : c));
+        updated = prev.map((c) => (c.id === newOrUpdatedClient.id ? { ...c, ...newOrUpdatedClient } : c));
       } else {
-        updated = [newOrUpdatedClient, ...prev];
+        const withProducts: ClientProfile = {
+          ...newOrUpdatedClient,
+          products: newOrUpdatedClient.products && newOrUpdatedClient.products.length > 0
+            ? newOrUpdatedClient.products
+            : [
+                {
+                  id: `prod-${Date.now()}-1`,
+                  title: `Produto em Destaque - ${newOrUpdatedClient.name}`,
+                  category: newOrUpdatedClient.segment.split('&')[0].trim() || 'Geral',
+                  unit: 'un',
+                  price: '19,90',
+                  originalPrice: '25,90',
+                  badge: 'SUPER OFERTA',
+                  imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&auto=format&fit=crop&q=85',
+                  imageDisplayMode: 'ambient',
+                  isHero: true,
+                }
+              ]
+        };
+        updated = [withProducts, ...prev];
       }
       try {
         localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
       } catch (e) {}
+      saveClientsToCloud(updated).catch(() => {});
       return updated;
     });
 
     // If edited client is currently active on banner, sync it
-    if (campaign.clientName.toLowerCase() === newOrUpdatedClient.name.toLowerCase()) {
+    if (campaign.clientName.toLowerCase() === newOrUpdatedClient.name.toLowerCase() || campaign.clientId === newOrUpdatedClient.id) {
       setCampaign((prev) => ({
         ...prev,
+        clientId: newOrUpdatedClient.id,
         clientName: newOrUpdatedClient.name,
         clientLogoUrl: newOrUpdatedClient.logoUrl,
         themeId: newOrUpdatedClient.themeId,
         segment: newOrUpdatedClient.segment,
+        tickerText: newOrUpdatedClient.defaultTickerText || prev.tickerText,
+        phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || prev.phoneWhatsapp,
+        storeAddress: newOrUpdatedClient.storeAddress || prev.storeAddress,
       }));
     }
   };
@@ -301,22 +345,91 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
       } catch (e) {}
+      saveClientsToCloud(updated).catch(() => {});
+
+      // Se o cliente deletado era o ativo, muda para o primeiro da lista
+      if (updated.length > 0 && (campaign.clientId === clientId || campaign.clientName.toLowerCase() === clientId)) {
+        setTimeout(() => handleSelectClient(updated[0]), 50);
+      }
       return updated;
     });
   };
 
   const handleSelectClient = (client: ClientProfile) => {
-    setCampaign((prev) => ({
-      ...prev,
-      clientName: client.name,
-      clientLogoUrl: client.logoUrl || '',
-      showClientLogo: Boolean(client.logoUrl),
-      themeId: client.themeId,
-      segment: client.segment,
-      tickerText: client.defaultTickerText || prev.tickerText,
-      phoneWhatsapp: client.phoneWhatsapp || prev.phoneWhatsapp,
-      storeAddress: client.storeAddress || prev.storeAddress,
-    }));
+    // 1. Salva os banners atuais no perfil do cliente anterior
+    setClients((prevClients) => {
+      const updated = prevClients.map((c) => {
+        if (c.name.toLowerCase() === campaign.clientName.toLowerCase() || c.id === campaign.clientId) {
+          return {
+            ...c,
+            products: campaign.products,
+            customStyles: campaign.customStyles,
+            campaignTitle: campaign.campaignTitle,
+            campaignSubtitle: campaign.campaignSubtitle,
+            validityText: campaign.validityText,
+          };
+        }
+        return c;
+      });
+      try {
+        localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+      } catch (e) {}
+      saveClientsToCloud(updated).catch(() => {});
+      return updated;
+    });
+
+    // 2. Busca os banners salvos do novo cliente selecionado
+    const target = clients.find((c) => c.id === client.id) || client;
+    let targetProducts = target.products;
+    if (!targetProducts || targetProducts.length === 0) {
+      const predefined = CLIENTES_PREDEFINIDOS.find((p) => p.id === client.id || p.name.toLowerCase() === client.name.toLowerCase());
+      targetProducts = predefined?.products && predefined.products.length > 0 
+        ? predefined.products 
+        : [
+            {
+              id: `prod-${Date.now()}-1`,
+              title: `Produto em Destaque - ${client.name}`,
+              category: client.segment.split('&')[0].trim() || 'Geral',
+              unit: 'un',
+              price: '19,90',
+              originalPrice: '25,90',
+              badge: 'SUPER OFERTA',
+              imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&auto=format&fit=crop&q=85',
+              imageDisplayMode: 'ambient',
+              isHero: true,
+            }
+          ];
+    }
+
+    // 3. Atualiza a campanha com os dados e banners exclusivos deste cliente
+    setCampaign((prev) => {
+      const nextCampaign: BannerCampaign = {
+        ...prev,
+        clientId: client.id,
+        clientName: client.name,
+        clientLogoUrl: client.logoUrl || '',
+        showClientLogo: Boolean(client.logoUrl),
+        themeId: client.themeId,
+        segment: client.segment,
+        tickerText: client.defaultTickerText || prev.tickerText,
+        phoneWhatsapp: client.phoneWhatsapp || prev.phoneWhatsapp,
+        storeAddress: client.storeAddress || prev.storeAddress,
+        products: targetProducts,
+        activeProductIndex: 0,
+        customStyles: target.customStyles || undefined,
+        campaignTitle: target.campaignTitle || `FESTIVAL DE OFERTAS ${client.name.toUpperCase()}`,
+        campaignSubtitle: target.campaignSubtitle || prev.campaignSubtitle,
+        validityText: target.validityText || prev.validityText,
+      };
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+        localStorage.setItem('playcomunique_active_client_id', client.id);
+      } catch (e) {}
+
+      saveCampaignToCloud(nextCampaign).catch(() => {});
+      return nextCampaign;
+    });
   };
 
   // Check if running in direct standalone TV Kiosk mode (?mode=tv or ?player=1 or ?kiosk=1)
@@ -360,36 +473,122 @@ export default function App() {
     campaignTitle?: string,
     validityText?: string
   ) => {
-    setCampaign((prev) => ({
-      ...prev,
-      products: newProducts,
-      activeProductIndex: 0,
-      campaignTitle: campaignTitle || prev.campaignTitle,
-      validityText: validityText || prev.validityText,
-    }));
+    setCampaign((prev) => {
+      const nextProducts = newProducts;
+      setClients((prevClients) => {
+        const updated = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? { ...c, products: nextProducts }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+        } catch (e) {}
+        saveClientsToCloud(updated).catch(() => {});
+        return updated;
+      });
+
+      return {
+        ...prev,
+        products: nextProducts,
+        activeProductIndex: 0,
+        campaignTitle: campaignTitle || prev.campaignTitle,
+        validityText: validityText || prev.validityText,
+      };
+    });
   };
 
   const handleUpdateProduct = (idx: number, updated: Partial<ProductItem>) => {
     setCampaign((prev) => {
       const nextProducts = [...prev.products];
       nextProducts[idx] = { ...nextProducts[idx], ...updated };
+
+      setClients((prevClients) => {
+        const updated = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? { ...c, products: nextProducts }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
       return { ...prev, products: nextProducts };
     });
   };
 
   const handleAddProduct = (newProduct: ProductItem) => {
-    setCampaign((prev) => ({
-      ...prev,
-      products: [newProduct, ...prev.products],
-      activeProductIndex: 0,
-    }));
+    setCampaign((prev) => {
+      const nextProducts = [newProduct, ...prev.products];
+
+      setClients((prevClients) => {
+        const updated = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? { ...c, products: nextProducts }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      return {
+        ...prev,
+        products: nextProducts,
+        activeProductIndex: 0,
+      };
+    });
   };
 
   const handleRemoveProduct = (idx: number) => {
     setCampaign((prev) => {
       const next = prev.products.filter((_, i) => i !== idx);
       const nextIdx = Math.min(prev.activeProductIndex, Math.max(0, next.length - 1));
+
+      setClients((prevClients) => {
+        const updated = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? { ...c, products: next }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
       return { ...prev, products: next, activeProductIndex: nextIdx };
+    });
+  };
+
+  const handleUpdateCampaign = (updated: Partial<BannerCampaign>) => {
+    setCampaign((prev) => {
+      const next = { ...prev, ...updated };
+
+      setClients((prevClients) => {
+        const updatedClients = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? {
+                ...c,
+                products: next.products,
+                customStyles: next.customStyles,
+                campaignTitle: next.campaignTitle,
+                campaignSubtitle: next.campaignSubtitle,
+                validityText: next.validityText,
+                themeId: next.themeId || c.themeId,
+              }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
+        } catch (e) {}
+        return updatedClients;
+      });
+
+      return next;
     });
   };
 
@@ -428,11 +627,14 @@ export default function App() {
         onOpenThemeModal={() => setIsThemeModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         clientName={campaign.clientName}
-        onClientNameChange={(name) => setCampaign((p) => ({ ...p, clientName: name }))}
+        onClientNameChange={(name) => handleUpdateCampaign({ clientName: name })}
         activeThemeId={campaign.themeId}
         showClientLogo={campaign.showClientLogo !== false}
-        onToggleShowLogo={() => setCampaign((p) => ({ ...p, showClientLogo: !p.showClientLogo }))}
+        onToggleShowLogo={() => handleUpdateCampaign({ showClientLogo: !campaign.showClientLogo })}
         cloudSyncStatus={cloudSyncStatus}
+        clients={clients}
+        onSelectClient={handleSelectClient}
+        activeProductCount={campaign.products.length}
       />
 
       {/* Main Workspace Layout */}
@@ -468,11 +670,11 @@ export default function App() {
             onAddProduct={handleAddProduct}
             onRemoveProduct={handleRemoveProduct}
             showClientLogo={campaign.showClientLogo !== false}
-            onToggleShowLogo={() => setCampaign((p) => ({ ...p, showClientLogo: !p.showClientLogo }))}
+            onToggleShowLogo={() => handleUpdateCampaign({ showClientLogo: !campaign.showClientLogo })}
             clientName={campaign.clientName}
             campaign={campaign}
             theme={activeTheme}
-            onUpdateCampaign={(updated) => setCampaign((p) => ({ ...p, ...updated }))}
+            onUpdateCampaign={handleUpdateCampaign}
           />
         </aside>
       </main>
@@ -512,7 +714,7 @@ export default function App() {
         onSelectThemeOnly={(themeId) => setCampaign((p) => ({ ...p, themeId }))}
         onSaveClient={handleSaveClient}
         onDeleteClient={handleDeleteClient}
-        onToggleShowLogo={(show) => setCampaign((p) => ({ ...p, showClientLogo: show }))}
+        onToggleShowLogo={(show) => handleUpdateCampaign({ showClientLogo: show })}
         onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
       />
 
@@ -520,7 +722,7 @@ export default function App() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         campaign={campaign}
-        onUpdateCampaign={(updated) => setCampaign((p) => ({ ...p, ...updated }))}
+        onUpdateCampaign={handleUpdateCampaign}
       />
     </div>
   );

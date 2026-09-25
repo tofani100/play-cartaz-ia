@@ -334,9 +334,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
         <div>
           <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5">
             <Tag className="w-4 h-4 text-amber-400" />
-            <span>Lista de Ofertas ({products.length})</span>
+            <span>Lista de Banners ({products.length})</span>
           </h3>
-          <p className="text-[11px] text-neutral-400">Gerencie os itens do banner e tablóide.</p>
+          <p className="text-[11px] text-neutral-400">
+            {clientName ? `Banners salvos em: ${clientName}` : 'Gerencie os itens do banner e tablóide.'}
+          </p>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -473,20 +475,53 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   )}
                 </button>
 
-                {/* Botão: Deletar */}
-                {products.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveProduct(idx);
-                    }}
-                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-neutral-800 transition-colors"
-                    title="Remover produto da lista"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                {/* Botão: Duplicar / Clonar Banner */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const duplicated: ProductItem = {
+                      ...item,
+                      id: `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      title: `${item.title} (Cópia)`,
+                    };
+                    onAddProduct(duplicated);
+                  }}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
+                  title={`Duplicar/Clonar banner de "${item.title}"`}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Botão: Deletar Banner (Sempre acessível) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (products.length === 1) {
+                      if (confirm('Deseja limpar este banner e iniciar um novo em branco para este cliente?')) {
+                        onUpdateProduct(idx, {
+                          title: 'Novo Produto em Oferta',
+                          price: '0,00',
+                          originalPrice: '',
+                          badge: 'SUPER OFERTA',
+                          category: 'Geral',
+                          unit: 'un',
+                          imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&auto=format&fit=crop&q=85',
+                          imageDisplayMode: 'ambient',
+                        });
+                      }
+                    } else {
+                      if (confirm(`Tem certeza que deseja excluir o banner "${item.title}" deste cliente?`)) {
+                        onRemoveProduct(idx);
+                      }
+                    }
+                  }}
+                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-neutral-800 transition-colors"
+                  title={products.length === 1 ? 'Limpar este banner e reiniciar em branco' : 'Excluir banner deste cliente'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           );

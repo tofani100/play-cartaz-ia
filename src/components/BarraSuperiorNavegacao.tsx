@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Tv, 
   Smartphone, 
@@ -10,9 +10,12 @@ import {
   Palette, 
   Sliders,
   Store,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ChevronDown,
+  Plus,
+  Check
 } from 'lucide-react';
-import { BannerFormat, ThemePresetId } from '../tiposGeradorBanner';
+import { BannerFormat, ThemePresetId, ClientProfile } from '../tiposGeradorBanner';
 import { APP_VERSION } from '../versao';
 
 interface BarraSuperiorProps {
@@ -29,6 +32,9 @@ interface BarraSuperiorProps {
   showClientLogo?: boolean;
   onToggleShowLogo?: () => void;
   cloudSyncStatus?: 'syncing' | 'saved' | 'idle';
+  clients?: ClientProfile[];
+  onSelectClient?: (client: ClientProfile) => void;
+  activeProductCount?: number;
 }
 
 export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
@@ -44,7 +50,23 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
   showClientLogo = true,
   onToggleShowLogo,
   cloudSyncStatus = 'saved',
+  clients = [],
+  onSelectClient,
+  activeProductCount = 0,
 }) => {
+  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsClientDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 shrink-0">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 sm:gap-2.5">
@@ -67,18 +89,82 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
             </div>
           </div>
 
-          {/* Client Input */}
-          <div className="hidden sm:flex items-center gap-1.5 pl-3 border-l border-neutral-800">
-            <Store className="w-4 h-4 text-neutral-400" />
-            <input
-              id="input-client-name"
-              type="text"
-              value={clientName}
-              onChange={(e) => onClientNameChange(e.target.value)}
-              placeholder="Nome do Cliente (ex: Supermercado Boa Praça)"
-              className="bg-neutral-800/80 border border-neutral-700/80 rounded-md px-2.5 py-1 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500 w-48 sm:w-56"
-              title="Nome do Cliente para a campanha"
-            />
+          {/* Client Quick Switcher & Active Banners Badge */}
+          <div ref={dropdownRef} className="relative hidden sm:flex items-center pl-3 border-l border-neutral-800">
+            <button
+              id="btn-client-quick-switch"
+              type="button"
+              onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
+              className="flex items-center gap-2 bg-neutral-800/90 hover:bg-neutral-800 border border-neutral-700/80 hover:border-amber-500/50 rounded-lg px-2.5 py-1 text-xs text-white transition-all cursor-pointer shadow-sm group"
+              title="Clique para alternar entre clientes ou ver os banners salvos de cada um"
+            >
+              <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <div className="flex items-center gap-1.5 max-w-[150px] md:max-w-[200px]">
+                <span className="font-bold truncate text-white">{clientName}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-extrabold border border-amber-500/30 shrink-0">
+                  {activeProductCount} {activeProductCount === 1 ? 'banner' : 'banners'}
+                </span>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isClientDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Quick Switcher Dropdown */}
+            {isClientDropdownOpen && (
+              <div className="absolute top-full left-3 mt-1.5 w-72 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in">
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-neutral-800 flex items-center justify-between">
+                  <span>Alternar Cliente</span>
+                  <span>Banners Salvos</span>
+                </div>
+                <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
+                  {clients.map((cli) => {
+                    const isCurrent = cli.name.toLowerCase() === clientName.toLowerCase();
+                    const prodCount = cli.products?.length ?? (isCurrent ? activeProductCount : 0);
+                    return (
+                      <button
+                        key={cli.id}
+                        type="button"
+                        onClick={() => {
+                          if (onSelectClient) onSelectClient(cli);
+                          setIsClientDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors ${
+                          isCurrent
+                            ? 'bg-amber-500/20 text-amber-300 font-black border border-amber-500/30'
+                            : 'text-neutral-200 hover:bg-neutral-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {cli.logoUrl ? (
+                            <img src={cli.logoUrl} alt="" className="w-5 h-5 object-contain rounded bg-neutral-950 p-0.5 shrink-0" />
+                          ) : (
+                            <div className="w-5 h-5 rounded bg-neutral-800 text-[9px] font-black flex items-center justify-center text-amber-400 shrink-0">
+                              {cli.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="truncate">{cli.name}</span>
+                        </div>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-bold shrink-0">
+                          {prodCount} {prodCount === 1 ? 'banner' : 'banners'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="pt-1 border-t border-neutral-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsClientDropdownOpen(false);
+                      onOpenThemeModal();
+                    }}
+                    className="w-full text-center py-1.5 px-2 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Gerenciar / Cadastrar Clientes</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

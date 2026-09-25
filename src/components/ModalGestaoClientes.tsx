@@ -528,6 +528,14 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
                                 {cli.segment}
                               </span>
 
+                              {/* Banners Salvos deste Cliente */}
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 font-extrabold border border-amber-500/30 flex items-center gap-1">
+                                  <span>🛒</span>
+                                  <span>{cli.products?.length || 0} {cli.products?.length === 1 ? 'banner salvo' : 'banners salvos'}</span>
+                                </span>
+                              </div>
+
                               {/* Colors associated with this client */}
                               <div className="flex items-center gap-1.5 mt-2">
                                 <span className="text-[10px] text-neutral-400">Tema:</span>

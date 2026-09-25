@@ -51,6 +51,7 @@ export interface ProductItem {
 
 export interface BannerCampaign {
   id: string;
+  clientId?: string;
   clientName: string;
   clientLogoUrl?: string;
   showClientLogo?: boolean;
@@ -105,6 +106,11 @@ export interface ClientProfile {
   phoneWhatsapp?: string;
   storeAddress?: string;
   createdAt?: string;
+  products?: ProductItem[]; // Banners e ofertas salvos exclusivamente para este cliente
+  customStyles?: BannerCustomStyles;
+  campaignTitle?: string;
+  campaignSubtitle?: string;
+  validityText?: string;
 }
 
 export interface CuratedProduct {
