@@ -219,6 +219,9 @@ async function captureProductSlideLayers(
   let priceSnap: HTMLImageElement | null = null;
   let priceBox: ElementBox | null = null;
   if (priceBlockEl) {
+    const prevMarginTop = priceBlockEl.style.marginTop;
+    priceBlockEl.style.marginTop = '0px';
+    priceBlockEl.classList.remove('mt-auto');
     try {
       priceBox = getRelativeBox(priceBlockEl, bannerEl, canvasW, canvasH);
       priceSnap = await captureDomElementImage(priceBlockEl, canvasW);
@@ -231,6 +234,8 @@ async function captureProductSlideLayers(
       }
     } catch (e) {
       console.warn('Falha ao capturar price block isolado:', e);
+    } finally {
+      priceBlockEl.style.marginTop = prevMarginTop;
     }
   }
 
@@ -400,14 +405,13 @@ function renderCanvasFrame(
   // 2. ELEMENT: OFFER COLUMN (Title + Tag, Regular Price & Supermarket Orange Price Box)
   // Perfectly proportioned and animated individually with commercial heartbeat pulse
   if (currentSlide.titleSnap && currentSlide.titleBox && currentSlide.priceSnap && currentSlide.priceBox) {
-    // 2A. Product Title & Tag Entrance (Smooth slide & fade from left in first 0.40s)
+    // 2A. Product Title & Tag Entrance (Smooth slide & fade from left in first 0.35s)
     let titleAlpha = slideExitAlpha;
     let titleOffsetX = 0;
-    if (slideT < 0.40) {
-      const p = Math.min(1, slideT / 0.40);
+    if (slideT < 0.35) {
+      const p = Math.min(1, slideT / 0.35);
       const ease = easeOutCubic(p);
-      titleAlpha = Math.min(1, p * 2.5) * slideExitAlpha;
-      titleOffsetX = -50 * (1 - ease);
+      titleOffsetX = -35 * (1 - ease);
     }
 
     ctx.save();
@@ -421,17 +425,13 @@ function renderCanvasFrame(
     );
     ctx.restore();
 
-    // 2B. Price Block Entrance & Heartbeat Pulse
+    // 2B. Price Block Entrance & Heartbeat Pulse (Full visibility from frame 0 for thumbnails)
     let priceAlpha = slideExitAlpha;
     let priceScale = 1.0;
-    if (slideT < 0.15) {
-      priceAlpha = 0;
-      priceScale = 0.90;
-    } else if (slideT < 0.50) {
-      const p = (slideT - 0.15) / 0.35;
+    if (slideT < 0.35) {
+      const p = Math.min(1, slideT / 0.35);
       const ease = easeOutCubic(p);
-      priceAlpha = Math.min(1, p * 2.8) * slideExitAlpha;
-      priceScale = 0.90 + 0.10 * ease;
+      priceScale = 0.92 + 0.08 * ease;
     }
 
     // Commercial price pulse every 2.0s

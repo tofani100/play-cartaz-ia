@@ -345,7 +345,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             </div>
 
             {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div id="tv-anim-price-block" className="mt-auto flex flex-col items-start w-fit pb-1.5 sm:pb-2.5 shrink-0 bg-transparent">
+            <div id="tv-anim-price-block" className="flex flex-col items-start w-fit pb-1.5 sm:pb-2.5 shrink-0 bg-transparent">
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div 
