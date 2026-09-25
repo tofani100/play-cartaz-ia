@@ -36,11 +36,12 @@ export const EtiquetaPrecoPromocional: React.FC<EtiquetaPrecoProps> = ({
       {/* Promotional Badge (e.g., SUPER PREÇO, OFERTA, SÓ HOJE) */}
       {badge && (
         <div 
-          className="mb-1 uppercase font-black tracking-wider px-2.5 py-0.5 rounded shadow-sm text-center flex items-center justify-center border border-black/10 animate-pulse"
+          className="mb-1 uppercase font-black tracking-wider px-2.5 py-0.5 rounded shadow-sm text-center flex items-center justify-center border border-black/10 animate-pulse whitespace-nowrap shrink-0"
           style={{
             backgroundColor: themeStyle?.badgeBg || '#FACC15',
             color: themeStyle?.badgeText || '#000000',
             fontSize: isHero ? '13px' : isLg ? '11px' : '9px',
+            whiteSpace: 'nowrap',
           }}
         >
           {badge}

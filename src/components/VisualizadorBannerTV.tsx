@@ -336,8 +336,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
                     color: effectiveStyles.badgeTextColor || '#d4f7dc',
                     borderColor: effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}88` : '#3b7a50',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    flexShrink: 0,
                   }}
-                  className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm"
+                  className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none"
                 >
                   {product.badge || 'SUPER OFERTA'}
                 </span>

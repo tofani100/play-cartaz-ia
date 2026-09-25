@@ -91,10 +91,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     {item.badge && (
                       <div className="absolute top-2 left-2 z-10">
                         <span 
-                          className="text-[9px] sm:text-[10px] uppercase font-black px-2 py-0.5 rounded shadow text-center tracking-wider"
+                          className="text-[9px] sm:text-[10px] uppercase font-black px-2 py-0.5 rounded shadow text-center tracking-wider whitespace-nowrap shrink-0"
                           style={{
                             backgroundColor: theme.badgeBg || '#FACC15',
                             color: theme.badgeText || '#000000',
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           {item.badge}
