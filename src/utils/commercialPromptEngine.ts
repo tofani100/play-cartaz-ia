@@ -215,34 +215,53 @@ export function buildCommercialProductPrompts(item: ProductPromptContext): Gener
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   if (!text) return false;
 
-  // Tentativa 1: API moderna do navegador
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch (e) {
-    console.warn('[Clipboard] navigator.clipboard falhou, tentando fallback textarea:', e);
-  }
-
-  // Tentativa 2: Fallback universal via textarea + execCommand
+  // Tentativa 1 (Síncrona imediata): execCommand('copy') no loop do evento de clique
+  // Executado IMEDIATAMENTE sem nenhum 'await' anterior para reter o User Gesture / Transient Activation do clique do mouse!
   try {
     const textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';
-    textArea.style.left = '-9999px';
-    textArea.style.top = '-9999px';
-    textArea.style.opacity = '0';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    textArea.style.opacity = '0.01';
     textArea.setAttribute('readonly', '');
     document.body.appendChild(textArea);
+    
     textArea.focus();
     textArea.select();
+    textArea.setSelectionRange(0, text.length);
+
     const successful = document.execCommand('copy');
     document.body.removeChild(textArea);
-    return successful;
+
+    if (successful) {
+      // Se teve sucesso, opcionalmente sincroniza com a API assíncrona se disponível
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+      return true;
+    }
   } catch (err) {
-    console.error('[Clipboard] Falha geral ao copiar texto:', err);
-    return false;
+    console.warn('[Clipboard] execCommand síncrono falhou:', err);
   }
+
+  // Tentativa 2: API moderna navigator.clipboard
+  if (navigator?.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      console.warn('[Clipboard] navigator.clipboard.writeText falhou:', e);
+    }
+  }
+
+  return false;
 }
 
