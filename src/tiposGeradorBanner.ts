@@ -39,6 +39,8 @@ export interface ProductItem {
   originalPrice?: string; // "29,90"
   discountPercentage?: number; // 20
   badge?: string; // "SUPER OFERTA", "IMPERDÍVEL", "LEVE 3 PAGUE 2", etc.
+  secondBadgeEnabled?: boolean; // Flag para ativar o 2º selo promocional (informações extras)
+  secondBadge?: string; // Texto do 2º selo promocional
   imageUrl: string;
   searchKey?: string;
   packagingStyle?: string;
@@ -88,6 +90,8 @@ export interface BannerCustomStyles {
   productTitleFont?: string;
   badgeBgColor?: string;
   badgeTextColor?: string;
+  secondBadgeBgColor?: string;
+  secondBadgeTextColor?: string;
   priceBoxBgColor?: string;
   priceBoxTextColor?: string;
   priceOriginalColor?: string;

@@ -279,7 +279,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               <h1 
                 style={{
                   color: effectiveStyles.campaignTitleColor || '#fbbf24',
-                  fontFamily: effectiveStyles.campaignTitleFont || undefined,
+                  fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
                 }}
                 className={`${
                   campaign.campaignTitle && campaign.campaignTitle.length > 35
@@ -313,43 +313,69 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               ? 'items-center text-center max-w-full' 
               : 'items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
           }`}>
-            {/* Top Block: Title & Promotional Badge - Um na frente do outro com diagramação perfeita e fundo 100% transparente */}
+            {/* Top Block: 1º Selo Promocional, Nome Comercial do Produto e 2º Selo Promocional Centralizado */}
             <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent">
-              {/* Product Title with Promotional Tag inline in front of the text */}
+              {/* 1º Selo Promocional: Posição original fixa no topo */}
+              {product.badge && (
+                <div className="flex items-center shrink-0">
+                  <span 
+                    style={{ 
+                      backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
+                      color: effectiveStyles.badgeTextColor || '#d4f7dc',
+                      borderColor: effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}88` : '#3b7a50',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      flexShrink: 0,
+                    }}
+                    className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none"
+                  >
+                    {product.badge}
+                  </span>
+                </div>
+              )}
+
+              {/* Nome Comercial do Produto: Começa 2 linhas abaixo do topo original, sem empurrar elementos */}
               <h2 
                 style={{
                   color: effectiveStyles.productTitleColor || '#ffffff',
-                  fontFamily: effectiveStyles.productTitleFont || undefined,
+                  fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                 }}
                 className={`${
                   isVertical
-                    ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug'
+                    ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug mt-2'
                     : (product.title || '').length > 40
                       ? 'text-[15px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[28px] leading-[1.14]'
                       : (product.title || '').length > 25
                         ? 'text-[16px] sm:text-[19px] md:text-[23px] lg:text-[27px] xl:text-[31px] leading-[1.15]'
                         : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
-                } font-black tracking-tight font-sans break-words bg-transparent`}
+                } font-black tracking-tight break-words bg-transparent mt-3 sm:mt-5 md:mt-6 line-clamp-3`}
               >
-                <span 
-                  style={{ 
-                    backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
-                    color: effectiveStyles.badgeTextColor || '#d4f7dc',
-                    borderColor: effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}88` : '#3b7a50',
-                    whiteSpace: 'nowrap',
-                    display: 'inline-flex',
-                    flexShrink: 0,
-                  }}
-                  className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none"
-                >
-                  {product.badge || 'SUPER OFERTA'}
-                </span>
-                <span className="align-middle bg-transparent">{product.title}</span>
+                {product.title}
               </h2>
+
+              {/* 2º Selo Promocional: Quando flegado, posicionado mais abaixo do nome comercial do produto e centralizado */}
+              {product.secondBadgeEnabled && product.secondBadge && (
+                <div id="tv-anim-second-badge" className="w-full flex items-center justify-center mt-2.5 sm:mt-3.5 md:mt-4 shrink-0">
+                  <div 
+                    style={{ 
+                      backgroundColor: effectiveStyles.secondBadgeBgColor || effectiveStyles.badgeBgColor || '#1a472a',
+                      color: effectiveStyles.secondBadgeTextColor || effectiveStyles.badgeTextColor || '#d4f7dc',
+                      borderColor: effectiveStyles.secondBadgeBgColor 
+                        ? `${effectiveStyles.secondBadgeBgColor}aa` 
+                        : (effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}aa` : '#3b7a50'),
+                    }}
+                    className="w-full max-w-[96%] py-1 sm:py-1.5 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none"
+                  >
+                    <span className="text-[10px] sm:text-xs md:text-sm lg:text-[14px] font-black uppercase tracking-wider truncate">
+                      {product.secondBadge}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div id="tv-anim-price-block" className="flex flex-col items-start w-fit pb-1.5 sm:pb-2.5 shrink-0 bg-transparent">
+            {/* Bottom Block: Regular Price & Supermarket Price Box - Posição 100% fixa e inalterada */}
+            <div id="tv-anim-price-block" className="flex flex-col items-start w-fit pb-1.5 sm:pb-2.5 shrink-0 bg-transparent mt-auto">
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div 

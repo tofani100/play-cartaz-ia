@@ -392,6 +392,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300">
                       {item.badge || 'OFERTA'}
                     </span>
+                    {item.secondBadgeEnabled && item.secondBadge && (
+                      <span className="text-[8px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        2º {item.secondBadge}
+                      </span>
+                    )}
                     {item.hidden && (
                       <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                         Oculto na TV
@@ -597,13 +602,13 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
           {/* Badge & Category */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[10px] font-bold text-neutral-400 uppercase">Selo Promocional</label>
+              <label className="block text-[10px] font-bold text-neutral-400 uppercase">1º Selo Promocional (Topo)</label>
               <input
                 type="text"
                 value={activeProduct.badge || ''}
                 onChange={(e) => onUpdateProduct(currentProductIndex, { badge: e.target.value })}
                 className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 mt-1"
-                placeholder="SUPER OFERTA, SÓ HOJE"
+                placeholder="OFERTA DO DIA, SÓ HOJE"
               />
             </div>
 
@@ -617,6 +622,51 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 placeholder="Bebidas, Carnes, Limpeza"
               />
             </div>
+          </div>
+
+          {/* 2º Selo Promocional (Opcional com Flag de Ativação) */}
+          <div className="p-2.5 bg-neutral-900/60 rounded-xl border border-neutral-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!activeProduct.secondBadgeEnabled}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    onUpdateProduct(currentProductIndex, {
+                      secondBadgeEnabled: isChecked,
+                      secondBadge: isChecked ? (activeProduct.secondBadge || 'INFORMAÇÕES EXTRAS') : activeProduct.secondBadge,
+                    });
+                  }}
+                  className="w-4 h-4 rounded bg-neutral-950 border-neutral-700 text-amber-500 focus:ring-amber-500/20 cursor-pointer"
+                />
+                <span className="text-[11px] font-bold text-neutral-200 hover:text-amber-400 transition-colors">
+                  Ativar 2º Selo Promocional
+                </span>
+              </label>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase transition-colors ${
+                activeProduct.secondBadgeEnabled 
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                  : 'bg-neutral-800 text-neutral-500'
+              }`}>
+                {activeProduct.secondBadgeEnabled ? 'Ativo no banner' : 'Apenas 1 selo'}
+              </span>
+            </div>
+
+            {activeProduct.secondBadgeEnabled && (
+              <div className="pt-1">
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                  Texto do 2º Selo (Centralizado abaixo do Produto)
+                </label>
+                <input
+                  type="text"
+                  value={activeProduct.secondBadge || ''}
+                  onChange={(e) => onUpdateProduct(currentProductIndex, { secondBadge: e.target.value })}
+                  className="w-full bg-neutral-950 border border-amber-500/40 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  placeholder="Ex: LEVE MAIS POR MENOS, PROMOÇÃO LIMITADA, SÓ HOJE..."
+                />
+              </div>
+            )}
           </div>
 
           {/* Image URL / Custom packshot */}

@@ -502,7 +502,7 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
 
                   <div>
                     <label className="block text-[11px] font-bold text-neutral-300 mb-1">
-                      Cor do Texto do Selo ("SUPER OFERTA")
+                      Cor do Texto do 1º Selo ("SUPER OFERTA")
                     </label>
                     <div className="flex items-center gap-2">
                       <input
@@ -515,6 +515,46 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                         type="text"
                         value={styles.badgeTextColor || '#d4f7dc'}
                         onChange={(e) => updateStyleField('badgeTextColor', e.target.value)}
+                        className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Cor de Fundo do 2º Selo Promocional
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={styles.secondBadgeBgColor || styles.badgeBgColor || '#1a472a'}
+                        onChange={(e) => updateStyleField('secondBadgeBgColor', e.target.value)}
+                        className="w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={styles.secondBadgeBgColor || styles.badgeBgColor || '#1a472a'}
+                        onChange={(e) => updateStyleField('secondBadgeBgColor', e.target.value)}
+                        className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Cor do Texto do 2º Selo Promocional
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={styles.secondBadgeTextColor || styles.badgeTextColor || '#d4f7dc'}
+                        onChange={(e) => updateStyleField('secondBadgeTextColor', e.target.value)}
+                        className="w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={styles.secondBadgeTextColor || styles.badgeTextColor || '#d4f7dc'}
+                        onChange={(e) => updateStyleField('secondBadgeTextColor', e.target.value)}
                         className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white font-mono"
                       />
                     </div>

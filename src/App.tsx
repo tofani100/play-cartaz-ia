@@ -133,6 +133,10 @@ const DEFAULT_CAMPAIGN: BannerCampaign = {
   showQrCode: false,
   phoneWhatsapp: '(11) 99999-1234',
   storeAddress: 'Rua das Frutas, 2004 - Centro Comercial',
+  customStyles: {
+    campaignTitleFont: "'Montserrat', sans-serif",
+    productTitleFont: "'Montserrat', sans-serif",
+  },
 };
 
 export default function App() {
