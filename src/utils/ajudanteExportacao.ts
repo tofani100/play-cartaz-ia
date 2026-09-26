@@ -194,52 +194,151 @@ function getElementDestRect(
 }
 
 /**
- * Captura um elemento individual isolado com fundo 100% transparente para animação cinematográfica
+ * Caminho vetorial para desenhar retângulos arredondados com compatibilidade universal
  */
-async function captureElementToTransparentCanvas(
-  el: HTMLElement,
-  targetW: number,
-  targetH: number
-): Promise<HTMLCanvasElement | null> {
-  if (targetW <= 0 || targetH <= 0) return null;
-  const rect = el.getBoundingClientRect();
-  const pixelRatio = Math.max(2, targetW / (rect.width || 1));
+function drawRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.arcTo(x + w, y, x + w, y + radius, radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.arcTo(x + w, y, x + w - radius, y + h, radius);
+  ctx.lineTo(x + radius, y + h);
+  ctx.arcTo(x, y + h, x, y + h - radius, radius);
+  ctx.lineTo(x, y + radius);
+  ctx.arcTo(x, y, x + radius, y, radius);
+  ctx.closePath();
+}
 
-  const dataUrl = await toPng(el, {
-    quality: 1.0,
-    pixelRatio,
-    cacheBust: false,
-    fontEmbedCSS: FONT_EMBED_CSS,
-    filter: (node) => {
-      if (node instanceof HTMLElement) {
-        if (node.id === 'tv-card-toolbar' || node.classList.contains('group-hover:opacity-100')) {
-          return false;
-        }
-        if (node.id && node.id.startsWith('btn-')) {
-          return false;
-        }
-      }
-      return true;
-    },
-  });
+/**
+ * Extrai o card de produto/packshot do fullCanvas com cantos arredondados precisos e fundo 100% transparente.
+ * Zero chamadas de rede e zero risco de falhas no SVG/CORS.
+ */
+function extractCardCrop(
+  fullCanvas: HTMLCanvasElement,
+  cardRect: ElementBox,
+  borderRadius: number
+): HTMLCanvasElement {
+  const w = Math.max(1, Math.round(cardRect.w));
+  const h = Math.max(1, Math.round(cardRect.h));
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = w;
+  cropCanvas.height = h;
+  const ctx = cropCanvas.getContext('2d');
+  if (!ctx) return cropCanvas;
 
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    i.crossOrigin = 'anonymous';
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = dataUrl;
-  });
-
-  const canvas = document.createElement('canvas');
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, targetW, targetH);
-  return canvas;
+
+  if (borderRadius > 0) {
+    if (typeof (ctx as any).roundRect === 'function') {
+      ctx.beginPath();
+      (ctx as any).roundRect(0, 0, w, h, borderRadius);
+      ctx.clip();
+    } else {
+      drawRoundedRectPath(ctx, 0, 0, w, h, borderRadius);
+      ctx.clip();
+    }
+  }
+
+  ctx.drawImage(
+    fullCanvas,
+    cardRect.x,
+    cardRect.y,
+    cardRect.w,
+    cardRect.h,
+    0,
+    0,
+    w,
+    h
+  );
+
+  return cropCanvas;
+}
+
+/**
+ * Extrai camadas tipográficas e de preços comparando fullCanvas com bgCanvas pixel a pixel.
+ * Remove 100% do papel de parede ao redor das letras, números e selos sem afetar o conteúdo.
+ */
+function extractTransparentLayerCrop(
+  fullCanvas: HTMLCanvasElement,
+  bgCanvas: HTMLCanvasElement,
+  rect: ElementBox
+): HTMLCanvasElement {
+  const w = Math.max(1, Math.round(rect.w));
+  const h = Math.max(1, Math.round(rect.h));
+
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = w;
+  cropCanvas.height = h;
+  const ctx = cropCanvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return cropCanvas;
+
+  // 1. Desenha o conteúdo do fullCanvas (letras, selos, caixas)
+  ctx.drawImage(
+    fullCanvas,
+    rect.x,
+    rect.y,
+    rect.w,
+    rect.h,
+    0,
+    0,
+    w,
+    h
+  );
+
+  // 2. Desenha o fundo da mesma região do bgCanvas para comparação de pixels
+  const bgTemp = document.createElement('canvas');
+  bgTemp.width = w;
+  bgTemp.height = h;
+  const bgCtx = bgTemp.getContext('2d', { willReadFrequently: true });
+  if (!bgCtx) return cropCanvas;
+
+  bgCtx.drawImage(
+    bgCanvas,
+    rect.x,
+    rect.y,
+    rect.w,
+    rect.h,
+    0,
+    0,
+    w,
+    h
+  );
+
+  // 3. Subtração de fundo pixel a pixel com suavização anti-aliasing
+  const fullData = ctx.getImageData(0, 0, w, h);
+  const bgData = bgCtx.getImageData(0, 0, w, h);
+  const fd = fullData.data;
+  const bd = bgData.data;
+  const len = fd.length;
+
+  for (let i = 0; i < len; i += 4) {
+    const diffR = Math.abs(fd[i] - bd[i]);
+    const diffG = Math.abs(fd[i + 1] - bd[i + 1]);
+    const diffB = Math.abs(fd[i + 2] - bd[i + 2]);
+    const totalDiff = diffR + diffG + diffB;
+
+    if (totalDiff < 14) {
+      // Pixel idêntico ao papel de parede -> totalmente transparente
+      fd[i + 3] = 0;
+    } else if (totalDiff < 36) {
+      // Suavização anti-aliasing nas bordas do texto e contornos
+      const alphaFactor = (totalDiff - 14) / 22;
+      fd[i + 3] = Math.round(fd[i + 3] * alphaFactor);
+    }
+  }
+
+  ctx.putImageData(fullData, 0, 0);
+  return cropCanvas;
 }
 
 /**
@@ -274,6 +373,7 @@ async function captureProductSlideLayers(
     node.style.setProperty('visibility', 'visible', 'important');
     node.style.setProperty('transform', 'none', 'important');
   });
+  await new Promise((r) => setTimeout(r, 60));
 
   // 1. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé limpos, ZERO fantasmas)
   let bgCanvas: HTMLCanvasElement;
@@ -293,26 +393,60 @@ async function captureProductSlideLayers(
   // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta)
   const fullCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH);
 
-  // 3. Captura paralela das 3 camadas isoladas com fundo 100% transparente para animação sequencial no MP4
+  // 3. Extração instantânea das 3 camadas animadas a partir do fullCanvas e bgCanvas (100% em memória, zero falhas)
   const titleRect = titleBlockEl ? getElementDestRect(bannerEl, titleBlockEl, canvasW, canvasH) : null;
   const cardRect = cardEl ? getElementDestRect(bannerEl, cardEl, canvasW, canvasH) : null;
   const priceRect = priceBlockEl ? getElementDestRect(bannerEl, priceBlockEl, canvasW, canvasH) : null;
 
-  let titleCrop: HTMLCanvasElement | null = null;
-  let cardCrop: HTMLCanvasElement | null = null;
-  let priceCrop: HTMLCanvasElement | null = null;
+  // Mede o border-radius do card para o recorte com cantos arredondados
+  let cardRadius = 24;
+  if (cardEl) {
+    try {
+      const cs = window.getComputedStyle(cardEl);
+      const rawR = parseFloat(cs.borderRadius) || 20;
+      const bannerBox = bannerEl.getBoundingClientRect();
+      const scale = bannerBox.width > 0 ? canvasW / bannerBox.width : 1;
+      cardRadius = Math.round(rawR * scale);
+    } catch {}
+  }
+
+  // Retângulos de segurança caso algum ID não seja detectado
+  const safeTitleRect: ElementBox = titleRect || {
+    x: canvasW * 0.05,
+    y: canvasH * 0.18,
+    w: canvasW * 0.42,
+    h: canvasH * 0.28,
+  };
+  const safeCardRect: ElementBox = cardRect || {
+    x: canvasW * 0.50,
+    y: canvasH * 0.16,
+    w: canvasW * 0.45,
+    h: canvasH * 0.68,
+  };
+  const safePriceRect: ElementBox = priceRect || {
+    x: canvasW * 0.05,
+    y: canvasH * 0.50,
+    w: canvasW * 0.42,
+    h: canvasH * 0.35,
+  };
+
+  const finalTitleRect = titleRect || safeTitleRect;
+  const finalCardRect = cardRect || safeCardRect;
+  const finalPriceRect = priceRect || safePriceRect;
+
+  let titleCrop: HTMLCanvasElement;
+  let cardCrop: HTMLCanvasElement;
+  let priceCrop: HTMLCanvasElement;
 
   try {
-    const crops = await Promise.all([
-      titleBlockEl && titleRect ? captureElementToTransparentCanvas(titleBlockEl, Math.round(titleRect.w), Math.round(titleRect.h)) : Promise.resolve(null),
-      cardEl && cardRect ? captureElementToTransparentCanvas(cardEl, Math.round(cardRect.w), Math.round(cardRect.h)) : Promise.resolve(null),
-      priceBlockEl && priceRect ? captureElementToTransparentCanvas(priceBlockEl, Math.round(priceRect.w), Math.round(priceRect.h)) : Promise.resolve(null),
-    ]);
-    titleCrop = crops[0];
-    cardCrop = crops[1];
-    priceCrop = crops[2];
+    cardCrop = extractCardCrop(fullCanvas, finalCardRect, cardRadius);
+    titleCrop = extractTransparentLayerCrop(fullCanvas, bgCanvas, finalTitleRect);
+    priceCrop = extractTransparentLayerCrop(fullCanvas, bgCanvas, finalPriceRect);
   } catch (err) {
-    console.warn('Erro ao capturar camadas individuais para animação:', err);
+    console.warn('Erro na extração de camadas animadas:', err);
+    cardCrop = extractCardCrop(fullCanvas, finalCardRect, 0);
+    titleCrop = fullCanvas;
+    priceCrop = fullCanvas;
   } finally {
     // Restaura propriedades de estilo do banner interativo
     animatedNodes.forEach((node) => {
@@ -326,11 +460,11 @@ async function captureProductSlideLayers(
     fullCanvas,
     bgCanvas,
     titleCrop,
-    titleRect,
+    titleRect: finalTitleRect,
     cardCrop,
-    cardRect,
+    cardRect: finalCardRect,
     priceCrop,
-    priceRect,
+    priceRect: finalPriceRect,
   };
 }
 
@@ -507,11 +641,11 @@ function renderCanvasFrame(
     ctx.drawImage(currentSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
   }
 
-  // 4. Transição suave entre produtos para vídeos de múltiplos itens
+  // 4. Transição suave entre produtos para vídeos de múltiplos itens (fade limpo para o fundo do próximo slide)
   if (isTransitioning && nextSlide) {
     ctx.save();
     ctx.globalAlpha = easeOutCubic(fadeP);
-    ctx.drawImage(nextSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
+    ctx.drawImage(nextSlide.bgCanvas, 0, 0, canvasWidth, canvasHeight);
     ctx.restore();
   }
 }
