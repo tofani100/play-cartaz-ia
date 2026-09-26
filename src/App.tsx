@@ -629,18 +629,6 @@ export default function App() {
         onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
         onOpenExportModal={() => setIsExportModalOpen(true)}
         onOpenThemeModal={() => setIsThemeModalOpen(true)}
-        onOpenSettingsModal={() => {
-          const el = document.getElementById('painel-secao-modelos') || document.getElementById('painel-secao-campanha');
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            el.classList.add('ring-2', 'ring-amber-400');
-            setTimeout(() => {
-              el.classList.remove('ring-2', 'ring-amber-400');
-            }, 2500);
-          } else {
-            setIsSettingsModalOpen(true);
-          }
-        }}
         clientName={campaign.clientName}
         onClientNameChange={(name) => handleUpdateCampaign({ clientName: name })}
         activeThemeId={campaign.themeId}
@@ -731,13 +719,6 @@ export default function App() {
         onDeleteClient={handleDeleteClient}
         onToggleShowLogo={(show) => handleUpdateCampaign({ showClientLogo: show })}
         onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
-      />
-
-      <ModalConfiguracoesCampanha
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        campaign={campaign}
-        onUpdateCampaign={handleUpdateCampaign}
       />
     </div>
   );

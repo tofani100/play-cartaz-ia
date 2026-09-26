@@ -25,7 +25,7 @@ interface BarraSuperiorProps {
   onOpenTvPlayer: () => void;
   onOpenExportModal: () => void;
   onOpenThemeModal: () => void;
-  onOpenSettingsModal: () => void;
+  onOpenSettingsModal?: () => void;
   clientName: string;
   onClientNameChange: (name: string) => void;
   activeThemeId: ThemePresetId;
@@ -44,7 +44,6 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
   onOpenTvPlayer,
   onOpenExportModal,
   onOpenThemeModal,
-  onOpenSettingsModal,
   clientName,
   onClientNameChange,
   showClientLogo = true,
@@ -277,17 +276,6 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
               </span>
             </button>
           )}
-
-          {/* Settings / Configs */}
-          <button
-            id="btn-open-settings"
-            onClick={onOpenSettingsModal}
-            className="p-1.5 sm:px-2.5 sm:py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg text-xs flex items-center gap-1.5 border border-neutral-700 transition-colors"
-            title="Configurações da Campanha"
-          >
-            <Sliders className="w-3.5 h-3.5 text-neutral-400" />
-            <span className="hidden sm:inline">Ajustes</span>
-          </button>
 
           {/* TV Player Mode */}
           <button

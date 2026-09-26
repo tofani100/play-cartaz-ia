@@ -91,11 +91,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   // Escopo de alteração: 'single' (apenas neste banner) ou 'all' (em todos os banners)
   const [customizationScope, setCustomizationScope] = useState<'single' | 'all'>('single');
 
-  // Estado das seções colapsáveis / expansíveis (todas abertas por padrão para rolagem contínua fluida)
+  // Estado das seções colapsáveis / expansíveis (todas abertas por padrão para rolagem contínua fluida de cima para baixo)
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
+    campanha: true,
     produto: true,
     estilos: true,
-    campanha: true,
     reproducao: true,
   });
 
@@ -365,8 +365,17 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 
   return (
     <div className="w-full bg-neutral-900 border-t sm:border-t-0 sm:border-l border-neutral-800 p-3 sm:p-4 flex flex-col gap-3.5">
-      {/* Mini Barra de Acesso Rápido às Seções */}
+      {/* Mini Barra de Acesso Rápido às Seções (Alinhada da Lógica de Cima para Baixo) */}
       <div className="sticky -top-4 z-20 bg-neutral-900/95 backdrop-blur-md pb-2 pt-1 border-b border-neutral-800/80 -mx-3 sm:-mx-4 px-3 sm:px-4 flex items-center gap-1.5 overflow-x-auto select-none">
+        <button
+          type="button"
+          onClick={() => scrollToSection('painel-secao-campanha')}
+          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-amber-300 text-neutral-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 border border-neutral-700/80 transition-all"
+        >
+          <Layers className="w-3 h-3 text-amber-400" />
+          <span>Topo & Identidade</span>
+        </button>
+
         <button
           type="button"
           onClick={() => scrollToSection('painel-secao-produto')}
@@ -382,16 +391,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
           className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-amber-300 text-neutral-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 border border-neutral-700/80 transition-all"
         >
           <Palette className="w-3 h-3 text-amber-400" />
-          <span>Modelos & Cores</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => scrollToSection('painel-secao-campanha')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-amber-300 text-neutral-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 border border-neutral-700/80 transition-all"
-        >
-          <Layers className="w-3 h-3 text-amber-400" />
-          <span>Textos da Campanha</span>
+          <span>Modelos & Fundo</span>
         </button>
 
         <button
@@ -597,7 +597,241 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* SEÇÃO 1: EDITANDO ITEM #X (PRODUTO, PREÇOS, SELOS COM CORES E PACKSHOT) */}
+      {/* SEÇÃO 1 (NOVO TOPO!): 📝 TEXTOS & IDENTIDADE DA CAMPANHA (TOPO DO BANNER) */}
+      {/* ========================================================================= */}
+      <div id="painel-secao-campanha" className="p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3.5 shadow-sm">
+        <div 
+          onClick={() => toggleSection('campanha')}
+          className="flex items-center justify-between border-b border-neutral-800 pb-2.5 cursor-pointer group select-none"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <span className="text-xs font-black text-white group-hover:text-amber-300">
+                1. Textos & Identidade (Topo do Banner)
+              </span>
+              <span className="text-[10px] text-neutral-400 block">
+                Título superior, validade, logotipo da empresa e rodapé fixo
+              </span>
+            </div>
+          </div>
+
+          <div className="text-neutral-400 group-hover:text-white">
+            {openSections.campanha ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
+        </div>
+
+        {openSections.campanha && (
+          <div className="space-y-3">
+            {/* 1. Logotipo & Nome do Cliente */}
+            <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-amber-300 flex items-center gap-1">
+                  <ImageIcon className="w-3 h-3 text-amber-400" />
+                  <span>Logotipo da Empresa / Loja</span>
+                </span>
+
+                {onToggleShowLogo && (
+                  <label className="flex items-center gap-1.5 text-[11px] text-neutral-300 cursor-pointer font-bold">
+                    <input
+                      type="checkbox"
+                      checked={showClientLogo !== false}
+                      onChange={onToggleShowLogo}
+                      className="rounded bg-neutral-800 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
+                    />
+                    <span>Exibir no Banner</span>
+                  </label>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={campaign?.clientLogoUrl?.startsWith('data:') ? 'Arquivo de logo carregado' : (campaign?.clientLogoUrl || '')}
+                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ clientLogoUrl: e.target.value, showClientLogo: true })}
+                  placeholder="/logos/empresa.png ou link..."
+                  className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono truncate"
+                />
+
+                <input
+                  ref={clientLogoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        if (ev.target?.result && onUpdateCampaign) {
+                          onUpdateCampaign({ clientLogoUrl: ev.target.result as string, showClientLogo: true });
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => clientLogoInputRef.current?.click()}
+                  className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Logo</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Título Superior da Campanha + Fonte + Cor */}
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                Título Superior da Campanha (Cabeçalho)
+              </label>
+              <input
+                type="text"
+                value={campaign?.campaignTitle || ''}
+                onChange={(e) => onUpdateCampaign && onUpdateCampaign({ campaignTitle: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-black uppercase"
+                placeholder="Ex: FESTIVAL DE OFERTAS BELÍSSIMA !"
+              />
+
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                <div>
+                  <label className="block text-[9px] text-neutral-400 mb-0.5">Fonte do Título Superior:</label>
+                  <select
+                    value={currentEffectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"}
+                    onChange={(e) => handleApplyCustomStyle({ campaignTitleFont: e.target.value })}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-[10px] text-white"
+                  >
+                    {FONTES_COMERCIAIS_RECOMENDADAS.map((f) => (
+                      <option key={f.id} value={f.fontFamily}>
+                        {f.nome.split(' (')[0]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] text-neutral-400 mb-0.5">Cor do Título Superior:</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="color"
+                      value={currentEffectiveStyles.campaignTitleColor || '#fbbf24'}
+                      onChange={(e) => handleApplyCustomStyle({ campaignTitleColor: e.target.value })}
+                      className="w-6 h-6 rounded border border-neutral-700 bg-neutral-900 cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={currentEffectiveStyles.campaignTitleColor || '#fbbf24'}
+                      onChange={(e) => handleApplyCustomStyle({ campaignTitleColor: e.target.value })}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-[10px] text-white font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Subtítulo e Validade */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                  Subtítulo / Slogan
+                </label>
+                <input
+                  type="text"
+                  value={campaign?.campaignSubtitle || ''}
+                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ campaignSubtitle: e.target.value })}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  placeholder="Ex: Preços baixos de verdade..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                  Texto de Validade das Ofertas
+                </label>
+                <input
+                  type="text"
+                  value={campaign?.validityText || ''}
+                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ validityText: e.target.value })}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  placeholder="Ex: Ofertas válidas até domingo..."
+                />
+              </div>
+            </div>
+
+            {/* 4. Rodapé Fixo da TV (Sub-Footer): Texto Legal e Site/Assinatura */}
+            <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
+              <span className="text-[10px] font-black uppercase text-amber-300 block">
+                Rodapé Fixo da TV (Sub-Footer)
+              </span>
+
+              <div className="space-y-1.5">
+                <div>
+                  <label className="block text-[9px] text-neutral-400 mb-0.5">
+                    Texto Legal (Canto Esquerdo):
+                  </label>
+                  <input
+                    type="text"
+                    value={campaign?.legalNotice || ''}
+                    onChange={(e) => onUpdateCampaign && onUpdateCampaign({ legalNotice: e.target.value })}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                    placeholder="Imagens meramente ilustrativas..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] text-neutral-400 mb-0.5">
+                    Site / Assinatura (Canto Direito):
+                  </label>
+                  <input
+                    type="text"
+                    value={campaign?.footerBrandText !== undefined ? campaign.footerBrandText : 'ts.playcomunique.com.br'}
+                    onChange={(e) => onUpdateCampaign && onUpdateCampaign({ footerBrandText: e.target.value })}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                    placeholder="ts.playcomunique.com.br"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Contatos da Loja */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                  WhatsApp Pedidos
+                </label>
+                <input
+                  type="text"
+                  value={campaign?.phoneWhatsapp || ''}
+                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ phoneWhatsapp: e.target.value })}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  placeholder="(11) 99999-1234"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                  Endereço Loja
+                </label>
+                <input
+                  type="text"
+                  value={campaign?.storeAddress || ''}
+                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ storeAddress: e.target.value })}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  placeholder="Rua das Frutas, 2004"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SEÇÃO 2: EDITANDO ITEM #X (PRODUTO, PREÇOS, SELOS COM CORES E PACKSHOT) */}
       {/* ========================================================================= */}
       {activeProduct && (
         <div id="painel-secao-produto" className="p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3.5 shadow-sm">
@@ -612,7 +846,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               </div>
               <div>
                 <span className="text-xs font-black text-white group-hover:text-amber-300">
-                  Editando Item #{currentProductIndex + 1}
+                  2. Editando Item #{currentProductIndex + 1}
                 </span>
                 <span className="text-[10px] text-neutral-400 block truncate max-w-[210px]">
                   {activeProduct.title}
@@ -1191,7 +1425,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* SEÇÃO 2: MODELOS DE MERCADO & ESTILOS VISUAIS DO BANNER */}
+      {/* SEÇÃO 3: MODELOS DE MERCADO & ESTILOS VISUAIS DO BANNER */}
       {/* ========================================================================= */}
       <div id="painel-secao-modelos" className="p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3.5 shadow-sm">
         <div 
@@ -1204,7 +1438,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
             </div>
             <div>
               <span className="text-xs font-black text-white group-hover:text-amber-300">
-                Modelos de Mercado & Fundo do Banner
+                3. Modelos de Mercado & Fundo do Banner
               </span>
               <span className="text-[10px] text-neutral-400 block">
                 10 layouts profissionais, gradientes e imagem de fundo
@@ -1377,239 +1611,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* SEÇÃO 3: TEXTOS & IDENTIDADE DA CAMPANHA (TOPO, SUBTÍTULO, VALIDADE, RODAPÉ) */}
-      {/* ========================================================================= */}
-      <div id="painel-secao-campanha" className="p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3.5 shadow-sm">
-        <div 
-          onClick={() => toggleSection('campanha')}
-          className="flex items-center justify-between border-b border-neutral-800 pb-2.5 cursor-pointer group select-none"
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <Layers className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="text-xs font-black text-white group-hover:text-amber-300">
-                Textos & Identidade da Campanha
-              </span>
-              <span className="text-[10px] text-neutral-400 block">
-                Título superior, validade, logotipo e dados de rodapé
-              </span>
-            </div>
-          </div>
-
-          <div className="text-neutral-400 group-hover:text-white">
-            {openSections.campanha ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </div>
-
-        {openSections.campanha && (
-          <div className="space-y-3">
-            {/* 1. Logotipo & Nome do Cliente */}
-            <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-amber-300">
-                  Logotipo da Empresa / Loja
-                </span>
-
-                {onToggleShowLogo && (
-                  <label className="flex items-center gap-1.5 text-[11px] text-neutral-300 cursor-pointer font-bold">
-                    <input
-                      type="checkbox"
-                      checked={showClientLogo !== false}
-                      onChange={onToggleShowLogo}
-                      className="rounded bg-neutral-800 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
-                    />
-                    <span>Exibir Logo no Banner</span>
-                  </label>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={campaign?.clientLogoUrl?.startsWith('data:') ? 'Arquivo de logo carregado' : (campaign?.clientLogoUrl || '')}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ clientLogoUrl: e.target.value, showClientLogo: true })}
-                  placeholder="/logos/empresa.png ou link..."
-                  className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono truncate"
-                />
-
-                <input
-                  ref={clientLogoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (ev) => {
-                        if (ev.target?.result && onUpdateCampaign) {
-                          onUpdateCampaign({ clientLogoUrl: ev.target.result as string, showClientLogo: true });
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => clientLogoInputRef.current?.click()}
-                  className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Logo</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Título Superior da Campanha + Fonte + Cor */}
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                Título Superior da Campanha (Cabeçalho)
-              </label>
-              <input
-                type="text"
-                value={campaign?.campaignTitle || ''}
-                onChange={(e) => onUpdateCampaign && onUpdateCampaign({ campaignTitle: e.target.value })}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-black uppercase"
-                placeholder="Ex: FESTIVAL DE OFERTAS PLAY COMUNIQUE"
-              />
-
-              <div className="grid grid-cols-2 gap-2 mt-1.5">
-                <div>
-                  <label className="block text-[9px] text-neutral-400 mb-0.5">Fonte do Título:</label>
-                  <select
-                    value={currentEffectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"}
-                    onChange={(e) => handleApplyCustomStyle({ campaignTitleFont: e.target.value })}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-[10px] text-white"
-                  >
-                    {FONTES_COMERCIAIS_RECOMENDADAS.map((f) => (
-                      <option key={f.id} value={f.fontFamily}>
-                        {f.nome.split(' (')[0]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[9px] text-neutral-400 mb-0.5">Cor do Título:</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="color"
-                      value={currentEffectiveStyles.campaignTitleColor || '#fbbf24'}
-                      onChange={(e) => handleApplyCustomStyle({ campaignTitleColor: e.target.value })}
-                      className="w-6 h-6 rounded border border-neutral-700 bg-neutral-900 cursor-pointer shrink-0"
-                    />
-                    <input
-                      type="text"
-                      value={currentEffectiveStyles.campaignTitleColor || '#fbbf24'}
-                      onChange={(e) => handleApplyCustomStyle({ campaignTitleColor: e.target.value })}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-[10px] text-white font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Subtítulo e Validade */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  Subtítulo / Slogan
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.campaignSubtitle || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ campaignSubtitle: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="Ex: Preços baixos de verdade..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  Texto de Validade das Ofertas
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.validityText || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ validityText: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="Ex: Ofertas válidas até domingo..."
-                />
-              </div>
-            </div>
-
-            {/* 4. Rodapé da TV (Sub-Footer): Texto Legal e Site/Assinatura */}
-            <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
-              <span className="text-[10px] font-black uppercase text-amber-300 block">
-                Rodapé Fixo da TV (Sub-Footer)
-              </span>
-
-              <div className="space-y-1.5">
-                <div>
-                  <label className="block text-[9px] text-neutral-400 mb-0.5">
-                    Texto Legal (Canto Esquerdo):
-                  </label>
-                  <input
-                    type="text"
-                    value={campaign?.legalNotice || ''}
-                    onChange={(e) => onUpdateCampaign && onUpdateCampaign({ legalNotice: e.target.value })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                    placeholder="Imagens meramente ilustrativas..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] text-neutral-400 mb-0.5">
-                    Site / Assinatura (Canto Direito):
-                  </label>
-                  <input
-                    type="text"
-                    value={campaign?.footerBrandText !== undefined ? campaign.footerBrandText : 'ts.playcomunique.com.br'}
-                    onChange={(e) => onUpdateCampaign && onUpdateCampaign({ footerBrandText: e.target.value })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
-                    placeholder="ts.playcomunique.com.br"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 5. Contatos da Loja */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  WhatsApp Pedidos
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.phoneWhatsapp || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ phoneWhatsapp: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="(11) 99999-1234"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  Endereço Loja
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.storeAddress || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ storeAddress: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="Rua das Frutas, 2004"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================================= */}
       {/* SEÇÃO 4: REPRODUÇÃO TV INDOOR & ROTAÇÃO AUTOMÁTICA */}
       {/* ========================================================================= */}
       <div id="painel-secao-tv" className="p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3.5 shadow-sm">
@@ -1623,7 +1624,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
             </div>
             <div>
               <span className="text-xs font-black text-white group-hover:text-emerald-300">
-                Reprodução TV Indoor & Rotação
+                4. Reprodução TV Indoor & Rotação
               </span>
               <span className="text-[10px] text-neutral-400 block">
                 Tempo por oferta, efeitos de transição e letreiro
