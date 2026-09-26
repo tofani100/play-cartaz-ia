@@ -1,9 +1,8 @@
 // Utility to capture canvas / DOM elements and record dynamic animated MP4/WebM video with individual element motion
-// Arquitetura de 7 Pilares de Alta Fidelidade (Base44.com) com Captura Única em Retina e Recorte por Camadas
+// Arquitetura de Alta Fidelidade com Motor Nativo do Browser (SVG ForeignObject / toPng) e Recorte por Camadas
 import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
 import { toPng } from 'html-to-image';
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
-import html2canvas from 'html2canvas';
 
 /**
  * Downloads the visual banner directly as a crisp high-resolution PNG using html-to-image
@@ -68,7 +67,7 @@ interface ProductSlideLayers {
 /**
  * Ensures any image URL is safely converted to a same-origin Data URL (base64)
  * using direct fetch with fallback to the high-speed weserv.nl CORS proxy.
- * Once an image is a Data URL, html2canvas and Canvas NEVER fail to render it.
+ * Once an image is a Data URL, Canvas and html-to-image NEVER fail to render it.
  */
 export async function getSafeImageDataUrl(url: string): Promise<string> {
   if (!url || typeof url !== 'string') return '';
@@ -105,46 +104,24 @@ export async function getSafeImageDataUrl(url: string): Promise<string> {
 }
 
 /**
- * Pilar 1 do Base44: Captura única do banner completo em escala 2x (retina).
- * Essa é a fonte de verdade absoluta — o que você vê no MP4 é exatamente o que o browser renderizou.
+ * Captura o banner como canvas com resolução de estúdio utilizando toPng (html-to-image).
+ * Utiliza o motor nativo de renderização SVG foreignObject do próprio navegador (Chrome/Edge),
+ * garantindo fidelidade 100% exata a fontes (Montserrat), espaçamento de letras (letter-spacing),
+ * padding de selos e cores — sem falhas de texto transbordando do selo.
+ * Quando `excludeId` é passado, o elemento é completamente excluído do SVG gerado (zero fantasmas).
  */
-async function captureFullBannerCanvas(el: HTMLElement, targetW: number, targetH: number): Promise<HTMLCanvasElement> {
+async function captureBannerToCanvas(
+  el: HTMLElement,
+  targetW: number,
+  targetH: number,
+  excludeId?: string
+): Promise<HTMLCanvasElement> {
   const rect = el.getBoundingClientRect();
-  const scale = Math.max(2, targetW / (rect.width || 1));
+  const pixelRatio = Math.max(2, targetW / (rect.width || 1));
 
-  try {
-    const canvas = await html2canvas(el, {
-      scale,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: null,
-      logging: false,
-      width: el.offsetWidth,
-      height: el.offsetHeight,
-      ignoreElements: (node) => {
-        if (node instanceof HTMLElement) {
-          if (node.id === 'tv-card-toolbar' || node.classList.contains('group-hover:opacity-100')) {
-            return true;
-          }
-          if (node.id && node.id.startsWith('btn-')) {
-            return true;
-          }
-        }
-        return false;
-      },
-    });
-
-    if (canvas && canvas.width > 100 && canvas.height > 100) {
-      return canvas;
-    }
-  } catch (err) {
-    console.warn('html2canvas falhou na captura do banner, acionando fallback toPng:', err);
-  }
-
-  // Fallback de alta fidelidade com toPng (html-to-image)
   const dataUrl = await toPng(el, {
     quality: 1.0,
-    pixelRatio: scale,
+    pixelRatio,
     cacheBust: false,
     filter: (node) => {
       if (node instanceof HTMLElement) {
@@ -152,6 +129,9 @@ async function captureFullBannerCanvas(el: HTMLElement, targetW: number, targetH
           return false;
         }
         if (node.id && node.id.startsWith('btn-')) {
+          return false;
+        }
+        if (excludeId && node.id === excludeId) {
           return false;
         }
       }
@@ -167,17 +147,17 @@ async function captureFullBannerCanvas(el: HTMLElement, targetW: number, targetH
     i.src = dataUrl;
   });
 
-  const outCanvas = document.createElement('canvas');
-  outCanvas.width = img.naturalWidth || targetW;
-  outCanvas.height = img.naturalHeight || targetH;
-  const outCtx = outCanvas.getContext('2d')!;
-  outCtx.drawImage(img, 0, 0, outCanvas.width, outCanvas.height);
-  return outCanvas;
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+  return canvas;
 }
 
 /**
- * Pilar 2 do Base44: Recorte por camadas (layered crops) em resolução real.
- * A regra de ouro: cada crop é sempre recortado e desenhado em sua largura/altura real, nunca esticado.
+ * Recorta o elemento animado diretamente do canvas completo em sua resolução real nativa.
+ * A regra de ouro: cada crop é sempre recortado e desenhado em sua largura/altura real.
  */
 function cropFromCanvas(
   fullCanvas: HTMLCanvasElement,
@@ -239,8 +219,10 @@ function cropFromCanvas(
 }
 
 /**
- * Pilar 3 do Base44: Camada base limpa + crops dos elementos animados.
- * Garante que nada corte, nada deforme e que a segunda tag/selo e preço estejam 100% íntegros.
+ * Captura as camadas de cada slide com zero fantasmas e fidelidade total às fontes e layouts:
+ * 1. bgCanvas: papel de parede, iluminação, cabeçalho e rodapé limpos (com o centro 100% filtrado/excluído)
+ * 2. fullCanvas: banner completo renderizado nativamente pelo browser (sem corte de fontes nos selos)
+ * 3. crops: recortes precisos do título, card do produto e bloco de preço com o 2º selo.
  */
 async function captureProductSlideLayers(
   bannerEl: HTMLElement,
@@ -254,13 +236,12 @@ async function captureProductSlideLayers(
     }
   } catch {}
 
-  const centerContentEl = document.getElementById('tv-banner-center-content');
   const titleBlockEl = document.getElementById('tv-anim-title-block');
   const priceBlockEl = document.getElementById('tv-anim-price-block');
   const cardEl = document.getElementById('tv-anim-product-card');
 
   // Garante opacidade 1 e visibilidade normal em todos os elementos
-  [titleBlockEl, priceBlockEl, cardEl, centerContentEl].forEach((el) => {
+  [titleBlockEl, priceBlockEl, cardEl].forEach((el) => {
     if (el) {
       el.style.opacity = '1';
       el.style.visibility = 'visible';
@@ -269,23 +250,14 @@ async function captureProductSlideLayers(
 
   await new Promise((r) => setTimeout(r, 60));
 
-  // 1. Captura ÚNICA do banner completo (fonte da verdade)
-  const fullCanvas = await captureFullBannerCanvas(bannerEl, canvasW, canvasH);
+  // 1. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé)
+  // O filtro excludeId='tv-banner-center-content' garante que NENHUM texto do centro apareça no fundo (ZERO FANTASMAS)
+  const bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
 
-  // 2. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé limpos)
-  let bgCanvas: HTMLCanvasElement;
-  if (centerContentEl) {
-    centerContentEl.style.setProperty('visibility', 'hidden', 'important');
-    try {
-      bgCanvas = await captureFullBannerCanvas(bannerEl, canvasW, canvasH);
-    } finally {
-      centerContentEl.style.removeProperty('visibility');
-    }
-  } else {
-    bgCanvas = fullCanvas;
-  }
+  // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta)
+  const fullCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH);
 
-  // 3. Recorte por camadas em resolução real direta (Pilar 2)
+  // 3. Recorte por camadas em resolução real direta
   let titleCrop: HTMLCanvasElement | null = null;
   let titleRect: ElementBox | null = null;
   if (titleBlockEl) {
@@ -358,8 +330,8 @@ function drawCrop(
 }
 
 /**
- * Pilar 6 do Base44: Timeline com easing, frame a frame.
  * Renderiza cada quadro com fidelidade total à posição, fonte e proporção do mini player.
+ * A camada base é 100% limpa (sem texto fantasma por baixo durante a animação de entrada).
  */
 function renderCanvasFrame(
   ctx: CanvasRenderingContext2D,
@@ -395,7 +367,7 @@ function renderCanvasFrame(
   // 0. Limpa o canvas de saída
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // 1. Camada Base (papel de parede, cabeçalho e rodapé oficial íntegros)
+  // 1. Camada Base (papel de parede, cabeçalho e rodapé oficial 100% limpos, ZERO fantasmas)
   ctx.drawImage(currentSlide.bgCanvas, 0, 0, canvasWidth, canvasHeight);
 
   // 2. Timeline de animação (0.0s - 0.40s: entrada suave)
@@ -427,7 +399,7 @@ function renderCanvasFrame(
   // Flutuação sutil de levitação no card de produto
   const cFloatY = Math.sin(slideT * 2.0) * 3;
 
-  // 3. Desenha Crop do Título (com 1º selo na mesma linha, exatamente como no mini player)
+  // 3. Desenha Crop do Título (com 1º selo íntegro, sem transbordar texto e sem fantasma)
   if (currentSlide.titleCrop && currentSlide.titleRect) {
     drawCrop(ctx, currentSlide.titleCrop, currentSlide.titleRect, {
       dx: titleDx,
@@ -462,7 +434,7 @@ function renderCanvasFrame(
 }
 
 /**
- * Pilar 4 e 5: WebCodecs + MP4 Muxer High-Speed Video Engine a 12 Mbps (qualidade máxima sem perda).
+ * WebCodecs + MP4 Muxer High-Speed Video Engine a 12 Mbps (qualidade máxima sem perda).
  * Encodes directly from Canvas frames to standard H.264 MP4.
  */
 async function recordWithWebCodecs(
@@ -532,7 +504,7 @@ async function recordWithWebCodecs(
     codec: chosenCodec,
     width: canvasWidth,
     height: canvasHeight,
-    bitrate: 12_000_000, // 12 Mbps broadcast qualidade de estúdio (Pilar 5)
+    bitrate: 12_000_000, // 12 Mbps broadcast qualidade de estúdio
     framerate: FPS,
   });
 
@@ -594,7 +566,7 @@ async function recordWithWebCodecs(
 }
 
 /**
- * Pilar 5 e 7: Universal MediaRecorder com Anti-Throttling a 12 Mbps (Base44).
+ * Universal MediaRecorder com Anti-Throttling a 12 Mbps.
  * Dual redraw (rAF + setInterval fallback) ancorado no tempo real (performance.now()).
  */
 async function recordWithMediaRecorder(
@@ -640,7 +612,7 @@ async function recordWithMediaRecorder(
 
       const recorder = new MediaRecorder(stream, {
         mimeType: chosenMime,
-        videoBitsPerSecond: 12000000, // 12 Mbps — qualidade sem perda (Pilar 5)
+        videoBitsPerSecond: 12000000, // 12 Mbps — qualidade sem perda
       });
 
       const chunks: Blob[] = [];
@@ -670,7 +642,7 @@ async function recordWithMediaRecorder(
         } catch {}
       };
 
-      // DUAS fontes de redraw (Pilar 7 do Base44 — anti-throttling)
+      // DUAS fontes de redraw (anti-throttling)
       const animate = () => {
         if (stopped) return;
         const elapsed = (performance.now() - startTime) / 1000;
@@ -696,7 +668,7 @@ async function recordWithMediaRecorder(
         drawFrame(t);
       }, 1000 / 30);
 
-      // Stop ancorado no relógio de parede real (Pilar 7)
+      // Stop ancorado no relógio de parede real
       setTimeout(() => {
         stopped = true;
         clearInterval(intervalFallback);
@@ -822,7 +794,7 @@ async function recordLayeredSlidesToVideo(
 /**
  * Generates an animated MP4 video specifically for an INDIVIDUAL PRODUCT (Single Banner).
  * Duration: 5.0 seconds.
- * 100% fiel ao mini player com a arquitetura de 7 pilares do Base44.
+ * 100% fiel ao mini player com exclusão do centro na camada base (zero fantasmas) e renderização nativa de fontes.
  */
 export async function gerarVideoAnimadoProdutoIndividual(
   campaign: BannerCampaign,

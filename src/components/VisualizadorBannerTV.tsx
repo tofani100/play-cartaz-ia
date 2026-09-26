@@ -344,6 +344,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       flexShrink: 0,
                       boxSizing: 'border-box',
                       lineHeight: 1.15,
+                      fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                     }}
                     className="inline-flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none"
                   >
@@ -422,6 +423,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         ? `${effectiveStyles.secondBadgeBgColor}aa` 
                         : (effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}aa` : '#3b7a50'),
                       boxSizing: 'border-box',
+                      fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                     }}
                     className="w-auto min-w-full py-1 sm:py-1.5 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none"
                   >
