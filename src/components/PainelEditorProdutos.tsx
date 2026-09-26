@@ -1663,14 +1663,34 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 </label>
                 <select
                   value={campaign?.animationStyle || 'zoom'}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ animationStyle: e.target.value as AnimationEffect })}
+                  onChange={(e) => {
+                    const newStyle = e.target.value as AnimationEffect;
+                    if (onUpdateCampaign) {
+                      onUpdateCampaign({ animationStyle: newStyle });
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('tv-replay-animation'));
+                      }, 50);
+                    }
+                  }}
                   className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
                 >
-                  <option value="zoom">Zoom Suave (Ken Burns)</option>
-                  <option value="pulse">Pulso de Destaque</option>
-                  <option value="slide">Deslizar Lateral</option>
-                  <option value="none">Estático</option>
+                  <option value="zoom">Zoom Suave & Pop de Preço (Ken Burns)</option>
+                  <option value="slide">Deslizar Lateral dos 3 Blocos</option>
+                  <option value="pulse">Pulso de Destaque Comercial</option>
+                  <option value="none">Estático (Sem Animação)</option>
                 </select>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('tv-replay-animation'));
+                  }}
+                  className="w-full mt-2 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-lg text-[11px] font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+                  title="Testar animação dos blocos (1: Nome Comercial, 2: Foto Packshot, 3: Preço)"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Testar Animação dos 3 Blocos</span>
+                </button>
               </div>
             </div>
 

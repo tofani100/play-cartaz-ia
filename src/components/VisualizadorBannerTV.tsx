@@ -14,7 +14,8 @@ import {
   Copy,
   Check,
   SlidersHorizontal,
-  Wand2
+  Wand2,
+  Sparkles
 } from 'lucide-react';
 import { BannerCampaign, ProductItem, ThemeColors, BannerCustomStyles } from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
@@ -45,6 +46,17 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const cardFileInputRef = useRef<HTMLInputElement>(null);
+  const [animCycle, setAnimCycle] = useState(0);
+
+  useEffect(() => {
+    const handleTriggerReplay = () => {
+      setAnimCycle((c) => c + 1);
+    };
+    window.addEventListener('tv-replay-animation', handleTriggerReplay);
+    return () => {
+      window.removeEventListener('tv-replay-animation', handleTriggerReplay);
+    };
+  }, []);
 
   const product: ProductItem = campaign.products[currentProductIndex] || {
     id: 'empty',
@@ -129,39 +141,140 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
     }
   };
 
-  const getAnimationProps = () => {
-    if (isTvPlayerMode) {
-      // Hardware-accelerated lightweight crossfade for TV Sticks
+  // Bloco 1: Nome Comercial do Produto (exceto o selo)
+  const getBlock1Props = () => {
+    if (campaign.animationStyle === 'none') {
       return {
-        initial: { opacity: 0 },
+        initial: { opacity: 1 },
         animate: { opacity: 1 },
-        exit: { opacity: 0 },
-        transition: { duration: 0.3, ease: 'easeOut' as const },
-      };
-    }
-    if (campaign.animationStyle === 'zoom') {
-      return {
-        initial: { scale: 0.92, opacity: 0 },
-        animate: { scale: 1, opacity: 1 },
-        exit: { opacity: 0 },
-        transition: { duration: 0.4, ease: 'easeOut' as const },
+        transition: { duration: 0 },
       };
     }
     if (campaign.animationStyle === 'slide') {
       return {
-        initial: { x: 60, opacity: 0 },
-        animate: { x: 0, opacity: 1 },
+        initial: { x: isVertical ? 0 : -45, y: isVertical ? -25 : 0, opacity: 0 },
+        animate: { x: 0, y: 0, opacity: 1 },
         exit: { opacity: 0 },
-        transition: { duration: 0.4, ease: 'easeOut' as const },
+        transition: { duration: 0.45, delay: 0.14, ease: [0.22, 1, 0.36, 1] as const },
       };
     }
+    if (campaign.animationStyle === 'pulse') {
+      return {
+        initial: { scale: 0.94, opacity: 0, y: -8 },
+        animate: { scale: 1, opacity: 1, y: 0 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.42, delay: 0.14, ease: 'easeOut' as const },
+      };
+    }
+    // Padrão: 'zoom' (Entrada tipográfica suave e cinematográfica de TV)
     return {
-      initial: { opacity: 0 },
-      animate: { opacity: 1 },
+      initial: { x: isVertical ? 0 : -30, y: isVertical ? -15 : 0, opacity: 0 },
+      animate: { x: 0, y: 0, opacity: 1 },
       exit: { opacity: 0 },
-      transition: { duration: 0.35 },
+      transition: { duration: 0.45, delay: 0.14, ease: [0.22, 1, 0.36, 1] as const },
     };
   };
+
+  // 1º Selo Promocional (Topo): Carimbo oficial de selo independente do nome comercial
+  const getBadge1Props = () => {
+    if (campaign.animationStyle === 'none') {
+      return {
+        initial: { opacity: 1 },
+        animate: { opacity: 1 },
+        transition: { duration: 0 },
+      };
+    }
+    if (campaign.animationStyle === 'slide') {
+      return {
+        initial: { y: -20, opacity: 0 },
+        animate: { y: 0, opacity: 1 },
+        transition: { duration: 0.35, delay: 0.08, ease: 'easeOut' as const },
+      };
+    }
+    if (campaign.animationStyle === 'pulse') {
+      return {
+        initial: { scale: 0.6, opacity: 0 },
+        animate: { scale: [0.6, 1.14, 1], opacity: 1 },
+        transition: { duration: 0.38, delay: 0.08, ease: 'easeOut' as const },
+      };
+    }
+    // Padrão: 'zoom' - Carimbo oficial de selo com pop
+    return {
+      initial: { scale: 0.72, opacity: 0 },
+      animate: { scale: 1, opacity: 1 },
+      transition: { duration: 0.38, delay: 0.08, ease: [0.34, 1.45, 0.64, 1] as const },
+    };
+  };
+
+  // Bloco 2: Foto da Embalagem / Packshot Comercial (Card 4:3)
+  const getBlock2Props = () => {
+    if (campaign.animationStyle === 'none') {
+      return {
+        initial: { opacity: 1 },
+        animate: { opacity: 1 },
+        transition: { duration: 0 },
+      };
+    }
+    if (campaign.animationStyle === 'slide') {
+      return {
+        initial: { x: isVertical ? 0 : 50, y: isVertical ? 30 : 0, opacity: 0 },
+        animate: { x: 0, y: 0, opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.45, delay: 0.02, ease: [0.22, 1, 0.36, 1] as const },
+      };
+    }
+    if (campaign.animationStyle === 'pulse') {
+      return {
+        initial: { scale: 0.9, opacity: 0 },
+        animate: { scale: [0.9, 1.03, 1], opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.48, delay: 0.02, ease: 'easeOut' as const },
+      };
+    }
+    // Padrão: 'zoom' (Aparecimento limpo e cinematográfico de estúdio)
+    return {
+      initial: { scale: 0.91, opacity: 0 },
+      animate: { scale: 1, opacity: 1 },
+      exit: { opacity: 0 },
+      transition: { duration: 0.45, delay: 0.02, ease: [0.22, 1, 0.36, 1] as const },
+    };
+  };
+
+  // Bloco 3: Preço Por (R$), Preço De (R$), Unidade e 2º Selo Promocional
+  const getBlock3Props = () => {
+    if (campaign.animationStyle === 'none') {
+      return {
+        initial: { opacity: 1 },
+        animate: { opacity: 1 },
+        transition: { duration: 0 },
+      };
+    }
+    if (campaign.animationStyle === 'slide') {
+      return {
+        initial: { y: 35, opacity: 0 },
+        animate: { y: 0, opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.45, delay: 0.28, ease: [0.22, 1, 0.36, 1] as const },
+      };
+    }
+    if (campaign.animationStyle === 'pulse') {
+      return {
+        initial: { scale: 0.8, opacity: 0 },
+        animate: { scale: [0.8, 1.1, 0.98, 1], opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.52, delay: 0.28, ease: 'easeOut' as const },
+      };
+    }
+    // Padrão: 'zoom' (Impacto comercial de etiqueta de supermercado com suave bounce)
+    return {
+      initial: { scale: 0.84, y: 16, opacity: 0 },
+      animate: { scale: 1, y: 0, opacity: 1 },
+      exit: { opacity: 0 },
+      transition: { duration: 0.45, delay: 0.28, ease: [0.34, 1.3, 0.64, 1] as const },
+    };
+  };
+
+  const getAnimationProps = getBlock2Props;
 
   // Price splitting for the supermarket price tag
   const priceClean = (product.price || '8,99').replace('R$', '').trim();
@@ -317,8 +430,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               ? 'items-center text-center max-w-full' 
               : 'items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
           }`}>
-            {/* Top Block: Nome Comercial do Produto com 1º Selo na mesma linha à frente, mantendo a altura exata */}
-            <div id="tv-anim-title-block" className="flex flex-col items-start w-full shrink-0 bg-transparent mt-3 sm:mt-5 md:mt-6">
+            {/* Top Block (Bloco 1): Nome Comercial do Produto (exceto o selo) */}
+            <motion.div 
+              key={`title-block-${product.id}-${animCycle}`}
+              id="tv-anim-title-block" 
+              {...getBlock1Props()}
+              className="flex flex-col items-start w-full shrink-0 bg-transparent mt-3 sm:mt-5 md:mt-6"
+            >
               {/* Nome Comercial do Produto com o 1º Selo Promocional ocupando o início da primeira linha à frente do texto */}
               <h2 
                 style={{
@@ -336,8 +454,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 } font-black tracking-tight break-words bg-transparent line-clamp-3`}
               >
                 {product.badge && (
-                  <span 
+                  <motion.span 
+                    key={`badge1-${product.id}-${animCycle}`}
                     id="tv-badge-pill-1"
+                    {...getBadge1Props()}
                     style={{ 
                       backgroundColor: effectiveStyles.badgeBgColor || theme?.badgeBg || '#1a472a',
                       color: effectiveStyles.badgeTextColor || theme?.badgeText || '#ffffff',
@@ -362,15 +482,17 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     } mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none`}
                   >
                     <span className="block leading-tight whitespace-nowrap">{product.badge}</span>
-                  </span>
+                  </motion.span>
                 )}
-                <span className="align-middle bg-transparent">{product.title}</span>
+                <span id="tv-anim-title-text" className="align-middle bg-transparent">{product.title}</span>
               </h2>
-            </div>
+            </motion.div>
 
-            {/* Bottom Block: Regular Price & Supermarket Price Box */}
-            <div 
+            {/* Bottom Block (Bloco 3): Regular Price & Supermarket Price Box */}
+            <motion.div 
+              key={`price-block-${product.id}-${animCycle}`}
               id="tv-anim-price-block" 
+              {...getBlock3Props()}
               className={`flex flex-col ${isVertical ? 'items-center' : 'items-start mb-[calc(4%+2px)] sm:mb-[calc(4%+6px)]'} w-fit shrink-0 bg-transparent mt-auto`}
             >
               {/* "De: R$ 10,99" regular price */}
@@ -456,16 +578,16 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           </div>
 
-          {/* Right Column: Framed Commercial Mini Banner Showcase Card - Dimensões e Proporção 4:3 Padronizadas */}
+          {/* Right Column (Bloco 2): Framed Commercial Mini Banner Showcase Card - Dimensões e Proporção 4:3 Padronizadas */}
           <div className={`relative flex-1 min-w-0 flex items-center justify-center ${isVertical ? 'w-full py-1' : 'h-full max-h-full'}`}>
-            <AnimatePresence mode={isTvPlayerMode ? 'sync' : 'wait'}>
+            <AnimatePresence mode="sync">
               <motion.div
-                key={product.id}
+                key={`card-${product.id}-${animCycle}`}
                 id="tv-anim-card-wrapper"
-                {...getAnimationProps()}
+                {...getBlock2Props()}
                 className="relative w-full h-full flex items-center justify-center p-1 sm:p-2 overflow-visible"
               >
                 {/* Standardized Mini Banner Container - Proporção 4:3 Idêntica e Padronizada para Todos os Produtos */}
@@ -769,52 +891,70 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
       </div>
 
-      {/* Navigation Thumbnails and Arrows (When not in fullscreen TV player) */}
-      {!isTvPlayerMode && campaign.products.length > 1 && (
+      {/* Navigation Thumbnails, Arrows & Test Animation Button (When not in fullscreen TV player) */}
+      {!isTvPlayerMode && (
         <div 
           style={{ width: `min(100%, 1120px, calc((100vh - 155px) * 16 / 9))` }}
-          className="mt-1 sm:mt-1.5 flex items-center justify-between px-1 shrink-0"
+          className="mt-1 sm:mt-1.5 flex items-center justify-between px-1 shrink-0 gap-2"
         >
-          {/* Prev Button */}
-          <button
-            id="btn-prev-product"
-            onClick={() => onSelectProductIndex((currentProductIndex - 1 + campaign.products.length) % campaign.products.length)}
-            className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
-            title="Produto anterior"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Anterior</span>
-          </button>
-
-          {/* Product Bullets */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[70%] px-1">
-            {campaign.products.map((p, idx) => (
+          {/* Left: Prev Button + Replay Button */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {campaign.products.length > 1 && (
               <button
-                key={p.id}
-                onClick={() => onSelectProductIndex(idx)}
-                className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
-                  idx === currentProductIndex
-                    ? 'bg-amber-500 text-black shadow-md scale-105'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-white'
-                }`}
-                title={p.title}
+                id="btn-prev-product"
+                onClick={() => onSelectProductIndex((currentProductIndex - 1 + campaign.products.length) % campaign.products.length)}
+                className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
+                title="Produto anterior"
               >
-                <span>#{idx + 1}</span>
-                <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.title}</span>
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Anterior</span>
               </button>
-            ))}
+            )}
+            <button
+              id="btn-replay-anim"
+              type="button"
+              onClick={() => setAnimCycle((c) => c + 1)}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 shrink-0 cursor-pointer shadow-sm"
+              title="Testar animação profissional dos 3 blocos (1: Nome Comercial, 2: Foto Packshot, 3: Preço)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Testar Animação</span>
+            </button>
           </div>
 
+          {/* Product Bullets */}
+          {campaign.products.length > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] px-1">
+              {campaign.products.map((p, idx) => (
+                <button
+                  key={p.id}
+                  onClick={() => onSelectProductIndex(idx)}
+                  className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
+                    idx === currentProductIndex
+                      ? 'bg-amber-500 text-black shadow-md scale-105'
+                      : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                  }`}
+                  title={p.title}
+                >
+                  <span>#{idx + 1}</span>
+                  <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Next Button */}
-          <button
-            id="btn-next-product"
-            onClick={() => onSelectProductIndex((currentProductIndex + 1) % campaign.products.length)}
-            className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
-            title="Próximo produto"
-          >
-            <span className="hidden sm:inline">Próximo</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          {campaign.products.length > 1 && (
+            <button
+              id="btn-next-product"
+              onClick={() => onSelectProductIndex((currentProductIndex + 1) % campaign.products.length)}
+              className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
+              title="Próximo produto"
+            >
+              <span className="hidden sm:inline">Próximo</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       )}
     </div>
