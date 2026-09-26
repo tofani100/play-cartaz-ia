@@ -83,63 +83,45 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
   const isVertical = campaign.format === '9:16' || campaign.format === '4:5';
 
-  const getAspectClass = () => {
-    if (isTvPlayerMode) return '';
-    switch (campaign.format) {
-      case '9:16':
-        return 'aspect-[9/16] max-w-[440px]';
-      case '1:1':
-        return 'aspect-square max-w-[680px]';
-      case '4:5':
-        return 'aspect-[4/5] max-w-[540px]';
-      case '16:9':
-      default:
-        return 'aspect-[16/9] max-w-[1120px]';
-    }
-  };
+  // Canonical reference resolution matching exactly the Mini Player's golden proportions
+  const targetWidth = campaign.format === '9:16' ? 440 : campaign.format === '1:1' ? 680 : campaign.format === '4:5' ? 540 : 1120;
+  const targetHeight = campaign.format === '9:16' ? 782 : campaign.format === '1:1' ? 680 : campaign.format === '4:5' ? 675 : 630;
 
-  // Contenção estrita para o banner
-  const getBannerContainerStyle = (): React.CSSProperties => {
-    if (isTvPlayerMode) {
-      return {
-        width: '100%',
-        height: '100%',
-      };
-    }
+  const stageContainerRef = useRef<HTMLDivElement>(null);
+  const [workspaceScale, setWorkspaceScale] = useState<number>(1);
 
-    // No modo de edição / workspace:
-    // Garante que o card suba até o topo eliminando espaço vago e caiba 100% na tela sem barra de rolagem (scroll)
-    const hasNav = campaign.products.length > 1;
-    const reserveHeight = hasNav ? '155px' : '110px';
+  // Dynamic GPU Scale Engine para a Prancheta do Workspace:
+  // Garante proporção 100% congelada de cinema tanto no Samsung (1920x1080) quanto no Dell (1280x800)
+  useEffect(() => {
+    if (isTvPlayerMode) return;
 
-    switch (campaign.format) {
-      case '9:16':
-        return {
-          aspectRatio: '9 / 16',
-          maxHeight: `calc(100vh - ${reserveHeight})`,
-          width: `min(100%, 440px, calc((100vh - ${reserveHeight}) * 9 / 16))`,
-        };
-      case '1:1':
-        return {
-          aspectRatio: '1 / 1',
-          maxHeight: `calc(100vh - ${reserveHeight})`,
-          width: `min(100%, 680px, calc(100vh - ${reserveHeight}))`,
-        };
-      case '4:5':
-        return {
-          aspectRatio: '4 / 5',
-          maxHeight: `calc(100vh - ${reserveHeight})`,
-          width: `min(100%, 540px, calc((100vh - ${reserveHeight}) * 4 / 5))`,
-        };
-      case '16:9':
-      default:
-        return {
-          aspectRatio: '16 / 9',
-          maxHeight: `calc(100vh - ${reserveHeight})`,
-          width: `min(100%, 1120px, calc((100vh - ${reserveHeight}) * 16 / 9))`,
-        };
+    const measureAndScale = () => {
+      if (!stageContainerRef.current) return;
+      const rect = stageContainerRef.current.getBoundingClientRect();
+      const availW = rect.width;
+      const availH = rect.height;
+
+      if (availW > 0 && availH > 0) {
+        const sW = availW / targetWidth;
+        const sH = availH / targetHeight;
+        // Permite escala suave para encaixar perfeitamente sem scroll; teto em 1.0 para manter resolução nativa no Samsung 1080p
+        const computed = Math.min(sW, sH, 1.0);
+        setWorkspaceScale(Math.max(0.15, computed));
+      }
+    };
+
+    measureAndScale();
+    const ro = new ResizeObserver(measureAndScale);
+    if (stageContainerRef.current) {
+      ro.observe(stageContainerRef.current);
     }
-  };
+    window.addEventListener('resize', measureAndScale);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measureAndScale);
+    };
+  }, [targetWidth, targetHeight, isTvPlayerMode]);
 
   // Bloco 1: Nome Comercial do Produto (exceto o selo)
   const getBlock1Props = () => {
@@ -287,14 +269,17 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
     campaign.clientName.toLowerCase().includes('belissima') ||
     (campaign.clientLogoUrl && campaign.clientLogoUrl.includes('belissima'));
 
-  return (
-    <div className={`relative w-full ${isTvPlayerMode ? 'h-full w-full p-0 m-0 overflow-hidden flex items-center justify-center bg-black' : 'h-full w-full flex flex-col items-center justify-start p-1 sm:p-1.5 pt-0'}`}>
-      {/* Main Banner Frame with ID for image capture */}
-      <div
-        id="tv-banner-capture"
-        style={getBannerContainerStyle()}
-        className={`relative overflow-hidden ${isTvPlayerMode ? 'rounded-none border-none shadow-none shrink-0' : 'rounded-2xl shadow-2xl border border-emerald-500/20 w-full h-full'} transition-all select-none ${getAspectClass()} bg-[#073620] flex flex-col justify-between`}
-      >
+  const bannerContent = (
+    <div
+      id="tv-banner-capture"
+      style={{
+        width: isTvPlayerMode ? '100%' : `${targetWidth}px`,
+        height: isTvPlayerMode ? '100%' : `${targetHeight}px`,
+      }}
+      className={`relative overflow-hidden ${
+        isTvPlayerMode ? 'rounded-none border-none shadow-none shrink-0' : 'rounded-2xl shadow-2xl border border-emerald-500/20'
+      } select-none bg-[#073620] flex flex-col justify-between`}
+    >
         {/* GPU Isolated Background Layer: Rendered once, zero redraw overhead on frame updates */}
         <div 
           style={{ contain: 'strict', willChange: 'contents', transform: 'translateZ(0)' }}
@@ -719,7 +704,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       className={`group relative ${
                         isVertical
                           ? 'w-full max-w-[340px] sm:max-w-[420px] aspect-[4/3] my-auto'
-                          : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-[48vw] shrink-0 my-auto'
+                          : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-full shrink-0 my-auto'
                       } ${
                         isAmbient
                           ? 'bg-neutral-950 border-[4px] sm:border-[5px] shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
@@ -890,73 +875,116 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           </span>
         </div>
       </div>
+  );
 
-      {/* Navigation Thumbnails, Arrows & Test Animation Button (When not in fullscreen TV player) */}
-      {!isTvPlayerMode && (
-        <div 
-          style={{ width: `min(100%, 1120px, calc((100vh - 155px) * 16 / 9))` }}
-          className="mt-1 sm:mt-1.5 flex items-center justify-between px-1 shrink-0 gap-2"
+  // Standalone Direct TV Player View: Fullscreen 100%
+  if (isTvPlayerMode) {
+    return (
+      <div className="relative w-full h-full p-0 m-0 overflow-hidden flex items-center justify-center bg-black">
+        {bannerContent}
+      </div>
+    );
+  }
+
+  // Workspace Editor: Prancheta Inteligente com Auto-Scale GPU (100% estável no Samsung e no Dell)
+  return (
+    <div className="relative w-full h-full flex flex-col items-center justify-between p-0 sm:p-1 overflow-hidden">
+      {/* Responsive Scaled Artboard Stage */}
+      <div 
+        ref={stageContainerRef}
+        className="w-full flex-1 min-h-0 flex items-center justify-center overflow-hidden"
+      >
+        <div
+          style={{
+            width: `${targetWidth * workspaceScale}px`,
+            height: `${targetHeight * workspaceScale}px`,
+            position: 'relative',
+            flexShrink: 0,
+            overflow: 'visible',
+            transition: 'width 0.1s ease-out, height 0.1s ease-out',
+          }}
         >
-          {/* Left: Prev Button + Replay Button */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {campaign.products.length > 1 && (
-              <button
-                id="btn-prev-product"
-                onClick={() => onSelectProductIndex((currentProductIndex - 1 + campaign.products.length) % campaign.products.length)}
-                className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
-                title="Produto anterior"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Anterior</span>
-              </button>
-            )}
-            <button
-              id="btn-replay-anim"
-              type="button"
-              onClick={() => setAnimCycle((c) => c + 1)}
-              className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 shrink-0 cursor-pointer shadow-sm"
-              title="Testar animação profissional dos 3 blocos (1: Nome Comercial, 2: Foto Packshot, 3: Preço)"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Testar Animação</span>
-            </button>
+          <div
+            style={{
+              width: `${targetWidth}px`,
+              height: `${targetHeight}px`,
+              transform: `scale(${workspaceScale})`,
+              transformOrigin: 'top left',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              flexShrink: 0,
+            }}
+          >
+            {bannerContent}
           </div>
+        </div>
+      </div>
 
-          {/* Product Bullets */}
-          {campaign.products.length > 1 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] px-1">
-              {campaign.products.map((p, idx) => (
-                <button
-                  key={p.id}
-                  onClick={() => onSelectProductIndex(idx)}
-                  className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
-                    idx === currentProductIndex
-                      ? 'bg-amber-500 text-black shadow-md scale-105'
-                      : 'bg-neutral-800 text-neutral-400 hover:text-white'
-                  }`}
-                  title={p.title}
-                >
-                  <span>#{idx + 1}</span>
-                  <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.title}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Next Button */}
+      {/* Navigation Thumbnails, Arrows & Test Animation Button */}
+      <div 
+        style={{ width: '100%', maxWidth: `${Math.max(340, Math.min(targetWidth, targetWidth * workspaceScale))}px` }}
+        className="mt-1 sm:mt-1.5 flex items-center justify-between px-1 shrink-0 gap-2"
+      >
+        {/* Left: Prev Button + Replay Button */}
+        <div className="flex items-center gap-1.5 shrink-0">
           {campaign.products.length > 1 && (
             <button
-              id="btn-next-product"
-              onClick={() => onSelectProductIndex((currentProductIndex + 1) % campaign.products.length)}
+              id="btn-prev-product"
+              onClick={() => onSelectProductIndex((currentProductIndex - 1 + campaign.products.length) % campaign.products.length)}
               className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
-              title="Próximo produto"
+              title="Produto anterior"
             >
-              <span className="hidden sm:inline">Próximo</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Anterior</span>
             </button>
           )}
+          <button
+            id="btn-replay-anim"
+            type="button"
+            onClick={() => setAnimCycle((c) => c + 1)}
+            className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 shrink-0 cursor-pointer shadow-sm"
+            title="Testar animação profissional dos 3 blocos (1: Nome Comercial, 2: Foto Packshot, 3: Preço)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Testar Animação</span>
+          </button>
         </div>
-      )}
+
+        {/* Product Bullets */}
+        {campaign.products.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] px-1">
+            {campaign.products.map((p, idx) => (
+              <button
+                key={p.id}
+                onClick={() => onSelectProductIndex(idx)}
+                className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
+                  idx === currentProductIndex
+                    ? 'bg-amber-500 text-black shadow-md scale-105'
+                    : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+                title={p.title}
+              >
+                <span>#{idx + 1}</span>
+                <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Next Button */}
+        {campaign.products.length > 1 && (
+          <button
+            id="btn-next-product"
+            onClick={() => onSelectProductIndex((currentProductIndex + 1) % campaign.products.length)}
+            className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1 text-xs font-bold transition-colors shrink-0"
+            title="Próximo produto"
+          >
+            <span className="hidden sm:inline">Próximo</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 };

@@ -67,10 +67,10 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 shrink-0">
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 sm:gap-2.5">
+    <header className="sticky top-0 z-40 w-full border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-2 sm:px-4 py-1.5 shrink-0">
+      <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar">
         {/* Brand & Client Name */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/20">
               <Tv className="w-5 h-5 text-white" />
@@ -168,7 +168,7 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
         </div>
 
         {/* Format Selector Pills */}
-        <div className="flex items-center bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-xs font-medium">
+        <div className="flex items-center bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-xs font-medium shrink-0">
           <button
             id="btn-format-16-9"
             onClick={() => onFormatChange('16:9')}
@@ -231,7 +231,7 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* AI Parser Button */}
           <button
             id="btn-open-ai-parser"

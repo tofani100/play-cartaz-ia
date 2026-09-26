@@ -642,8 +642,8 @@ export default function App() {
 
       {/* Main Workspace Layout */}
       <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-        {/* Visual Stage (Center / Main Left) - Sem espaço vago e sem scroll */}
-        <div className={`flex-1 min-h-0 flex flex-col items-center justify-start p-1 sm:p-2 pt-1 lg:pt-1.5 ${campaign.format === 'tabloid' ? 'overflow-y-auto' : 'lg:overflow-hidden'} bg-neutral-950/60`}>
+        {/* Visual Stage (Center / Main Left) - Auto-Scale Canvas responsivo sem scroll */}
+        <div className={`flex-1 min-h-0 h-full flex flex-col items-center justify-center p-1 sm:p-2 ${campaign.format === 'tabloid' ? 'overflow-y-auto' : 'overflow-hidden'} bg-neutral-950/60`}>
 
 
           {/* Conditional Preview: Tabloid or Banner */}
@@ -664,7 +664,7 @@ export default function App() {
         </div>
 
         {/* Product & Campaign Management Sidebar */}
-        <aside className="w-full lg:w-96 xl:w-[420px] bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col shrink-0 lg:overflow-y-auto lg:h-full">
+        <aside className="w-full lg:w-[350px] xl:w-[380px] 2xl:w-[420px] bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col shrink-0 lg:overflow-y-auto lg:h-full">
           <PainelEditorProdutos
             products={campaign.products}
             currentProductIndex={campaign.activeProductIndex}
