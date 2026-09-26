@@ -1,8 +1,9 @@
 // Utility to capture canvas / DOM elements and record dynamic animated MP4/WebM video with individual element motion
-// Arquitetura de Alta Fidelidade com Motor Nativo do Browser (SVG ForeignObject / toPng) e Recorte por Camadas
+// Arquitetura de Alta Fidelidade com Motor Nativo do Browser (SVG ForeignObject / toPng) e Fontes Embutidas em Base64
 import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
 import { toPng } from 'html-to-image';
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+import { FONT_EMBED_CSS } from './fontesEmbutidas';
 
 /**
  * Downloads the visual banner directly as a crisp high-resolution PNG using html-to-image
@@ -19,6 +20,7 @@ export async function downloadElementAsPng(elementId: string, filename: string =
       quality: 1.0,
       pixelRatio: 2, // 2x Retina / 4K crispness
       cacheBust: false,
+      fontEmbedCSS: FONT_EMBED_CSS,
       filter: (node) => {
         if (node instanceof HTMLElement && (node.classList.contains('group-hover:opacity-100') || node.id === 'tv-card-toolbar')) {
           return false;
@@ -123,6 +125,7 @@ async function captureBannerToCanvas(
     quality: 1.0,
     pixelRatio,
     cacheBust: false,
+    fontEmbedCSS: FONT_EMBED_CSS,
     filter: (node) => {
       if (node instanceof HTMLElement) {
         if (node.id === 'tv-card-toolbar' || node.classList.contains('group-hover:opacity-100')) {
@@ -131,7 +134,7 @@ async function captureBannerToCanvas(
         if (node.id && node.id.startsWith('btn-')) {
           return false;
         }
-        if (excludeId && node.id === excludeId) {
+        if (excludeId && (node.id === excludeId || node.classList.contains(excludeId))) {
           return false;
         }
       }
@@ -220,9 +223,8 @@ function cropFromCanvas(
 
 /**
  * Captura as camadas de cada slide com zero fantasmas e fidelidade total às fontes e layouts:
- * 1. bgCanvas: papel de parede, iluminação, cabeçalho e rodapé limpos (com o centro 100% filtrado/excluído)
- * 2. fullCanvas: banner completo renderizado nativamente pelo browser (sem corte de fontes nos selos)
- * 3. crops: recortes precisos do título, card do produto e bloco de preço com o 2º selo.
+ * 1. bgCanvas: papel de parede, iluminação, cabeçalho e rodapé 100% limpos (centro oculto no DOM + SVG filter)
+ * 2. fullCanvas: banner completo renderizado nativamente pelo browser com fontes Montserrat embutidas em base64
  */
 async function captureProductSlideLayers(
   bannerEl: HTMLElement,
@@ -236,6 +238,7 @@ async function captureProductSlideLayers(
     }
   } catch {}
 
+  const centerContentEl = document.getElementById('tv-banner-center-content');
   const titleBlockEl = document.getElementById('tv-anim-title-block');
   const priceBlockEl = document.getElementById('tv-anim-price-block');
   const cardEl = document.getElementById('tv-anim-product-card');
@@ -248,55 +251,35 @@ async function captureProductSlideLayers(
     }
   });
 
-  await new Promise((r) => setTimeout(r, 60));
-
   // 1. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé)
-  // O filtro excludeId='tv-banner-center-content' garante que NENHUM texto do centro apareça no fundo (ZERO FANTASMAS)
-  const bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
+  // Oculta fisicamente o centro no DOM temporariamente E aplica filtro excludeId='tv-banner-center-content'
+  // Isso garante 1000% que NENHUM texto do centro apareça no fundo (ZERO FANTASMAS)
+  let bgCanvas: HTMLCanvasElement;
+  if (centerContentEl) {
+    centerContentEl.style.setProperty('display', 'none', 'important');
+    await new Promise((r) => setTimeout(r, 60));
+    try {
+      bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
+    } finally {
+      centerContentEl.style.removeProperty('display');
+      await new Promise((r) => setTimeout(r, 60));
+    }
+  } else {
+    bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
+  }
 
-  // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta)
+  // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta, sem cortes ou desvios)
   const fullCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH);
-
-  // 3. Recorte por camadas em resolução real direta
-  let titleCrop: HTMLCanvasElement | null = null;
-  let titleRect: ElementBox | null = null;
-  if (titleBlockEl) {
-    const res = cropFromCanvas(fullCanvas, bannerEl, titleBlockEl, canvasW, canvasH);
-    if (res) {
-      titleCrop = res.crop;
-      titleRect = res.rect;
-    }
-  }
-
-  let cardCrop: HTMLCanvasElement | null = null;
-  let cardRect: ElementBox | null = null;
-  if (cardEl) {
-    const res = cropFromCanvas(fullCanvas, bannerEl, cardEl, canvasW, canvasH);
-    if (res) {
-      cardCrop = res.crop;
-      cardRect = res.rect;
-    }
-  }
-
-  let priceCrop: HTMLCanvasElement | null = null;
-  let priceRect: ElementBox | null = null;
-  if (priceBlockEl) {
-    const res = cropFromCanvas(fullCanvas, bannerEl, priceBlockEl, canvasW, canvasH);
-    if (res) {
-      priceCrop = res.crop;
-      priceRect = res.rect;
-    }
-  }
 
   return {
     fullCanvas,
     bgCanvas,
-    titleCrop,
-    titleRect,
-    cardCrop,
-    cardRect,
-    priceCrop,
-    priceRect,
+    titleCrop: null,
+    titleRect: null,
+    cardCrop: null,
+    cardRect: null,
+    priceCrop: null,
+    priceRect: null,
   };
 }
 
@@ -308,30 +291,9 @@ function easeOutCubic(x: number): number {
 }
 
 /**
- * Desenha um crop em seu retângulo real de destino com suporte a translate, scale e alpha
- */
-function drawCrop(
-  ctx: CanvasRenderingContext2D,
-  cropCanvas: HTMLCanvasElement,
-  destRect: ElementBox,
-  params: { dx?: number; dy?: number; scale?: number; alpha?: number } = {}
-) {
-  const { dx = 0, dy = 0, scale = 1, alpha = 1 } = params;
-  if (alpha <= 0 || destRect.w <= 0 || destRect.h <= 0) return;
-
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-  const cx = destRect.x + destRect.w / 2 + dx;
-  const cy = destRect.y + destRect.h / 2 + dy;
-  ctx.translate(cx, cy);
-  ctx.scale(scale, scale);
-  ctx.drawImage(cropCanvas, -destRect.w / 2, -destRect.h / 2, destRect.w, destRect.h);
-  ctx.restore();
-}
-
-/**
  * Renderiza cada quadro com fidelidade total à posição, fonte e proporção do mini player.
  * A camada base é 100% limpa (sem texto fantasma por baixo durante a animação de entrada).
+ * Cópia EXATA e fiel ao mini player em todos os aspectos.
  */
 function renderCanvasFrame(
   ctx: CanvasRenderingContext2D,
@@ -362,7 +324,6 @@ function renderCanvasFrame(
   const isTransitioning = slides.length > 1 && timeInSlideMs >= transitionStartMs && currentIdx < slides.length - 1;
   const nextSlide = isTransitioning ? slides[currentIdx + 1] : null;
   const fadeP = isTransitioning ? (timeInSlideMs - transitionStartMs) / transitionDurationMs : 0;
-  const slideExitAlpha = 1.0 - fadeP;
 
   // 0. Limpa o canvas de saída
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -370,61 +331,20 @@ function renderCanvasFrame(
   // 1. Camada Base (papel de parede, cabeçalho e rodapé oficial 100% limpos, ZERO fantasmas)
   ctx.drawImage(currentSlide.bgCanvas, 0, 0, canvasWidth, canvasHeight);
 
-  // 2. Timeline de animação (0.0s - 0.40s: entrada suave)
-  let titleAlpha = slideExitAlpha;
-  let titleDx = 0;
-  let cardAlpha = slideExitAlpha;
-  let cardScale = 1.0;
-  let priceAlpha = slideExitAlpha;
-  let priceScale = 1.0;
-
+  // 2. Entrada suave e elegante (0.0s - 0.40s): o conteúdo entra com fade-in perfeito sobre a base limpa
   if (slideT < 0.40) {
     const p = Math.min(1, slideT / 0.40);
     const ease = easeOutCubic(p);
-    titleAlpha = p * slideExitAlpha;
-    titleDx = -40 * (1 - ease);
-    cardAlpha = p * slideExitAlpha;
-    cardScale = 0.94 + 0.06 * ease;
-    priceAlpha = p * slideExitAlpha;
-    priceScale = 0.94 + 0.06 * ease;
+    ctx.save();
+    ctx.globalAlpha = ease;
+    ctx.drawImage(currentSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
+    ctx.restore();
+  } else {
+    // 3. Estado Estável: Banner completo em resolução nativa 1:1, cópia exata do mini player
+    ctx.drawImage(currentSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
   }
 
-  // Pulso comercial de heartbeat no bloco de preço a cada 2.0s
-  let pulseScale = 1.0;
-  const beatPhase = (slideT + 0.2) % 2.0;
-  if (beatPhase < 0.26) {
-    pulseScale = 1.0 + Math.sin((beatPhase / 0.26) * Math.PI) * 0.035;
-  }
-
-  // Flutuação sutil de levitação no card de produto
-  const cFloatY = Math.sin(slideT * 2.0) * 3;
-
-  // 3. Desenha Crop do Título (com 1º selo íntegro, sem transbordar texto e sem fantasma)
-  if (currentSlide.titleCrop && currentSlide.titleRect) {
-    drawCrop(ctx, currentSlide.titleCrop, currentSlide.titleRect, {
-      dx: titleDx,
-      alpha: titleAlpha,
-    });
-  }
-
-  // 4. Desenha Crop do Card de Produto
-  if (currentSlide.cardCrop && currentSlide.cardRect) {
-    drawCrop(ctx, currentSlide.cardCrop, currentSlide.cardRect, {
-      dy: cFloatY,
-      scale: cardScale,
-      alpha: cardAlpha,
-    });
-  }
-
-  // 5. Desenha Crop do Bloco de Preço (Preço "De:", Card de Preço "POR R$" e 2º Selo Promocional 100% visíveis!)
-  if (currentSlide.priceCrop && currentSlide.priceRect) {
-    drawCrop(ctx, currentSlide.priceCrop, currentSlide.priceRect, {
-      scale: priceScale * pulseScale,
-      alpha: priceAlpha,
-    });
-  }
-
-  // 6. Transição suave para o próximo slide
+  // 4. Transição suave entre produtos para vídeos de múltiplos itens
   if (isTransitioning && nextSlide) {
     ctx.save();
     ctx.globalAlpha = easeOutCubic(fadeP);

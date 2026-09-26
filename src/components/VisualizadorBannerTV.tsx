@@ -333,6 +333,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               >
                 {product.badge && (
                   <span 
+                    id="tv-badge-pill-1"
                     style={{ 
                       backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
                       color: effectiveStyles.badgeTextColor || '#d4f7dc',
@@ -346,7 +347,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       lineHeight: 1.15,
                       fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                     }}
-                    className="inline-flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none"
+                    className={`tv-badge-pill inline-flex items-center justify-center ${
+                      product.badge.length > 35
+                        ? 'px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[10px] md:text-xs'
+                        : product.badge.length > 25
+                        ? 'px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-[11px] md:text-xs'
+                        : 'px-2.5 py-1 sm:px-3 sm:py-1 text-[10px] sm:text-xs md:text-sm'
+                    } mr-2.5 rounded-lg border font-black uppercase tracking-wider align-middle shadow-sm whitespace-nowrap shrink-0 select-none`}
                   >
                     <span className="block leading-tight whitespace-nowrap">{product.badge}</span>
                   </span>
@@ -416,6 +423,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               {product.secondBadgeEnabled && product.secondBadge && (
                 <div id="tv-anim-second-badge" className="w-auto min-w-full flex items-center justify-center mt-1.5 sm:mt-2 shrink-0">
                   <div 
+                    id="tv-badge-pill-2"
                     style={{ 
                       backgroundColor: effectiveStyles.secondBadgeBgColor || effectiveStyles.badgeBgColor || '#1a472a',
                       color: effectiveStyles.secondBadgeTextColor || effectiveStyles.badgeTextColor || '#d4f7dc',
@@ -425,11 +433,17 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       boxSizing: 'border-box',
                       fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                     }}
-                    className="w-auto min-w-full py-1 sm:py-1.5 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none"
+                    className={`tv-badge-pill w-auto min-w-full py-1 sm:py-1.5 ${
+                      product.secondBadge.length > 40
+                        ? 'px-3 sm:px-4 text-[9px] sm:text-[10px] md:text-xs lg:text-[12px]'
+                        : product.secondBadge.length > 25
+                        ? 'px-3 sm:px-4 text-[10px] sm:text-[11px] md:text-xs lg:text-[13px]'
+                        : 'px-3 sm:px-4 text-[10px] sm:text-xs md:text-sm lg:text-[14px]'
+                    } rounded-lg sm:rounded-xl border border-white/20 shadow-md flex items-center justify-center text-center select-none`}
                   >
                     <span 
                       style={{ lineHeight: 1.2 }}
-                      className="text-[10px] sm:text-xs md:text-sm lg:text-[14px] font-black uppercase tracking-wider whitespace-nowrap block"
+                      className="font-black uppercase tracking-wider whitespace-nowrap block"
                     >
                       {product.secondBadge}
                     </span>
