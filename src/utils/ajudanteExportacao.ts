@@ -162,13 +162,15 @@ async function captureBannerToCanvas(
  * Recorta o elemento animado diretamente do canvas completo em sua resolução real nativa.
  * A regra de ouro: cada crop é sempre recortado e desenhado em sua largura/altura real.
  */
-function cropFromCanvas(
-  fullCanvas: HTMLCanvasElement,
+/**
+ * Obtém a caixa de destino de um elemento no canvas final de saída (ex: 1920x1080)
+ */
+function getElementDestRect(
   bannerEl: HTMLElement,
   element: HTMLElement,
-  targetCanvasW: number,
-  targetCanvasH: number
-): { crop: HTMLCanvasElement; rect: ElementBox } | null {
+  canvasW: number,
+  canvasH: number
+): ElementBox | null {
   const bannerRect = bannerEl.getBoundingClientRect();
   const elRect = element.getBoundingClientRect();
 
@@ -176,55 +178,75 @@ function cropFromCanvas(
     return null;
   }
 
-  // Frações relativas (0.0 a 1.0) dentro do container do banner
   const rx = (elRect.left - bannerRect.left) / bannerRect.width;
   const ry = (elRect.top - bannerRect.top) / bannerRect.height;
   const rw = elRect.width / bannerRect.width;
   const rh = elRect.height / bannerRect.height;
 
-  // Coordenadas em pixels na fonte de verdade (fullCanvas)
-  const sx = Math.max(0, Math.round(rx * fullCanvas.width));
-  const sy = Math.max(0, Math.round(ry * fullCanvas.height));
-  const sw = Math.min(fullCanvas.width - sx, Math.round(rw * fullCanvas.width));
-  const sh = Math.min(fullCanvas.height - sy, Math.round(rh * fullCanvas.height));
+  if (rw <= 0 || rh <= 0) return null;
 
-  if (sw <= 0 || sh <= 0) return null;
-
-  // Caixa de destino no canvas final de saída (ex: 1920x1080)
-  const destRect: ElementBox = {
-    x: rx * targetCanvasW,
-    y: ry * targetCanvasH,
-    w: rw * targetCanvasW,
-    h: rh * targetCanvasH,
+  return {
+    x: rx * canvasW,
+    y: ry * canvasH,
+    w: rw * canvasW,
+    h: rh * canvasH,
   };
+}
 
-  const crop = document.createElement('canvas');
-  crop.width = sw;
-  crop.height = sh;
-  const cropCtx = crop.getContext('2d');
-  if (!cropCtx) return null;
-  cropCtx.imageSmoothingEnabled = true;
-  cropCtx.imageSmoothingQuality = 'high';
+/**
+ * Captura um elemento individual isolado com fundo 100% transparente para animação cinematográfica
+ */
+async function captureElementToTransparentCanvas(
+  el: HTMLElement,
+  targetW: number,
+  targetH: number
+): Promise<HTMLCanvasElement | null> {
+  if (targetW <= 0 || targetH <= 0) return null;
+  const rect = el.getBoundingClientRect();
+  const pixelRatio = Math.max(2, targetW / (rect.width || 1));
 
-  cropCtx.drawImage(
-    fullCanvas,
-    sx,
-    sy,
-    sw,
-    sh,
-    0,
-    0,
-    crop.width,
-    crop.height
-  );
+  const dataUrl = await toPng(el, {
+    quality: 1.0,
+    pixelRatio,
+    cacheBust: false,
+    fontEmbedCSS: FONT_EMBED_CSS,
+    filter: (node) => {
+      if (node instanceof HTMLElement) {
+        if (node.id === 'tv-card-toolbar' || node.classList.contains('group-hover:opacity-100')) {
+          return false;
+        }
+        if (node.id && node.id.startsWith('btn-')) {
+          return false;
+        }
+      }
+      return true;
+    },
+  });
 
-  return { crop, rect: destRect };
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.crossOrigin = 'anonymous';
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+  return canvas;
 }
 
 /**
  * Captura as camadas de cada slide com zero fantasmas e fidelidade total às fontes e layouts:
  * 1. bgCanvas: papel de parede, iluminação, cabeçalho e rodapé 100% limpos (centro oculto no DOM + SVG filter)
  * 2. fullCanvas: banner completo renderizado nativamente pelo browser com fontes Montserrat embutidas em base64
+ * 3. titleCrop, cardCrop, priceCrop: camadas isoladas transparentes dos 3 blocos para animação no MP4
  */
 async function captureProductSlideLayers(
   bannerEl: HTMLElement,
@@ -243,17 +265,17 @@ async function captureProductSlideLayers(
   const priceBlockEl = document.getElementById('tv-anim-price-block');
   const cardEl = document.getElementById('tv-anim-product-card');
 
-  // Garante opacidade 1 e visibilidade normal em todos os elementos
-  [titleBlockEl, priceBlockEl, cardEl].forEach((el) => {
-    if (el) {
-      el.style.opacity = '1';
-      el.style.visibility = 'visible';
-    }
+  // Garante estado de repouso perfeito nos elementos animados antes de qualquer captura
+  const animatedNodes = bannerEl.querySelectorAll<HTMLElement>(
+    '#tv-anim-title-block, #tv-anim-price-block, #tv-anim-product-card, #tv-anim-card-wrapper, #tv-badge-pill-1, #tv-badge-pill-2, #tv-anim-title-text'
+  );
+  animatedNodes.forEach((node) => {
+    node.style.setProperty('opacity', '1', 'important');
+    node.style.setProperty('visibility', 'visible', 'important');
+    node.style.setProperty('transform', 'none', 'important');
   });
 
-  // 1. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé)
-  // Oculta fisicamente o centro no DOM temporariamente E aplica filtro excludeId='tv-banner-center-content'
-  // Isso garante 1000% que NENHUM texto do centro apareça no fundo (ZERO FANTASMAS)
+  // 1. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé limpos, ZERO fantasmas)
   let bgCanvas: HTMLCanvasElement;
   if (centerContentEl) {
     centerContentEl.style.setProperty('display', 'none', 'important');
@@ -268,32 +290,72 @@ async function captureProductSlideLayers(
     bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
   }
 
-  // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta, sem cortes ou desvios)
+  // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta)
   const fullCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH);
+
+  // 3. Captura paralela das 3 camadas isoladas com fundo 100% transparente para animação sequencial no MP4
+  const titleRect = titleBlockEl ? getElementDestRect(bannerEl, titleBlockEl, canvasW, canvasH) : null;
+  const cardRect = cardEl ? getElementDestRect(bannerEl, cardEl, canvasW, canvasH) : null;
+  const priceRect = priceBlockEl ? getElementDestRect(bannerEl, priceBlockEl, canvasW, canvasH) : null;
+
+  let titleCrop: HTMLCanvasElement | null = null;
+  let cardCrop: HTMLCanvasElement | null = null;
+  let priceCrop: HTMLCanvasElement | null = null;
+
+  try {
+    const crops = await Promise.all([
+      titleBlockEl && titleRect ? captureElementToTransparentCanvas(titleBlockEl, Math.round(titleRect.w), Math.round(titleRect.h)) : Promise.resolve(null),
+      cardEl && cardRect ? captureElementToTransparentCanvas(cardEl, Math.round(cardRect.w), Math.round(cardRect.h)) : Promise.resolve(null),
+      priceBlockEl && priceRect ? captureElementToTransparentCanvas(priceBlockEl, Math.round(priceRect.w), Math.round(priceRect.h)) : Promise.resolve(null),
+    ]);
+    titleCrop = crops[0];
+    cardCrop = crops[1];
+    priceCrop = crops[2];
+  } catch (err) {
+    console.warn('Erro ao capturar camadas individuais para animação:', err);
+  } finally {
+    // Restaura propriedades de estilo do banner interativo
+    animatedNodes.forEach((node) => {
+      node.style.removeProperty('opacity');
+      node.style.removeProperty('visibility');
+      node.style.removeProperty('transform');
+    });
+  }
 
   return {
     fullCanvas,
     bgCanvas,
-    titleCrop: null,
-    titleRect: null,
-    cardCrop: null,
-    cardRect: null,
-    priceCrop: null,
-    priceRect: null,
+    titleCrop,
+    titleRect,
+    cardCrop,
+    cardRect,
+    priceCrop,
+    priceRect,
   };
 }
 
 /**
- * Standard cubic ease-out curve
+ * Curva cúbica suave de desaceleração (ease-out)
  */
 function easeOutCubic(x: number): number {
   return 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
 }
 
 /**
- * Renderiza cada quadro com fidelidade total à posição, fonte e proporção do mini player.
- * A camada base é 100% limpa (sem texto fantasma por baixo durante a animação de entrada).
- * Cópia EXATA e fiel ao mini player em todos os aspectos.
+ * Curva elástica com leve pop/bounce para etiqueta de preço supermercadista
+ */
+function easeOutBack(x: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  const p = Math.max(0, Math.min(1, x)) - 1;
+  return 1 + c3 * Math.pow(p, 3) + c1 * Math.pow(p, 2);
+}
+
+/**
+ * Renderiza cada quadro do vídeo com animação sequenciada profissional dos 3 blocos:
+ * Bloco 1: Nome Comercial & Selo (desliza da esquerda)
+ * Bloco 2: Foto Packshot (zoom suave de estúdio)
+ * Bloco 3: Preço Por, Preço De, Unidade e 2º Selo (impacto com leve bounce)
  */
 function renderCanvasFrame(
   ctx: CanvasRenderingContext2D,
@@ -331,14 +393,115 @@ function renderCanvasFrame(
   // 1. Camada Base (papel de parede, cabeçalho e rodapé oficial 100% limpos, ZERO fantasmas)
   ctx.drawImage(currentSlide.bgCanvas, 0, 0, canvasWidth, canvasHeight);
 
-  // 2. Entrada suave e elegante (0.0s - 0.40s): o conteúdo entra com fade-in perfeito sobre a base limpa
-  if (slideT < 0.40) {
-    const p = Math.min(1, slideT / 0.40);
-    const ease = easeOutCubic(p);
-    ctx.save();
-    ctx.globalAlpha = ease;
-    ctx.drawImage(currentSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
-    ctx.restore();
+  const hasAnimatedLayers = Boolean(
+    currentSlide.cardCrop && currentSlide.cardRect &&
+    currentSlide.titleCrop && currentSlide.titleRect &&
+    currentSlide.priceCrop && currentSlide.priceRect
+  );
+
+  // 2. Animação Sequencial dos 3 Blocos de Informação no MP4
+  if (hasAnimatedLayers && slideT < 0.80) {
+    // Bloco 2: Foto da Embalagem / Packshot Comercial (Zoom suave de 0.00s a 0.45s)
+    if (currentSlide.cardCrop && currentSlide.cardRect) {
+      if (slideT < 0.45) {
+        const p2 = Math.min(1, Math.max(0, slideT / 0.45));
+        const alpha2 = easeOutCubic(p2);
+        const scale2 = 0.90 + 0.10 * easeOutCubic(p2);
+        const cx = currentSlide.cardRect.x + currentSlide.cardRect.w / 2;
+        const cy = currentSlide.cardRect.y + currentSlide.cardRect.h / 2;
+
+        ctx.save();
+        ctx.globalAlpha = alpha2;
+        ctx.translate(cx, cy);
+        ctx.scale(scale2, scale2);
+        ctx.drawImage(
+          currentSlide.cardCrop,
+          -currentSlide.cardRect.w / 2,
+          -currentSlide.cardRect.h / 2,
+          currentSlide.cardRect.w,
+          currentSlide.cardRect.h
+        );
+        ctx.restore();
+      } else {
+        ctx.drawImage(
+          currentSlide.cardCrop,
+          currentSlide.cardRect.x,
+          currentSlide.cardRect.y,
+          currentSlide.cardRect.w,
+          currentSlide.cardRect.h
+        );
+      }
+    }
+
+    // Bloco 1: Nome Comercial do Produto & 1º Selo (Desliza da esquerda de 0.12s a 0.52s)
+    if (currentSlide.titleCrop && currentSlide.titleRect && slideT >= 0.12) {
+      if (slideT < 0.52) {
+        const p1 = Math.min(1, Math.max(0, (slideT - 0.12) / 0.40));
+        const alpha1 = easeOutCubic(p1);
+        const offsetX1 = -(canvasWidth * 0.025) * (1 - easeOutCubic(p1));
+
+        ctx.save();
+        ctx.globalAlpha = alpha1;
+        ctx.drawImage(
+          currentSlide.titleCrop,
+          currentSlide.titleRect.x + offsetX1,
+          currentSlide.titleRect.y,
+          currentSlide.titleRect.w,
+          currentSlide.titleRect.h
+        );
+        ctx.restore();
+      } else {
+        ctx.drawImage(
+          currentSlide.titleCrop,
+          currentSlide.titleRect.x,
+          currentSlide.titleRect.y,
+          currentSlide.titleRect.w,
+          currentSlide.titleRect.h
+        );
+      }
+    }
+
+    // Bloco 3: Preço Por, Preço De, Unidade e 2º Selo (Queda e Pop com bounce de 0.24s a 0.65s)
+    if (currentSlide.priceCrop && currentSlide.priceRect && slideT >= 0.24) {
+      if (slideT < 0.65) {
+        const p3 = Math.min(1, Math.max(0, (slideT - 0.24) / 0.41));
+        const alpha3 = easeOutCubic(p3);
+        const offsetY3 = (canvasHeight * 0.02) * (1 - easeOutCubic(p3));
+        const scale3 = 0.85 + 0.15 * Math.min(1.12, easeOutBack(p3));
+        const pcx = currentSlide.priceRect.x + currentSlide.priceRect.w / 2;
+        const pcy = currentSlide.priceRect.y + currentSlide.priceRect.h / 2;
+
+        ctx.save();
+        ctx.globalAlpha = alpha3;
+        ctx.translate(pcx, pcy + offsetY3);
+        ctx.scale(scale3, scale3);
+        ctx.drawImage(
+          currentSlide.priceCrop,
+          -currentSlide.priceRect.w / 2,
+          -currentSlide.priceRect.h / 2,
+          currentSlide.priceRect.w,
+          currentSlide.priceRect.h
+        );
+        ctx.restore();
+      } else {
+        ctx.drawImage(
+          currentSlide.priceCrop,
+          currentSlide.priceRect.x,
+          currentSlide.priceRect.y,
+          currentSlide.priceRect.w,
+          currentSlide.priceRect.h
+        );
+      }
+    }
+
+    // Suave transição para o quadro pleno de alta resolução (0.65s a 0.80s)
+    if (slideT >= 0.65 && slideT < 0.80) {
+      const fadeFull = Math.min(1, (slideT - 0.65) / 0.15);
+      ctx.save();
+      ctx.globalAlpha = easeOutCubic(fadeFull);
+      ctx.drawImage(currentSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
+      ctx.restore();
+    }
   } else {
     // 3. Estado Estável: Banner completo em resolução nativa 1:1, cópia exata do mini player
     ctx.drawImage(currentSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
