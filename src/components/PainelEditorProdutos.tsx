@@ -676,7 +676,24 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => clientLogoInputRef.current?.click()}
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = (ev: Event) => {
+                      const file = (ev.target as HTMLInputElement)?.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (res) => {
+                          if (res.target?.result && onUpdateCampaign) {
+                            onUpdateCampaign({ clientLogoUrl: res.target.result as string, showClientLogo: true });
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    };
+                    input.click();
+                  }}
                   className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 flex items-center gap-1 cursor-pointer shrink-0"
                 >
                   <Upload className="w-3.5 h-3.5" />
@@ -1308,7 +1325,24 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (ev: Event) => {
+                        const file = (ev.target as HTMLInputElement)?.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            if (event.target?.result) {
+                              onUpdateProduct(currentProductIndex, { imageUrl: event.target.result as string });
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      };
+                      input.click();
+                    }}
                     className="p-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold cursor-pointer"
                     title="Carregar foto real do seu dispositivo"
                   >
@@ -1582,7 +1616,24 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => productBgInputRef.current?.click()}
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = (ev: Event) => {
+                      const file = (ev.target as HTMLInputElement)?.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev2) => {
+                          if (ev2.target?.result) {
+                            handleApplyCustomStyle({ bannerBgImageUrl: ev2.target.result as string });
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    };
+                    input.click();
+                  }}
                   className="flex-1 py-1.5 px-2 bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-[10px] rounded-lg border border-neutral-700 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Upload className="w-3 h-3 text-amber-400" />

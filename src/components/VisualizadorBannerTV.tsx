@@ -695,6 +695,37 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     }
                   };
 
+                  const handleTriggerCardUpload = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = (ev: Event) => {
+                      const target = ev.target as HTMLInputElement;
+                      const file = target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const base64 = event.target?.result as string;
+                          if (base64 && onUpdateProductImage) {
+                            onUpdateProductImage(product.id, base64);
+                            if (onUpdateProductItem) {
+                              onUpdateProductItem(currentProductIndex, {
+                                imageUrl: base64,
+                                imageDisplayMode: 'ambient',
+                              });
+                            }
+                            setToastMessage('✅ Foto carregada com sucesso!');
+                            setTimeout(() => setToastMessage(null), 3500);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    };
+                    input.click();
+                  };
+
                   return (
                     <div
                       id="tv-anim-product-card"
@@ -769,31 +800,6 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       {/* Edit Controls Toolbar Overlay (Apenas no Modo Painel, Oculto no TV Player Fullscreen) */}
                       {!isTvPlayerMode && (
                         <div id="tv-card-toolbar" className="absolute inset-x-0 bottom-0 p-2 z-20 bg-black/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-wrap items-center justify-center gap-1.5 rounded-b-xl sm:rounded-b-2xl md:rounded-b-3xl">
-                          <input
-                            ref={cardFileInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                  if (event.target?.result && onUpdateProductImage) {
-                                    onUpdateProductImage(product.id, event.target.result as string);
-                                    if (onUpdateProductItem) {
-                                      onUpdateProductItem(currentProductIndex, {
-                                        imageUrl: event.target.result as string,
-                                        imageDisplayMode: 'ambient',
-                                      });
-                                    }
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-
                           {/* 1. Botão Mestre: Gerar Cena Ambientada com IA */}
                           <button
                             type="button"
@@ -842,7 +848,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           {/* 4. Enviar Arquivo Local */}
                           <button
                             type="button"
-                            onClick={() => cardFileInputRef.current?.click()}
+                            onClick={handleTriggerCardUpload}
                             className="flex items-center gap-1 px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-[10px] rounded-lg border border-neutral-700 transition-colors cursor-pointer"
                             title="Carregar foto ou pressione Ctrl+V no card para colar"
                           >
