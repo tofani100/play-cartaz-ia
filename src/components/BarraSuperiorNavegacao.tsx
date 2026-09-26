@@ -254,28 +254,19 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
             <span className="hidden sm:inline">Clientes</span>
           </button>
 
-          {/* Quick Toggle Logo On/Off */}
-          {onToggleShowLogo && (
-            <button
-              id="btn-toggle-logo-top"
-              type="button"
-              onClick={onToggleShowLogo}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                showClientLogo !== false
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                  : 'bg-neutral-800/80 text-neutral-400 border-neutral-700 hover:text-white'
-              }`}
-              title="Ativar ou ocultar logotipo gráfico no banner"
-            >
-              <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden md:inline">Logo:</span>
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${
-                showClientLogo !== false ? 'bg-amber-400 text-neutral-950' : 'bg-neutral-700 text-neutral-300'
-              }`}>
-                {showClientLogo !== false ? 'Com Logo' : 'Sem Logo'}
-              </span>
-            </button>
-          )}
+          {/* Botão Animar - Dispara e exibe a animação do banner */}
+          <button
+            id="btn-top-animar"
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('tv-replay-animation'));
+            }}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-sm"
+            title="Visualizar a animação profissional dos blocos no banner"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Animar</span>
+          </button>
 
           {/* TV Player Mode */}
           <button
