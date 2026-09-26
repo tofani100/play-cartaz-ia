@@ -39,8 +39,12 @@ export interface ProductItem {
   originalPrice?: string; // "29,90"
   discountPercentage?: number; // 20
   badge?: string; // "SUPER OFERTA", "IMPERDÍVEL", "LEVE 3 PAGUE 2", etc.
+  badgeBgColor?: string; // Cor de fundo exclusiva do 1º selo promocional
+  badgeTextColor?: string; // Cor de texto do 1º selo promocional
   secondBadgeEnabled?: boolean; // Flag para ativar o 2º selo promocional (informações extras)
   secondBadge?: string; // Texto do 2º selo promocional
+  secondBadgeBgColor?: string; // Cor de fundo do 2º selo promocional
+  secondBadgeTextColor?: string; // Cor de texto do 2º selo promocional
   imageUrl: string;
   searchKey?: string;
   packagingStyle?: string;
@@ -86,6 +90,7 @@ export interface BannerCustomStyles {
   bannerBgImageUrl?: string;
   campaignTitleColor?: string;
   campaignTitleFont?: string;
+  campaignSubtitleColor?: string;
   productTitleColor?: string;
   productTitleFont?: string;
   badgeBgColor?: string;
@@ -96,6 +101,8 @@ export interface BannerCustomStyles {
   priceBoxTextColor?: string;
   priceOriginalColor?: string;
   cardBorderColor?: string;
+  footerLegalColor?: string;
+  footerBrandColor?: string;
   presetThemeId?: string;
 }
 

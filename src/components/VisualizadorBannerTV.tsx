@@ -63,6 +63,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   const effectiveStyles: BannerCustomStyles = {
     ...(campaign.customStyles || {}),
     ...(product.customStyles || {}),
+    ...(product.badgeBgColor ? { badgeBgColor: product.badgeBgColor } : {}),
+    ...(product.badgeTextColor ? { badgeTextColor: product.badgeTextColor } : {}),
+    ...(product.secondBadgeBgColor ? { secondBadgeBgColor: product.secondBadgeBgColor } : {}),
+    ...(product.secondBadgeTextColor ? { secondBadgeTextColor: product.secondBadgeTextColor } : {}),
   };
 
   const isVertical = campaign.format === '9:16' || campaign.format === '4:5';
@@ -335,9 +339,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   <span 
                     id="tv-badge-pill-1"
                     style={{ 
-                      backgroundColor: effectiveStyles.badgeBgColor || '#1a472a',
-                      color: effectiveStyles.badgeTextColor || '#d4f7dc',
-                      borderColor: effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}88` : '#3b7a50',
+                      backgroundColor: effectiveStyles.badgeBgColor || theme?.badgeBg || '#1a472a',
+                      color: effectiveStyles.badgeTextColor || theme?.badgeText || '#ffffff',
+                      borderColor: effectiveStyles.badgeBgColor 
+                        ? `${effectiveStyles.badgeBgColor}aa` 
+                        : (theme?.badgeBg ? `${theme.badgeBg}88` : '#3b7a50'),
                       whiteSpace: 'nowrap',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -425,11 +431,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   <div 
                     id="tv-badge-pill-2"
                     style={{ 
-                      backgroundColor: effectiveStyles.secondBadgeBgColor || effectiveStyles.badgeBgColor || '#1a472a',
-                      color: effectiveStyles.secondBadgeTextColor || effectiveStyles.badgeTextColor || '#d4f7dc',
+                      backgroundColor: effectiveStyles.secondBadgeBgColor || effectiveStyles.badgeBgColor || theme?.badgeBg || '#1a472a',
+                      color: effectiveStyles.secondBadgeTextColor || effectiveStyles.badgeTextColor || theme?.badgeText || '#ffffff',
                       borderColor: effectiveStyles.secondBadgeBgColor 
                         ? `${effectiveStyles.secondBadgeBgColor}aa` 
-                        : (effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}aa` : '#3b7a50'),
+                        : (effectiveStyles.badgeBgColor ? `${effectiveStyles.badgeBgColor}aa` : (theme?.badgeBg ? `${theme.badgeBg}aa` : '#3b7a50')),
                       boxSizing: 'border-box',
                       fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                     }}
@@ -748,10 +754,16 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
         {/* BOTTOM FOOTER: Slim Broadcast Legal Bar - Fundo Preto Limpo sem Letreiro */}
         <div className="relative z-10 px-3 sm:px-6 py-1 sm:py-1.5 text-[9px] sm:text-[10px] md:text-[11px] bg-[#050505] text-neutral-300 flex items-center justify-between border-t border-neutral-800/80 shrink-0 w-full">
-          <span className="truncate max-w-[75%] font-medium">
+          <span 
+            style={{ color: effectiveStyles.footerLegalColor || undefined }}
+            className="truncate max-w-[75%] font-medium"
+          >
             {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibida a venda de bebidas alcoólicas a menores de 18 anos!'}
           </span>
-          <span className="font-bold text-amber-400 shrink-0">
+          <span 
+            style={{ color: effectiveStyles.footerBrandColor || '#fbbf24' }}
+            className="font-bold shrink-0"
+          >
             {campaign.footerBrandText !== undefined && campaign.footerBrandText !== '' ? campaign.footerBrandText : 'Desenvolvido por: playcomunique.com.br'}
           </span>
         </div>
