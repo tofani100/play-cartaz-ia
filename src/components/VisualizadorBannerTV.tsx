@@ -28,6 +28,7 @@ interface VisualizadorBannerTVProps {
   theme: ThemeColors;
   currentProductIndex: number;
   onSelectProductIndex: (index: number) => void;
+  onReorderProduct?: (fromIndex: number, toIndex: number) => void;
   isTvPlayerMode?: boolean;
   onUpdateProductImage?: (productId: string, newImageUrl: string) => void;
   onUpdateProductItem?: (index: number, updated: Partial<ProductItem>) => void;
@@ -38,6 +39,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   theme,
   currentProductIndex,
   onSelectProductIndex,
+  onReorderProduct,
   isTvPlayerMode = false,
   onUpdateProductImage,
   onUpdateProductItem,
@@ -46,6 +48,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   const [isGeneratingAiImage, setIsGeneratingAiImage] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [draggedBulletIdx, setDraggedBulletIdx] = useState<number | null>(null);
+  const [dragOverBulletIdx, setDragOverBulletIdx] = useState<number | null>(null);
   const cardFileInputRef = useRef<HTMLInputElement>(null);
   const [animCycle, setAnimCycle] = useState(0);
 
@@ -939,17 +943,43 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
         {/* Product Bullets */}
         {campaign.products.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] px-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] px-1 select-none">
             {campaign.products.map((p, idx) => (
               <button
                 key={p.id}
                 onClick={() => onSelectProductIndex(idx)}
-                className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
+                draggable={Boolean(onReorderProduct)}
+                onDragStart={(e) => {
+                  setDraggedBulletIdx(idx);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (dragOverBulletIdx !== idx) setDragOverBulletIdx(idx);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedBulletIdx !== null && draggedBulletIdx !== idx && onReorderProduct) {
+                    onReorderProduct(draggedBulletIdx, idx);
+                  }
+                  setDraggedBulletIdx(null);
+                  setDragOverBulletIdx(null);
+                }}
+                onDragEnd={() => {
+                  setDraggedBulletIdx(null);
+                  setDragOverBulletIdx(null);
+                }}
+                className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 cursor-pointer ${
+                  draggedBulletIdx === idx ? 'opacity-40 scale-95' : ''
+                } ${
+                  dragOverBulletIdx === idx && draggedBulletIdx !== idx ? 'ring-2 ring-amber-400 bg-amber-500/30' : ''
+                } ${
                   idx === currentProductIndex
                     ? 'bg-amber-500 text-black shadow-md scale-105'
                     : 'bg-neutral-800 text-neutral-400 hover:text-white'
                 }`}
-                title={p.title}
+                title={`Banner #${idx + 1}: ${p.title} (Arraste para reordenar)`}
               >
                 <span>#{idx + 1}</span>
                 <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.title}</span>

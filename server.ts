@@ -101,8 +101,15 @@ Texto bruto recebido:
 ${rawText}
 """
 
+REGRA MANDATÓRIA DE ORDENAÇÃO E SEQUÊNCIA:
+Você DEVE manter RIGOROSAMENTE a ordem original de entrada dos produtos recebidos, do PRIMEIRO ao ÚLTIMO item da lista.
+- O 1º produto citado no texto bruto DEVE ser o 1º item retornado no array "items" (índice 0).
+- O 2º produto citado DEVE ser o 2º item retornado no array "items" (índice 1).
+- E assim sucessivamente, até o último produto citado, que DEVE ser o último item do array.
+NÃO reordene os produtos, NÃO agrupe por categoria, NÃO ordene por preço nem por relevância. A sequência enviada pelo cliente deve ser 100% preservada de ponta a ponta!
+
 Sua tarefa:
-1. Identificar cada item/oferta na lista.
+1. Identificar cada item/oferta na lista rigorosamente na ordem sequencial em que aparecem no texto bruto.
 2. Corrigir rigorosamente qualquer erro ortográfico ou de digitação (ex: "coca 2l" -> "Refrigerante Coca-Cola Garrafa 2L", "arroz tio jorge 5kg" -> "Arroz Tio Jorge Tipo 1 5kg", "deterjente ype neutro" -> "Detergente Líquido Ypê Neutro 500ml", "picanha friboy kg" -> "Picanha Bovina Resfriada Friboi kg", "sabao omo lavagen perfeita" -> "Lava Roupas em Pó OMO Lavagem Perfeita 1,6kg", "cafe caboclo" -> "Café Torrado e Moído Caboclo Tradicional a Vácuo 500g").
 3. Manter o nome comercial moderno, atraente e oficial de embalagem atual do produto.
 4. Extrair o preço informado ou estimado de forma clara (formato numérico brasileiro com vírgula, ex: "19,90", "8,49"). Se não tiver preço, estime um preço justo de mercado brasileiro.

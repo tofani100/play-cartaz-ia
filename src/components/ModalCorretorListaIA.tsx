@@ -406,7 +406,30 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-neutral-800 text-amber-400 border border-amber-500/30">
+                              #{idx + 1}
+                            </span>
+                            <select
+                              value={idx}
+                              onChange={(e) => {
+                                const to = Number(e.target.value);
+                                if (!isNaN(to) && to !== idx) {
+                                  const updated = [...parsedResult.items];
+                                  const [moved] = updated.splice(idx, 1);
+                                  updated.splice(to, 0, moved);
+                                  setParsedResult({ ...parsedResult, items: updated });
+                                }
+                              }}
+                              title="Alterar posição na fila"
+                              className="bg-neutral-900 text-neutral-300 hover:text-amber-400 text-[9px] font-bold px-1 py-0.2 rounded border border-neutral-800 cursor-pointer"
+                            >
+                              {parsedResult.items.map((_, oIdx) => (
+                                <option key={oIdx} value={oIdx}>
+                                  Posição #{oIdx + 1} {oIdx === 0 ? '(1º)' : oIdx === parsedResult.items.length - 1 ? `(${oIdx + 1}º)` : ''}
+                                </option>
+                              ))}
+                            </select>
                             <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-black">
                               {item.badge || 'OFERTA'}
                             </span>

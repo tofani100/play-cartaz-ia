@@ -166,34 +166,67 @@ export default function App() {
   const lastSavedTimestampRef = useRef<string>('');
   const lastLocalEditTimeRef = useRef<number>(0);
 
-  // 1. Carregamento inicial da Nuvem (Firebase Firestore)
+  // 1. Carregamento inicial da Nuvem (Firebase Firestore) com proteção total contra perda de dados no F5
   useEffect(() => {
     let isMounted = true;
     (async () => {
       setCloudSyncStatus('syncing');
       const cloudCampaign = await loadCampaignFromCloud();
       if (cloudCampaign && isMounted) {
-        isRemoteUpdateRef.current = true;
-        if ((cloudCampaign as any)._syncTimestamp) {
-          lastSavedTimestampRef.current = (cloudCampaign as any)._syncTimestamp;
-        }
-        setCampaign((prev) => ({
-          ...prev,
-          ...cloudCampaign,
-          clientLogoUrl:
-            cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1'
-              ? (cloudCampaign.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
-              : cloudCampaign.clientLogoUrl,
-        }));
+        setCampaign((prev) => {
+          const localProducts = prev.products || [];
+          const remoteProducts = cloudCampaign.products || [];
+
+          const localTimestamp = (prev as any)._syncTimestamp
+            ? new Date((prev as any)._syncTimestamp).getTime()
+            : 0;
+          const remoteTimestamp = (cloudCampaign as any)._syncTimestamp
+            ? new Date((cloudCampaign as any)._syncTimestamp).getTime()
+            : 0;
+
+          // Se o localStorage local possui produtos e a nuvem está vazia, ou se o local foi salvo mais recentemente:
+          // PRESERVA os produtos locais e sincroniza para a nuvem!
+          if (localProducts.length > 0 && (remoteProducts.length === 0 || localTimestamp > remoteTimestamp)) {
+            console.log('[CloudSync] Protegendo banners locais contra perda de dados no F5:', localProducts.length);
+            saveCampaignToCloud(prev).catch(() => {});
+            return prev;
+          }
+
+          isRemoteUpdateRef.current = true;
+          if ((cloudCampaign as any)._syncTimestamp) {
+            lastSavedTimestampRef.current = (cloudCampaign as any)._syncTimestamp;
+          }
+
+          return {
+            ...prev,
+            ...cloudCampaign,
+            clientLogoUrl:
+              cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1'
+                ? (cloudCampaign.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
+                : cloudCampaign.clientLogoUrl,
+          };
+        });
       }
       initialLoadDoneRef.current = true;
       setCloudSyncStatus('saved');
     })();
 
-    // Carrega clientes da nuvem
+    // Carrega clientes da nuvem com merge seguro de produtos
     loadClientsFromCloud().then((cloudClients) => {
       if (cloudClients && cloudClients.length > 0 && isMounted) {
-        setClients(cloudClients);
+        setClients((prev) => {
+          const merged = cloudClients.map((cc) => {
+            const lc = prev.find((p) => p.id === cc.id || p.name.toLowerCase() === cc.name.toLowerCase());
+            if (lc && lc.products && lc.products.length > (cc.products?.length || 0)) {
+              return { ...cc, products: lc.products };
+            }
+            return cc;
+          });
+          try {
+            localStorage.setItem('playcomunique_clientes', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       }
     });
 
@@ -508,8 +541,26 @@ export default function App() {
     campaignTitle?: string,
     validityText?: string
   ) => {
+    lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
+
     setCampaign((prev) => {
       const nextProducts = newProducts;
+      const nextCampaign: BannerCampaign = {
+        ...prev,
+        products: nextProducts,
+        activeProductIndex: 0,
+        campaignTitle: campaignTitle || prev.campaignTitle,
+        validityText: validityText || prev.validityText,
+        _syncTimestamp: now,
+      } as any;
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+      } catch (e) {
+        console.warn('Erro ao salvar campanha localmente:', e);
+      }
+
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
@@ -523,21 +574,32 @@ export default function App() {
         return updated;
       });
 
-      return {
-        ...prev,
-        products: nextProducts,
-        activeProductIndex: 0,
-        campaignTitle: campaignTitle || prev.campaignTitle,
-        validityText: validityText || prev.validityText,
-      };
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
+
+      return nextCampaign;
     });
   };
 
   const handleUpdateProduct = (idx: number, updated: Partial<ProductItem>) => {
     lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
     setCampaign((prev) => {
       const nextProducts = [...prev.products];
       nextProducts[idx] = { ...nextProducts[idx], ...updated };
+      const nextCampaign: BannerCampaign = {
+        ...prev,
+        products: nextProducts,
+        _syncTimestamp: now,
+      } as any;
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+      } catch (e) {}
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -551,14 +613,25 @@ export default function App() {
         return updatedClients;
       });
 
-      return { ...prev, products: nextProducts };
+      return nextCampaign;
     });
   };
 
   const handleAddProduct = (newProduct: ProductItem) => {
     lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
     setCampaign((prev) => {
-      const nextProducts = [newProduct, ...prev.products];
+      const nextProducts = [...prev.products, newProduct];
+      const nextCampaign: BannerCampaign = {
+        ...prev,
+        products: nextProducts,
+        activeProductIndex: nextProducts.length - 1,
+        _syncTimestamp: now,
+      } as any;
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+      } catch (e) {}
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -572,19 +645,80 @@ export default function App() {
         return updatedClients;
       });
 
-      return {
+      return nextCampaign;
+    });
+  };
+
+  const handleReorderProduct = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
+    setCampaign((prev) => {
+      if (fromIndex >= prev.products.length || toIndex >= prev.products.length) return prev;
+      const nextProducts = [...prev.products];
+      const [movedItem] = nextProducts.splice(fromIndex, 1);
+      nextProducts.splice(toIndex, 0, movedItem);
+
+      let nextActiveIndex = prev.activeProductIndex;
+      if (prev.activeProductIndex === fromIndex) {
+        nextActiveIndex = toIndex;
+      } else if (fromIndex < prev.activeProductIndex && toIndex >= prev.activeProductIndex) {
+        nextActiveIndex--;
+      } else if (fromIndex > prev.activeProductIndex && toIndex <= prev.activeProductIndex) {
+        nextActiveIndex++;
+      }
+
+      const nextCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
-        activeProductIndex: 0,
-      };
+        activeProductIndex: nextActiveIndex,
+        _syncTimestamp: now,
+      } as any;
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+      } catch (e) {}
+
+      setClients((prevClients) => {
+        const updatedClients = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? { ...c, products: nextProducts }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
+        } catch (e) {}
+        saveClientsToCloud(updatedClients).catch(() => {});
+        return updatedClients;
+      });
+
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
+
+      return nextCampaign;
     });
   };
 
   const handleRemoveProduct = (idx: number) => {
     lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
     setCampaign((prev) => {
       const next = prev.products.filter((_, i) => i !== idx);
       const nextIdx = Math.min(prev.activeProductIndex, Math.max(0, next.length - 1));
+      const nextCampaign: BannerCampaign = {
+        ...prev,
+        products: next,
+        activeProductIndex: nextIdx,
+        _syncTimestamp: now,
+      } as any;
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+      } catch (e) {}
 
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
@@ -595,10 +729,12 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
         } catch (e) {}
+        saveClientsToCloud(updated).catch(() => {});
         return updated;
       });
 
-      return { ...prev, products: next, activeProductIndex: nextIdx };
+      saveCampaignToCloud(nextCampaign).catch(() => {});
+      return nextCampaign;
     });
   };
 
@@ -689,6 +825,7 @@ export default function App() {
               theme={activeTheme}
               currentProductIndex={campaign.activeProductIndex}
               onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+              onReorderProduct={handleReorderProduct}
               onUpdateProductImage={(productId, newImageUrl) => {
                 const targetIdx = campaign.products.findIndex((p) => p.id === productId);
                 const idxToUpdate = targetIdx !== -1 ? targetIdx : campaign.activeProductIndex;
@@ -708,6 +845,7 @@ export default function App() {
             onUpdateProduct={handleUpdateProduct}
             onAddProduct={handleAddProduct}
             onRemoveProduct={handleRemoveProduct}
+            onReorderProduct={handleReorderProduct}
             showClientLogo={campaign.showClientLogo !== false}
             onToggleShowLogo={() => handleUpdateCampaign({ showClientLogo: !campaign.showClientLogo })}
             clientName={campaign.clientName}

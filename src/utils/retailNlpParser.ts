@@ -92,8 +92,9 @@ export function parseLocalRetailList(
       }
     }
 
-    // 3. Limpeza do nome do produto (remover termos de preço)
-    let cleanTitle = line
+    // 3. Limpeza do nome do produto (remover termos de preço e numeração de lista 1., 2-, etc.)
+    const strippedLine = line.replace(/^\s*(?:\d+[\.\)\-–—]|\*|\-|•)\s*/, '');
+    let cleanTitle = strippedLine
       .replace(/\bde\s*(?:r\$)?\s*\d+[.,]\d{2}\s*(?:por|\/|a)\s*(?:r\$)?\s*\d+[.,]\d{2}/gi, '')
       .replace(/\bpor\s*(?:r\$)?\s*\d+[.,]\d{2}/gi, '')
       .replace(/(?:r\$)?\s*\d+[.,]\d{2}/gi, '')
@@ -102,7 +103,7 @@ export function parseLocalRetailList(
       .trim();
 
     // 4. Identificação de Marcas Populares do Varejo
-    const lower = line.toLowerCase();
+    const lower = strippedLine.toLowerCase();
     let brand = '';
 
     if (lower.includes('caboclo')) brand = 'Caboclo';
