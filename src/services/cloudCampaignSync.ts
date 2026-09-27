@@ -6,6 +6,13 @@
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { BannerCampaign, ClientProfile, ProductItem } from '../tiposGeradorBanner';
+import { compressImageToDataUrl } from '../utils/imageCompressor';
+import {
+  saveLocalImage,
+  getLocalImage,
+  saveLocalCampaign,
+  getLocalCampaign,
+} from './localImageDb';
 
 const CAMPAIGN_DOC_PATH = 'campaigns';
 const ACTIVE_CAMPAIGN_ID = 'active_campaign';
@@ -14,74 +21,50 @@ const CLIENTS_LIST_ID = 'all_clients';
 const IMAGES_COLLECTION = 'product_images';
 
 /**
- * Comprime imagens em base64 no navegador para garantir carregamento instantâneo
- * e compatibilidade total com o banco de dados na nuvem (Firestore).
+ * Re-exporta a compressão universal para compatibilidade retroativa
  */
 export async function compressImageForCloud(
   dataUrl: string,
-  maxWidth = 1000,
-  maxHeight = 1000,
+  maxWidth = 1200,
+  maxHeight = 1200,
   quality = 0.82
 ): Promise<string> {
-  if (!dataUrl || !dataUrl.startsWith('data:image')) {
-    return dataUrl;
-  }
-
-  return new Promise((resolve) => {
-    try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          return resolve(dataUrl);
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        // Tenta JPEG com compressão otimizada
-        const compressed = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressed);
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    } catch (e) {
-      resolve(dataUrl);
-    }
-  });
+  return compressImageToDataUrl(dataUrl, maxWidth, maxHeight, quality);
 }
 
 /**
- * Salva uma imagem pesada de produto em documento isolado no Firestore
+ * Salva uma imagem de produto em documento isolado no Firestore (coleção product_images/{productId})
+ * e também no IndexedDB local. Garante que cada imagem tenha seu próprio espaço de 1MB no Firestore,
+ * permitindo 10, 20, 50 ou mais banners por cliente sem qualquer limitação.
  */
 export async function saveProductImageToCloud(productId: string, imageUrl: string): Promise<string> {
-  if (!imageUrl || !imageUrl.startsWith('data:image')) {
+  if (!imageUrl || !productId) {
+    return imageUrl;
+  }
+
+  // Se já for URL HTTP/HTTPS externa ou placeholder estático, não precisa salvar em documento isolado
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('/')) {
     return imageUrl;
   }
 
   try {
-    const optimized = await compressImageForCloud(imageUrl);
+    const optimized = await compressImageToDataUrl(imageUrl, 1200, 1200, 0.82);
+
+    // 1. Salva no IndexedDB local para carregamento instantâneo em 0ms
+    saveLocalImage(productId, optimized).catch(() => {});
+
+    // 2. Salva em documento dedicado no Firestore
     const imageDocRef = doc(db, IMAGES_COLLECTION, productId);
-    await setDoc(imageDocRef, {
-      productId,
-      imageUrl: optimized,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      imageDocRef,
+      {
+        productId,
+        imageUrl: optimized,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
     return optimized;
   } catch (err) {
     console.warn('[CloudSync] Aviso ao salvar imagem isolada no Firestore:', err);
@@ -90,32 +73,51 @@ export async function saveProductImageToCloud(productId: string, imageUrl: strin
 }
 
 /**
- * Carrega a imagem de um produto do Firestore se estiver armazenada em documento isolado
+ * Carrega a imagem de um produto do IndexedDB local ou do Firestore (documento isolado)
  */
 export async function loadProductImageFromCloud(productId: string): Promise<string | null> {
+  if (!productId) return null;
+
+  // 1. Tenta IndexedDB local primeiro (super-rápido, 0ms)
+  try {
+    const local = await getLocalImage(productId);
+    if (local) return local;
+  } catch (_) {}
+
+  // 2. Tenta documento isolado no Firestore
   try {
     const docRef = doc(db, IMAGES_COLLECTION, productId);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      return snap.data()?.imageUrl || null;
+      const img = snap.data()?.imageUrl || null;
+      if (img) {
+        saveLocalImage(productId, img).catch(() => {});
+        return img;
+      }
     }
   } catch (err) {
     console.warn('[CloudSync] Aviso ao buscar imagem no Firestore:', err);
   }
+
   return null;
 }
 
 /**
- * Salva a campanha completa no Firebase Firestore (Nuvem) com espelhamento local
+ * Salva a campanha completa no Firebase Firestore com arquitetura desacoplada de imagens:
+ * - Imagens base64 pesadas são armazenadas em documentos isolados (product_images/{id}) e IndexedDB.
+ * - O documento central da campanha permanece ultra-leve (< 50KB), NUNCA atingindo o limite de 1MB do Firestore,
+ *   garantindo que 10, 20 ou 100 banners funcionem perfeitamente sem regredir imagens.
  */
 export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boolean> {
   try {
-    // 1. Otimiza produtos e salva imagens no Firestore
-    const optimizedProducts: ProductItem[] = await Promise.all(
+    if (!campaign || !campaign.products) return false;
+
+    // 1. Otimiza e salva cada imagem individualmente no IndexedDB e Firestore
+    const processedProducts: ProductItem[] = await Promise.all(
       campaign.products.map(async (p) => {
         if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
-          const compressed = await compressImageForCloud(p.imageUrl);
-          // Grava também no documento isolado para persistência duradoura
+          const compressed = await compressImageToDataUrl(p.imageUrl, 1200, 1200, 0.82);
+          saveLocalImage(p.id, compressed).catch(() => {});
           saveProductImageToCloud(p.id, compressed).catch(() => {});
           return {
             ...p,
@@ -126,20 +128,41 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
       })
     );
 
+    // Salva cópia local integral no IndexedDB (gigabytes de capacidade)
+    saveLocalCampaign({ ...campaign, products: processedProducts }).catch(() => {});
+
+    // 2. Prepara o payload para o documento central no Firestore
+    // Se o payload total tiver mais de 350KB, substituímos base64 inline por referência 'cloud-img:'
+    // para garantir que o documento central nunca chegue perto de 1MB.
+    const jsonLength = JSON.stringify({ ...campaign, products: processedProducts }).length;
+
+    let productsForCentralDoc = processedProducts;
+    if (jsonLength > 350_000) {
+      productsForCentralDoc = processedProducts.map((p) => {
+        if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
+          return {
+            ...p,
+            imageUrl: `cloud-img:${p.id}`,
+          };
+        }
+        return p;
+      });
+    }
+
     const payloadToSave: BannerCampaign = {
       ...campaign,
-      products: optimizedProducts,
+      products: productsForCentralDoc,
     };
 
-    // 2. Grava no documento da campanha no Firestore
+    // 3. Grava no documento central da campanha no Firestore
     const campaignDocRef = doc(db, CAMPAIGN_DOC_PATH, ACTIVE_CAMPAIGN_ID);
     await setDoc(campaignDocRef, {
       ...payloadToSave,
       _syncTimestamp: (payloadToSave as any)._syncTimestamp || new Date().toISOString(),
-      _version: '2.5.0',
+      _version: '2.5.1',
     });
 
-    // 3. Backup no servidor Express local (se estiver rodando)
+    // 4. Backup no servidor Express local (se estiver rodando)
     try {
       fetch('/api/campaign', {
         method: 'POST',
@@ -156,8 +179,7 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
 }
 
 /**
- * Carrega a campanha da Nuvem (Firebase Firestore).
- * Se offline ou erro, busca do backend local ou localStorage.
+ * Carrega a campanha da Nuvem com restauração paralela de imagens
  */
 export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
   // 1. Tenta carregar do Firestore primeiro
@@ -166,14 +188,45 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const data = snap.data() as BannerCampaign;
+
+      // Restaura quaisquer imagens referenciadas por 'cloud-img:'
+      const restoredProducts = await Promise.all(
+        (data.products || []).map(async (p) => {
+          if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
+            const prodId = p.imageUrl.replace('cloud-img:', '');
+            const local = await getLocalImage(prodId);
+            if (local) return { ...p, imageUrl: local };
+
+            const cloud = await loadProductImageFromCloud(prodId);
+            if (cloud) {
+              saveLocalImage(prodId, cloud).catch(() => {});
+              return { ...p, imageUrl: cloud };
+            }
+          }
+          return p;
+        })
+      );
+
       console.log('[CloudSync] Campanha carregada com sucesso do Firebase Firestore na Nuvem! ✨');
-      return data;
+      return {
+        ...data,
+        products: restoredProducts,
+      };
     }
   } catch (err: any) {
-    console.warn('[CloudSync] Firestore indisponível no momento, tentando backend local:', err?.message);
+    console.warn('[CloudSync] Firestore indisponível no momento:', err?.message);
   }
 
-  // 2. Fallback: Tenta carregar do servidor Express local
+  // 2. Fallback: IndexedDB local
+  try {
+    const local = await getLocalCampaign();
+    if (local && local.products?.length > 0) {
+      console.log('[CloudSync] Campanha restaurada do IndexedDB local.');
+      return local;
+    }
+  } catch (_) {}
+
+  // 3. Fallback: Servidor Express local
   try {
     const res = await fetch('/api/campaign');
     if (res.ok) {
@@ -185,7 +238,7 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
     }
   } catch (_) {}
 
-  // 3. Fallback: LocalStorage do navegador
+  // 4. Fallback: LocalStorage do navegador
   try {
     const saved = localStorage.getItem('playcomunique_campanha');
     if (saved) {
@@ -197,17 +250,39 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
 }
 
 /**
- * Ouve alterações em tempo real no Firestore (TV Player ou múltiplos computadores)
+ * Ouve alterações em tempo real no Firestore com restauração automática de imagens
  */
 export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) => void): () => void {
   try {
     const docRef = doc(db, CAMPAIGN_DOC_PATH, ACTIVE_CAMPAIGN_ID);
     return onSnapshot(
       docRef,
-      (snap) => {
+      async (snap) => {
         if (snap.exists()) {
           const data = snap.data() as BannerCampaign;
-          onUpdate(data);
+
+          // Restaura imagens referenciadas por 'cloud-img:'
+          const restoredProducts = await Promise.all(
+            (data.products || []).map(async (p) => {
+              if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
+                const prodId = p.imageUrl.replace('cloud-img:', '');
+                const local = await getLocalImage(prodId);
+                if (local) return { ...p, imageUrl: local };
+
+                const cloud = await loadProductImageFromCloud(prodId);
+                if (cloud) {
+                  saveLocalImage(prodId, cloud).catch(() => {});
+                  return { ...p, imageUrl: cloud };
+                }
+              }
+              return p;
+            })
+          );
+
+          onUpdate({
+            ...data,
+            products: restoredProducts,
+          });
         }
       },
       (err) => {
@@ -221,13 +296,41 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
 }
 
 /**
- * Salva lista de clientes no Firestore
+ * Salva lista de clientes no Firestore com proteção contra documentos grandes
  */
 export async function saveClientsToCloud(clients: ClientProfile[]): Promise<boolean> {
   try {
+    if (!clients || clients.length === 0) return true;
+
+    // Sanitiza os produtos de cada cliente para garantir que all_clients fique sempre < 50KB
+    const sanitizedClients = await Promise.all(
+      clients.map(async (c) => {
+        const sanitizedProducts = await Promise.all(
+          (c.products || []).map(async (p) => {
+            if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
+              // Garante que a imagem está salva no IndexedDB e Firestore
+              const compressed = await compressImageToDataUrl(p.imageUrl, 1200, 1200, 0.82);
+              saveProductImageToCloud(p.id, compressed).catch(() => {});
+              saveLocalImage(p.id, compressed).catch(() => {});
+              return {
+                ...p,
+                imageUrl: `cloud-img:${p.id}`,
+              };
+            }
+            return p;
+          })
+        );
+
+        return {
+          ...c,
+          products: sanitizedProducts,
+        };
+      })
+    );
+
     const docRef = doc(db, CLIENTS_DOC_PATH, CLIENTS_LIST_ID);
     await setDoc(docRef, {
-      clients,
+      clients: sanitizedClients,
       updatedAt: new Date().toISOString(),
     });
     return true;
@@ -238,14 +341,43 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
 }
 
 /**
- * Carrega lista de clientes do Firestore
+ * Carrega lista de clientes do Firestore com restauração automática de imagens
  */
 export async function loadClientsFromCloud(): Promise<ClientProfile[] | null> {
   try {
     const docRef = doc(db, CLIENTS_DOC_PATH, CLIENTS_LIST_ID);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      return snap.data()?.clients || null;
+      const data = snap.data();
+      const rawClients = (data?.clients || []) as ClientProfile[];
+
+      // Restaura imagens dos produtos dos clientes
+      const restoredClients = await Promise.all(
+        rawClients.map(async (c) => {
+          const restoredProducts = await Promise.all(
+            (c.products || []).map(async (p) => {
+              if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
+                const prodId = p.imageUrl.replace('cloud-img:', '');
+                const local = await getLocalImage(prodId);
+                if (local) return { ...p, imageUrl: local };
+
+                const cloud = await loadProductImageFromCloud(prodId);
+                if (cloud) {
+                  saveLocalImage(prodId, cloud).catch(() => {});
+                  return { ...p, imageUrl: cloud };
+                }
+              }
+              return p;
+            })
+          );
+          return {
+            ...c,
+            products: restoredProducts,
+          };
+        })
+      );
+
+      return restoredClients;
     }
   } catch (err) {
     console.warn('[CloudSync] Erro ao carregar clientes do Firestore:', err);

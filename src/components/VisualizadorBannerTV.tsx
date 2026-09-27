@@ -21,6 +21,7 @@ import { BannerCampaign, ProductItem, ThemeColors, BannerCustomStyles } from '..
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
 import { handleImageError } from '../utils/imageFallback';
 import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
+import { compressImageToDataUrl } from '../utils/imageCompressor';
 
 interface VisualizadorBannerTVProps {
   campaign: BannerCampaign;
@@ -660,21 +661,19 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       if (items[i].type.indexOf('image') !== -1) {
                         const blob = items[i].getAsFile();
                         if (blob) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            if (event.target?.result && onUpdateProductImage) {
-                              onUpdateProductImage(product.id, event.target.result as string);
+                          compressImageToDataUrl(blob, 1200, 1200, 0.82).then((compressed) => {
+                            if (compressed && onUpdateProductImage) {
+                              onUpdateProductImage(product.id, compressed);
                               if (onUpdateProductItem) {
                                 onUpdateProductItem(currentProductIndex, {
-                                  imageUrl: event.target.result as string,
+                                  imageUrl: compressed,
                                   imageDisplayMode: 'ambient',
                                 });
                               }
                               setToastMessage('✅ Imagem colada com sucesso da área de transferência!');
                               setTimeout(() => setToastMessage(null), 3500);
                             }
-                          };
-                          reader.readAsDataURL(blob);
+                          });
                           return;
                         }
                       }
@@ -705,22 +704,19 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       const target = ev.target as HTMLInputElement;
                       const file = target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          const base64 = event.target?.result as string;
-                          if (base64 && onUpdateProductImage) {
-                            onUpdateProductImage(product.id, base64);
+                        compressImageToDataUrl(file, 1200, 1200, 0.82).then((compressed) => {
+                          if (compressed && onUpdateProductImage) {
+                            onUpdateProductImage(product.id, compressed);
                             if (onUpdateProductItem) {
                               onUpdateProductItem(currentProductIndex, {
-                                imageUrl: base64,
+                                imageUrl: compressed,
                                 imageDisplayMode: 'ambient',
                               });
                             }
                             setToastMessage('✅ Foto carregada com sucesso!');
                             setTimeout(() => setToastMessage(null), 3500);
                           }
-                        };
-                        reader.readAsDataURL(file);
+                        });
                       }
                     };
                     input.click();

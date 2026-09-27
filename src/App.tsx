@@ -164,6 +164,7 @@ export default function App() {
   const isRemoteUpdateRef = useRef<boolean>(false);
   const initialLoadDoneRef = useRef<boolean>(false);
   const lastSavedTimestampRef = useRef<string>('');
+  const lastLocalEditTimeRef = useRef<number>(0);
 
   // 1. Carregamento inicial da Nuvem (Firebase Firestore)
   useEffect(() => {
@@ -204,14 +205,33 @@ export default function App() {
         // Ignora eco de alterações geradas localmente
         return;
       }
+
+      // PROTEÇÃO CRÍTICA: Se o usuário fez uma alteração local recente (< 7s),
+      // não deixa um snapshot antigo sobrescrever o trabalho em andamento
+      if (Date.now() - lastLocalEditTimeRef.current < 7000) {
+        return;
+      }
+
       if (remoteTimestamp) {
         lastSavedTimestampRef.current = remoteTimestamp;
       }
       isRemoteUpdateRef.current = true;
-      setCampaign((prev) => ({
-        ...prev,
-        ...updatedCampaign,
-      }));
+      setCampaign((prev) => {
+        // Preserva imagens locais válidas de upload caso o snapshot ainda não as tenha propagado
+        const mergedProducts = (updatedCampaign.products || []).map((remP) => {
+          const locP = prev.products.find((lp) => lp.id === remP.id);
+          if (locP?.imageUrl && locP.imageUrl.startsWith('data:image') && (!remP.imageUrl || remP.imageUrl.startsWith('cloud-img:'))) {
+            return { ...remP, imageUrl: locP.imageUrl };
+          }
+          return remP;
+        });
+
+        return {
+          ...prev,
+          ...updatedCampaign,
+          products: mergedProducts,
+        };
+      });
     });
 
     return () => {
@@ -235,17 +255,29 @@ export default function App() {
     setCloudSyncStatus('syncing');
     const timer = setTimeout(() => {
       const now = new Date().toISOString();
-      lastSavedTimestampRef.current = now;
       saveCampaignToCloud({
         ...campaign,
         _syncTimestamp: now,
       } as any).then((success) => {
         if (success) {
+          lastSavedTimestampRef.current = now;
           setCloudSyncStatus('saved');
+        } else {
+          setCloudSyncStatus('idle');
         }
       });
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(campaign));
+        // Proteção contra QuotaExceededError (5MB limit do localStorage)
+        const safeCampaignForLocalStorage = {
+          ...campaign,
+          products: campaign.products.map((p) => {
+            if (p.imageUrl && p.imageUrl.startsWith('data:image') && p.imageUrl.length > 40000) {
+              return { ...p, imageUrl: `cloud-img:${p.id}` };
+            }
+            return p;
+          }),
+        };
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(safeCampaignForLocalStorage));
       } catch (e) {
         // Safe catch se ultrapassar limite de 5MB do navegador
       }
@@ -503,20 +535,31 @@ export default function App() {
   };
 
   const handleUpdateProduct = (idx: number, updated: Partial<ProductItem>) => {
+    lastLocalEditTimeRef.current = Date.now();
     setCampaign((prev) => {
       const nextProducts = [...prev.products];
       nextProducts[idx] = { ...nextProducts[idx], ...updated };
 
       setClients((prevClients) => {
-        const updated = prevClients.map((c) =>
+        const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
             ? { ...c, products: nextProducts }
             : c
         );
         try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+          const safeClients = updatedClients.map((c) => ({
+            ...c,
+            products: (c.products || []).map((p) => {
+              if (p.imageUrl && p.imageUrl.startsWith('data:image') && p.imageUrl.length > 40000) {
+                return { ...p, imageUrl: `cloud-img:${p.id}` };
+              }
+              return p;
+            }),
+          }));
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(safeClients));
         } catch (e) {}
-        return updated;
+        saveClientsToCloud(updatedClients).catch(() => {});
+        return updatedClients;
       });
 
       return { ...prev, products: nextProducts };
@@ -524,19 +567,30 @@ export default function App() {
   };
 
   const handleAddProduct = (newProduct: ProductItem) => {
+    lastLocalEditTimeRef.current = Date.now();
     setCampaign((prev) => {
       const nextProducts = [newProduct, ...prev.products];
 
       setClients((prevClients) => {
-        const updated = prevClients.map((c) =>
+        const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
             ? { ...c, products: nextProducts }
             : c
         );
         try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+          const safeClients = updatedClients.map((c) => ({
+            ...c,
+            products: (c.products || []).map((p) => {
+              if (p.imageUrl && p.imageUrl.startsWith('data:image') && p.imageUrl.length > 40000) {
+                return { ...p, imageUrl: `cloud-img:${p.id}` };
+              }
+              return p;
+            }),
+          }));
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(safeClients));
         } catch (e) {}
-        return updated;
+        saveClientsToCloud(updatedClients).catch(() => {});
+        return updatedClients;
       });
 
       return {
@@ -548,6 +602,7 @@ export default function App() {
   };
 
   const handleRemoveProduct = (idx: number) => {
+    lastLocalEditTimeRef.current = Date.now();
     setCampaign((prev) => {
       const next = prev.products.filter((_, i) => i !== idx);
       const nextIdx = Math.min(prev.activeProductIndex, Math.max(0, next.length - 1));
@@ -656,7 +711,9 @@ export default function App() {
               currentProductIndex={campaign.activeProductIndex}
               onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
               onUpdateProductImage={(productId, newImageUrl) => {
-                handleUpdateProduct(campaign.activeProductIndex, { imageUrl: newImageUrl, imageDisplayMode: 'ambient' });
+                const targetIdx = campaign.products.findIndex((p) => p.id === productId);
+                const idxToUpdate = targetIdx !== -1 ? targetIdx : campaign.activeProductIndex;
+                handleUpdateProduct(idxToUpdate, { imageUrl: newImageUrl, imageDisplayMode: 'ambient' });
               }}
               onUpdateProductItem={(idx, updated) => handleUpdateProduct(idx, updated)}
             />

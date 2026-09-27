@@ -37,6 +37,7 @@ import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual } from '../utils/ajudanteExportacao';
 import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
+import { compressImageToDataUrl } from '../utils/imageCompressor';
 
 const PALETA_CORES_RAPIDAS = [
   { nome: 'Laranja', bg: '#ea580c', text: '#ffffff' },
@@ -663,13 +664,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (ev) => {
-                        if (ev.target?.result && onUpdateCampaign) {
-                          onUpdateCampaign({ clientLogoUrl: ev.target.result as string, showClientLogo: true });
+                      compressImageToDataUrl(file, 800, 800, 0.88).then((compressed) => {
+                        if (compressed && onUpdateCampaign) {
+                          onUpdateCampaign({ clientLogoUrl: compressed, showClientLogo: true });
                         }
-                      };
-                      reader.readAsDataURL(file);
+                      });
                     }
                   }}
                 />
@@ -683,13 +682,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     input.onchange = (ev: Event) => {
                       const file = (ev.target as HTMLInputElement)?.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (res) => {
-                          if (res.target?.result && onUpdateCampaign) {
-                            onUpdateCampaign({ clientLogoUrl: res.target.result as string, showClientLogo: true });
+                        compressImageToDataUrl(file, 800, 800, 0.88).then((compressed) => {
+                          if (compressed && onUpdateCampaign) {
+                            onUpdateCampaign({ clientLogoUrl: compressed, showClientLogo: true });
                           }
-                        };
-                        reader.readAsDataURL(file);
+                        });
                       }
                     };
                     input.click();
@@ -1302,13 +1299,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          if (event.target?.result) {
-                            onUpdateProduct(currentProductIndex, { imageUrl: event.target.result as string });
+                        compressImageToDataUrl(file, 1200, 1200, 0.82).then((compressed) => {
+                          if (compressed) {
+                            onUpdateProduct(currentProductIndex, { imageUrl: compressed });
                           }
-                        };
-                        reader.readAsDataURL(file);
+                        });
                       }
                     }}
                   />
@@ -1332,13 +1327,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                       input.onchange = (ev: Event) => {
                         const file = (ev.target as HTMLInputElement)?.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            if (event.target?.result) {
-                              onUpdateProduct(currentProductIndex, { imageUrl: event.target.result as string });
+                          compressImageToDataUrl(file, 1200, 1200, 0.82).then((compressed) => {
+                            if (compressed) {
+                              onUpdateProduct(currentProductIndex, { imageUrl: compressed });
                             }
-                          };
-                          reader.readAsDataURL(file);
+                          });
                         }
                       };
                       input.click();
@@ -1602,13 +1595,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      if (ev.target?.result) {
-                        handleApplyCustomStyle({ bannerBgImageUrl: ev.target.result as string });
+                    compressImageToDataUrl(file, 1920, 1080, 0.85).then((compressed) => {
+                      if (compressed) {
+                        handleApplyCustomStyle({ bannerBgImageUrl: compressed });
                       }
-                    };
-                    reader.readAsDataURL(file);
+                    });
                   }
                 }}
               />
@@ -1623,13 +1614,11 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     input.onchange = (ev: Event) => {
                       const file = (ev.target as HTMLInputElement)?.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev2) => {
-                          if (ev2.target?.result) {
-                            handleApplyCustomStyle({ bannerBgImageUrl: ev2.target.result as string });
+                        compressImageToDataUrl(file, 1920, 1080, 0.85).then((compressed) => {
+                          if (compressed) {
+                            handleApplyCustomStyle({ bannerBgImageUrl: compressed });
                           }
-                        };
-                        reader.readAsDataURL(file);
+                        });
                       }
                     };
                     input.click();
