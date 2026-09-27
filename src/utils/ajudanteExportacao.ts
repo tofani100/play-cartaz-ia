@@ -227,8 +227,13 @@ function extractCardCrop(
   cardRect: ElementBox,
   borderRadius: number
 ): HTMLCanvasElement {
-  const w = Math.max(1, Math.round(cardRect.w));
-  const h = Math.max(1, Math.round(cardRect.h));
+  const sx = Math.max(0, Math.min(fullCanvas.width - 1, Math.round(cardRect.x)));
+  const sy = Math.max(0, Math.min(fullCanvas.height - 1, Math.round(cardRect.y)));
+  const sw = Math.max(1, Math.min(fullCanvas.width - sx, Math.round(cardRect.w)));
+  const sh = Math.max(1, Math.min(fullCanvas.height - sy, Math.round(cardRect.h)));
+  const w = sw;
+  const h = sh;
+
   const cropCanvas = document.createElement('canvas');
   cropCanvas.width = w;
   cropCanvas.height = h;
@@ -251,10 +256,10 @@ function extractCardCrop(
 
   ctx.drawImage(
     fullCanvas,
-    cardRect.x,
-    cardRect.y,
-    cardRect.w,
-    cardRect.h,
+    sx,
+    sy,
+    sw,
+    sh,
     0,
     0,
     w,
@@ -359,10 +364,26 @@ async function captureProductSlideLayers(
     }
   } catch {}
 
-  const centerContentEl = document.getElementById('tv-banner-center-content');
   const titleBlockEl = document.getElementById('tv-anim-title-block');
   const priceBlockEl = document.getElementById('tv-anim-price-block');
   const cardEl = document.getElementById('tv-anim-product-card');
+
+  // Garante carregamento e decodificação 100% completos do bitmap da foto do produto antes de qualquer captura
+  const imgEl = bannerEl.querySelector('#tv-anim-product-img') as HTMLImageElement | null;
+  if (imgEl) {
+    if (!imgEl.complete) {
+      await new Promise<void>((resolve) => {
+        imgEl.onload = () => resolve();
+        imgEl.onerror = () => resolve();
+        setTimeout(resolve, 800);
+      });
+    }
+    if (typeof imgEl.decode === 'function') {
+      try {
+        await imgEl.decode();
+      } catch {}
+    }
+  }
 
   // Garante estado de repouso perfeito nos elementos animados antes de qualquer captura
   const animatedNodes = bannerEl.querySelectorAll<HTMLElement>(
@@ -376,21 +397,10 @@ async function captureProductSlideLayers(
   await new Promise((r) => setTimeout(r, 60));
 
   // 1. Captura da camada base sem elementos centrais (fundo wallpaper, cabeçalho e rodapé limpos, ZERO fantasmas)
-  let bgCanvas: HTMLCanvasElement;
-  if (centerContentEl) {
-    centerContentEl.style.setProperty('display', 'none', 'important');
-    await new Promise((r) => setTimeout(r, 60));
-    try {
-      bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
-    } finally {
-      centerContentEl.style.removeProperty('display');
-      await new Promise((r) => setTimeout(r, 60));
-    }
-  } else {
-    bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
-  }
+  // O parâmetro 'tv-banner-center-content' exclui o centro no clone SVG diretamente no html-to-image sem tocar no DOM!
+  const bgCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH, 'tv-banner-center-content');
 
-  // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta)
+  // 2. Captura ÚNICA do banner completo com o motor nativo (fonte da verdade absoluta com a imagem 100% decodificada)
   const fullCanvas = await captureBannerToCanvas(bannerEl, canvasW, canvasH);
 
   // 3. Extração instantânea das 3 camadas animadas a partir do fullCanvas e bgCanvas (100% em memória, zero falhas)
@@ -413,21 +423,21 @@ async function captureProductSlideLayers(
   // Retângulos de segurança caso algum ID não seja detectado
   const safeTitleRect: ElementBox = titleRect || {
     x: canvasW * 0.05,
-    y: canvasH * 0.18,
-    w: canvasW * 0.42,
-    h: canvasH * 0.28,
+    y: canvasH * 0.16,
+    w: canvasW * 0.44,
+    h: canvasH * 0.32,
   };
   const safeCardRect: ElementBox = cardRect || {
-    x: canvasW * 0.50,
-    y: canvasH * 0.16,
-    w: canvasW * 0.45,
-    h: canvasH * 0.68,
+    x: canvasW * 0.48,
+    y: canvasH * 0.12,
+    w: canvasW * 0.48,
+    h: canvasH * 0.78,
   };
   const safePriceRect: ElementBox = priceRect || {
     x: canvasW * 0.05,
     y: canvasH * 0.50,
-    w: canvasW * 0.42,
-    h: canvasH * 0.35,
+    w: canvasW * 0.44,
+    h: canvasH * 0.36,
   };
 
   const finalTitleRect = titleRect || safeTitleRect;
@@ -534,14 +544,17 @@ function renderCanvasFrame(
   );
 
   // 2. Animação Sequencial dos 3 Blocos de Informação no MP4
-  if (hasAnimatedLayers && slideT < 0.80) {
-    // Bloco 2: Foto da Embalagem / Packshot Comercial (Zoom suave de 0.00s a 0.45s)
+  if (hasAnimatedLayers && slideT < 0.85) {
+    // Bloco 2: Foto da Embalagem / Packshot Comercial (Entrada lisa da margem direita ao ponto focal de 0.00s a 0.52s)
     if (currentSlide.cardCrop && currentSlide.cardRect) {
-      if (slideT < 0.45) {
-        const p2 = Math.min(1, Math.max(0, slideT / 0.45));
-        const alpha2 = easeOutCubic(p2);
-        const scale2 = 0.90 + 0.10 * easeOutCubic(p2);
-        const cx = currentSlide.cardRect.x + currentSlide.cardRect.w / 2;
+      if (slideT < 0.52) {
+        const p2 = Math.min(1, Math.max(0, slideT / 0.52));
+        const ease2 = easeOutCubic(p2);
+        const alpha2 = ease2;
+        // Desliza suavemente da margem direita (offsetX positivo) para o ponto focal zero em fluxo contínuo
+        const offsetX2 = (canvasWidth * 0.025) * (1 - ease2);
+        const scale2 = 0.96 + 0.04 * ease2;
+        const cx = currentSlide.cardRect.x + offsetX2 + currentSlide.cardRect.w / 2;
         const cy = currentSlide.cardRect.y + currentSlide.cardRect.h / 2;
 
         ctx.save();
@@ -567,12 +580,13 @@ function renderCanvasFrame(
       }
     }
 
-    // Bloco 1: Nome Comercial do Produto & 1º Selo (Desliza da esquerda de 0.12s a 0.52s)
+    // Bloco 1: Nome Comercial do Produto & 1º Selo (Desliza da esquerda de 0.12s a 0.54s)
     if (currentSlide.titleCrop && currentSlide.titleRect && slideT >= 0.12) {
-      if (slideT < 0.52) {
-        const p1 = Math.min(1, Math.max(0, (slideT - 0.12) / 0.40));
-        const alpha1 = easeOutCubic(p1);
-        const offsetX1 = -(canvasWidth * 0.025) * (1 - easeOutCubic(p1));
+      if (slideT < 0.54) {
+        const p1 = Math.min(1, Math.max(0, (slideT - 0.12) / 0.42));
+        const ease1 = easeOutCubic(p1);
+        const alpha1 = ease1;
+        const offsetX1 = -(canvasWidth * 0.025) * (1 - ease1);
 
         ctx.save();
         ctx.globalAlpha = alpha1;
@@ -595,10 +609,10 @@ function renderCanvasFrame(
       }
     }
 
-    // Bloco 3: Preço Por, Preço De, Unidade e 2º Selo (Queda e Pop com bounce de 0.24s a 0.65s)
+    // Bloco 3: Preço Por, Preço De, Unidade e 2º Selo (Queda e Pop com bounce de 0.24s a 0.68s)
     if (currentSlide.priceCrop && currentSlide.priceRect && slideT >= 0.24) {
-      if (slideT < 0.65) {
-        const p3 = Math.min(1, Math.max(0, (slideT - 0.24) / 0.41));
+      if (slideT < 0.68) {
+        const p3 = Math.min(1, Math.max(0, (slideT - 0.24) / 0.44));
         const alpha3 = easeOutCubic(p3);
         const offsetY3 = (canvasHeight * 0.02) * (1 - easeOutCubic(p3));
         const scale3 = 0.85 + 0.15 * Math.min(1.12, easeOutBack(p3));
@@ -628,9 +642,9 @@ function renderCanvasFrame(
       }
     }
 
-    // Suave transição para o quadro pleno de alta resolução (0.65s a 0.80s)
-    if (slideT >= 0.65 && slideT < 0.80) {
-      const fadeFull = Math.min(1, (slideT - 0.65) / 0.15);
+    // Suave transição para o quadro pleno de alta resolução (0.70s a 0.85s)
+    if (slideT >= 0.70 && slideT < 0.85) {
+      const fadeFull = Math.min(1, (slideT - 0.70) / 0.15);
       ctx.save();
       ctx.globalAlpha = easeOutCubic(fadeFull);
       ctx.drawImage(currentSlide.fullCanvas, 0, 0, canvasWidth, canvasHeight);
@@ -1030,9 +1044,9 @@ export async function gerarVideoAnimadoProdutoIndividual(
   // 1. Switch active product in DOM if needed and wait for layout to render
   if (onSelectProductIndex) {
     onSelectProductIndex(productIndex);
-    await new Promise((r) => setTimeout(r, 450));
+    await new Promise((r) => setTimeout(r, 650));
   } else {
-    await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 200));
   }
 
   // Pre-convert product image to safe Data URL so DOM has zero CORS issue
@@ -1044,7 +1058,12 @@ export async function gerarVideoAnimadoProdutoIndividual(
         if (imgEl) {
           imgEl.src = safeData;
           if (!imgEl.complete) {
-            await new Promise((r) => { imgEl.onload = r; imgEl.onerror = r; setTimeout(r, 400); });
+            await new Promise((r) => { imgEl.onload = r; imgEl.onerror = r; setTimeout(r, 500); });
+          }
+          if (typeof imgEl.decode === 'function') {
+            try {
+              await imgEl.decode();
+            } catch {}
           }
         }
       }
@@ -1158,9 +1177,9 @@ export async function gerarVideoAnimadoBanner(
 
     if (onSelectProductIndex && totalProducts > 1) {
       onSelectProductIndex(prodIndex);
-      await new Promise((r) => setTimeout(r, 450));
+      await new Promise((r) => setTimeout(r, 650));
     } else {
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     // Pre-convert product image to safe Data URL
@@ -1172,7 +1191,12 @@ export async function gerarVideoAnimadoBanner(
           if (imgEl) {
             imgEl.src = safeData;
             if (!imgEl.complete) {
-              await new Promise((r) => { imgEl.onload = r; imgEl.onerror = r; setTimeout(r, 400); });
+              await new Promise((r) => { imgEl.onload = r; imgEl.onerror = r; setTimeout(r, 500); });
+            }
+            if (typeof imgEl.decode === 'function') {
+              try {
+                await imgEl.decode();
+              } catch {}
             }
           }
         }

@@ -189,7 +189,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
     };
   };
 
-  // Bloco 2: Foto da Embalagem / Packshot Comercial (Card 4:3)
+  // Bloco 2: Foto da Embalagem / Packshot Comercial (Card 4:3) - Fluxo liso e contínuo da margem direita ao ponto focal
   const getBlock2Props = () => {
     if (campaign.animationStyle === 'none') {
       return {
@@ -198,28 +198,14 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         transition: { duration: 0 },
       };
     }
-    if (campaign.animationStyle === 'slide') {
-      return {
-        initial: { x: isVertical ? 0 : 50, y: isVertical ? 30 : 0, opacity: 0 },
-        animate: { x: 0, y: 0, opacity: 1 },
-        exit: { opacity: 0 },
-        transition: { duration: 0.45, delay: 0.02, ease: [0.22, 1, 0.36, 1] as const },
-      };
-    }
-    if (campaign.animationStyle === 'pulse') {
-      return {
-        initial: { scale: 0.9, opacity: 0 },
-        animate: { scale: [0.9, 1.03, 1], opacity: 1 },
-        exit: { opacity: 0 },
-        transition: { duration: 0.48, delay: 0.02, ease: 'easeOut' as const },
-      };
-    }
-    // Padrão: 'zoom' (Aparecimento limpo e cinematográfico de estúdio)
+    const initialX = isVertical ? 0 : 40;
+    const initialY = isVertical ? 24 : 0;
+    const initialScale = campaign.animationStyle === 'pulse' ? 0.94 : 0.96;
+
     return {
-      initial: { scale: 0.91, opacity: 0 },
-      animate: { scale: 1, opacity: 1 },
-      exit: { opacity: 0 },
-      transition: { duration: 0.45, delay: 0.02, ease: [0.22, 1, 0.36, 1] as const },
+      initial: { x: initialX, y: initialY, scale: initialScale, opacity: 0 },
+      animate: { x: 0, y: 0, scale: 1, opacity: 1 },
+      transition: { duration: 0.52, delay: 0, ease: [0.16, 1, 0.3, 1] as const },
     };
   };
 
@@ -569,13 +555,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
           {/* Right Column (Bloco 2): Framed Commercial Mini Banner Showcase Card - Dimensões e Proporção 4:3 Padronizadas */}
           <div className={`relative flex-1 min-w-0 flex items-center justify-center ${isVertical ? 'w-full py-1' : 'h-full max-h-full'}`}>
-            <AnimatePresence mode="sync">
-              <motion.div
-                key={`card-${product.id}-${animCycle}`}
-                id="tv-anim-card-wrapper"
-                {...getBlock2Props()}
-                className="relative w-full h-full flex items-center justify-center p-1 sm:p-2 overflow-visible"
-              >
+            <motion.div
+              key={`card-${product.id}-${animCycle}`}
+              id="tv-anim-card-wrapper"
+              {...getBlock2Props()}
+              className="relative w-full h-full flex items-center justify-center p-1 sm:p-2 overflow-visible"
+            >
                 {/* Standardized Mini Banner Container - Proporção 4:3 Idêntica e Padronizada para Todos os Produtos */}
                 {/* Standardized Mini Banner Container - Suporte Duplo: Modo Ambientado Full-Bleed (Print 1) ou Packshot Tradicional (Print 2) */}
                 {(() => {
@@ -857,7 +842,6 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   );
                 })()}
               </motion.div>
-            </AnimatePresence>
           </div>
         </div>
 
