@@ -267,19 +267,9 @@ export default function App() {
         }
       });
       try {
-        // Proteção contra QuotaExceededError (5MB limit do localStorage)
-        const safeCampaignForLocalStorage = {
-          ...campaign,
-          products: campaign.products.map((p) => {
-            if (p.imageUrl && p.imageUrl.startsWith('data:image') && p.imageUrl.length > 40000) {
-              return { ...p, imageUrl: `cloud-img:${p.id}` };
-            }
-            return p;
-          }),
-        };
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(safeCampaignForLocalStorage));
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(campaign));
       } catch (e) {
-        // Safe catch se ultrapassar limite de 5MB do navegador
+        console.warn('Aviso: localStorage cheio, backup mantido no IndexedDB e Firestore:', e);
       }
     }, 1200);
 
@@ -323,6 +313,15 @@ export default function App() {
     }
     return CLIENTES_PREDEFINIDOS;
   });
+
+  // 3. Sincronização periódica suave da lista de clientes no Firestore
+  useEffect(() => {
+    if (isDirectTvMode || !initialLoadDoneRef.current) return;
+    const timer = setTimeout(() => {
+      saveClientsToCloud(clients).catch(() => {});
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [clients]);
 
   const handleSaveClient = (newOrUpdatedClient: ClientProfile) => {
     setClients((prev) => {
@@ -547,18 +546,8 @@ export default function App() {
             : c
         );
         try {
-          const safeClients = updatedClients.map((c) => ({
-            ...c,
-            products: (c.products || []).map((p) => {
-              if (p.imageUrl && p.imageUrl.startsWith('data:image') && p.imageUrl.length > 40000) {
-                return { ...p, imageUrl: `cloud-img:${p.id}` };
-              }
-              return p;
-            }),
-          }));
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(safeClients));
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
-        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -578,18 +567,8 @@ export default function App() {
             : c
         );
         try {
-          const safeClients = updatedClients.map((c) => ({
-            ...c,
-            products: (c.products || []).map((p) => {
-              if (p.imageUrl && p.imageUrl.startsWith('data:image') && p.imageUrl.length > 40000) {
-                return { ...p, imageUrl: `cloud-img:${p.id}` };
-              }
-              return p;
-            }),
-          }));
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(safeClients));
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
-        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 

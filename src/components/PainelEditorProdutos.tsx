@@ -1299,7 +1299,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        compressImageToDataUrl(file, 1200, 1200, 0.82).then((compressed) => {
+                        compressImageToDataUrl(file, 800, 800, 0.76).then((compressed) => {
                           if (compressed) {
                             onUpdateProduct(currentProductIndex, { imageUrl: compressed });
                           }
@@ -1327,7 +1327,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                       input.onchange = (ev: Event) => {
                         const file = (ev.target as HTMLInputElement)?.files?.[0];
                         if (file) {
-                          compressImageToDataUrl(file, 1200, 1200, 0.82).then((compressed) => {
+                          compressImageToDataUrl(file, 800, 800, 0.76).then((compressed) => {
                             if (compressed) {
                               onUpdateProduct(currentProductIndex, { imageUrl: compressed });
                             }

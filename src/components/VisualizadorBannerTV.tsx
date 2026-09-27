@@ -661,7 +661,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       if (items[i].type.indexOf('image') !== -1) {
                         const blob = items[i].getAsFile();
                         if (blob) {
-                          compressImageToDataUrl(blob, 1200, 1200, 0.82).then((compressed) => {
+                          compressImageToDataUrl(blob, 800, 800, 0.76).then((compressed) => {
                             if (compressed && onUpdateProductImage) {
                               onUpdateProductImage(product.id, compressed);
                               if (onUpdateProductItem) {
@@ -704,7 +704,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       const target = ev.target as HTMLInputElement;
                       const file = target.files?.[0];
                       if (file) {
-                        compressImageToDataUrl(file, 1200, 1200, 0.82).then((compressed) => {
+                        compressImageToDataUrl(file, 800, 800, 0.76).then((compressed) => {
                           if (compressed && onUpdateProductImage) {
                             onUpdateProductImage(product.id, compressed);
                             if (onUpdateProductItem) {

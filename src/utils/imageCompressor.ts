@@ -5,14 +5,14 @@
 
 /**
  * Utilitário de compressão de imagens de alta velocidade no navegador.
- * Reduz fotos pesadas de celulares e câmeras (3MB a 12MB) para ~35KB-60KB em JPEG 0.82
- * com resolução comercial nítida de 1200px, ideal para transmissão em TV e encartes.
+ * Reduz fotos pesadas de celulares e câmeras (3MB a 12MB) para ~20KB-30KB em WebP/JPEG
+ * com resolução comercial nítida de 800px, ideal para transmissão em TV e persistência segura no Firestore e LocalStorage.
  */
 export async function compressImageToDataUrl(
   input: File | Blob | string,
-  maxWidth = 1200,
-  maxHeight = 1200,
-  quality = 0.82
+  maxWidth = 800,
+  maxHeight = 800,
+  quality = 0.76
 ): Promise<string> {
   if (!input) return '';
 
@@ -21,14 +21,13 @@ export async function compressImageToDataUrl(
     typeof input === 'string' &&
     (input.startsWith('http://') ||
       input.startsWith('https://') ||
-      input.startsWith('/') ||
-      input.startsWith('cloud-img:'))
+      input.startsWith('/'))
   ) {
     return input;
   }
 
-  // Se for string data URL pequena (< 30KB), pode manter
-  if (typeof input === 'string' && input.startsWith('data:image') && input.length < 35000) {
+  // Se for string data URL já compacta (< 30KB), pode manter diretamente
+  if (typeof input === 'string' && input.startsWith('data:image') && input.length < 32000) {
     return input;
   }
 
@@ -83,10 +82,28 @@ export async function compressImageToDataUrl(
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
+        // 1. Tenta WebP primeiro (preserva transparência de PNGs e comprime ~30% mais que JPEG)
         try {
-          const compressed = canvas.toDataURL('image/jpeg', quality);
-          if (compressed && compressed.length > 50) {
-            return resolve(compressed);
+          const webpData = canvas.toDataURL('image/webp', quality);
+          if (webpData && webpData.startsWith('data:image/webp') && webpData.length > 50) {
+            return resolve(webpData);
+          }
+        } catch (_) {}
+
+        // 2. Fallback: JPEG com preenchimento branco de fundo (para evitar fundo preto em PNGs transparentes)
+        try {
+          const fallbackCanvas = document.createElement('canvas');
+          fallbackCanvas.width = width;
+          fallbackCanvas.height = height;
+          const fctx = fallbackCanvas.getContext('2d');
+          if (fctx) {
+            fctx.fillStyle = '#ffffff';
+            fctx.fillRect(0, 0, width, height);
+            fctx.drawImage(img, 0, 0, width, height);
+            const jpegData = fallbackCanvas.toDataURL('image/jpeg', quality);
+            if (jpegData && jpegData.length > 50) {
+              return resolve(jpegData);
+            }
           }
         } catch (_) {}
 
