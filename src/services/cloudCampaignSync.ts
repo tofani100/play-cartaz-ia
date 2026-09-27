@@ -118,7 +118,7 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
         if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
           const compressed = await compressImageToDataUrl(p.imageUrl, 1200, 1200, 0.82);
           saveLocalImage(p.id, compressed).catch(() => {});
-          saveProductImageToCloud(p.id, compressed).catch(() => {});
+          await saveProductImageToCloud(p.id, compressed);
           return {
             ...p,
             imageUrl: compressed,
@@ -310,7 +310,7 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
             if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
               // Garante que a imagem está salva no IndexedDB e Firestore
               const compressed = await compressImageToDataUrl(p.imageUrl, 1200, 1200, 0.82);
-              saveProductImageToCloud(p.id, compressed).catch(() => {});
+              await saveProductImageToCloud(p.id, compressed);
               saveLocalImage(p.id, compressed).catch(() => {});
               return {
                 ...p,
