@@ -15,7 +15,8 @@ import {
   Check,
   SlidersHorizontal,
   Wand2,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react';
 import { BannerCampaign, ProductItem, ThemeColors, BannerCustomStyles } from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
@@ -941,50 +942,90 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           </button>
         </div>
 
-        {/* Product Bullets */}
+        {/* Product Bullets com Drop Down de Posição da Fila */}
         {campaign.products.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] px-1 select-none">
-            {campaign.products.map((p, idx) => (
-              <button
-                key={p.id}
-                onClick={() => onSelectProductIndex(idx)}
-                draggable={Boolean(onReorderProduct)}
-                onDragStart={(e) => {
-                  setDraggedBulletIdx(idx);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                  if (dragOverBulletIdx !== idx) setDragOverBulletIdx(idx);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggedBulletIdx !== null && draggedBulletIdx !== idx && onReorderProduct) {
-                    onReorderProduct(draggedBulletIdx, idx);
-                  }
-                  setDraggedBulletIdx(null);
-                  setDragOverBulletIdx(null);
-                }}
-                onDragEnd={() => {
-                  setDraggedBulletIdx(null);
-                  setDragOverBulletIdx(null);
-                }}
-                className={`relative px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all shrink-0 cursor-pointer ${
-                  draggedBulletIdx === idx ? 'opacity-40 scale-95' : ''
-                } ${
-                  dragOverBulletIdx === idx && draggedBulletIdx !== idx ? 'ring-2 ring-amber-400 bg-amber-500/30' : ''
-                } ${
-                  idx === currentProductIndex
-                    ? 'bg-amber-500 text-black shadow-md scale-105'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-white'
-                }`}
-                title={`Banner #${idx + 1}: ${p.title} (Arraste para reordenar)`}
-              >
-                <span>#{idx + 1}</span>
-                <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.title}</span>
-              </button>
-            ))}
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto py-0.5 px-1 select-none">
+            {campaign.products.map((p, idx) => {
+              const isSelected = idx === currentProductIndex;
+
+              return (
+                <div
+                  key={p.id}
+                  draggable={Boolean(onReorderProduct)}
+                  onDragStart={(e) => {
+                    setDraggedBulletIdx(idx);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverBulletIdx !== idx) setDragOverBulletIdx(idx);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedBulletIdx !== null && draggedBulletIdx !== idx && onReorderProduct) {
+                      onReorderProduct(draggedBulletIdx, idx);
+                    }
+                    setDraggedBulletIdx(null);
+                    setDragOverBulletIdx(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedBulletIdx(null);
+                    setDragOverBulletIdx(null);
+                  }}
+                  className={`group relative rounded-lg text-xs font-bold flex items-center transition-all shrink-0 cursor-pointer shadow-sm border ${
+                    draggedBulletIdx === idx ? 'opacity-40 scale-95 border-dashed border-amber-400' : ''
+                  } ${
+                    dragOverBulletIdx === idx && draggedBulletIdx !== idx ? 'ring-2 ring-amber-400 bg-amber-500/30' : ''
+                  } ${
+                    isSelected
+                      ? 'bg-amber-400 text-black border-amber-300 shadow-md ring-1 ring-amber-400/50'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-white'
+                  }`}
+                >
+                  {/* Seletor Drop Down de Posição na Fila */}
+                  <div 
+                    className="relative flex items-center shrink-0" 
+                    onClick={(e) => e.stopPropagation()}
+                    title={`Banner #${idx + 1} de ${campaign.products.length}. Clique no drop down para mover para outra posição da fila.`}
+                  >
+                    <select
+                      value={idx}
+                      onChange={(e) => {
+                        const targetPos = parseInt(e.target.value, 10);
+                        if (!isNaN(targetPos) && targetPos !== idx && onReorderProduct) {
+                          onReorderProduct(idx, targetPos);
+                        }
+                      }}
+                      className={`font-black text-[11px] h-6 pl-1.5 pr-4 rounded-l-md appearance-none cursor-pointer border-r focus:outline-none transition-colors ${
+                        isSelected
+                          ? 'bg-amber-500 text-black border-amber-600/30 hover:bg-amber-600'
+                          : 'bg-neutral-800 text-amber-400 border-neutral-700 hover:bg-neutral-700'
+                      }`}
+                    >
+                      {campaign.products.map((_, pIdx) => (
+                        <option key={pIdx} value={pIdx} className="bg-neutral-900 text-white font-bold py-1">
+                          #{pIdx + 1} {pIdx === 0 ? '(1º da fila)' : pIdx === campaign.products.length - 1 ? `(${pIdx + 1}º Fim)` : `(${pIdx + 1}º)`}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className={`w-2.5 h-2.5 pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 ${
+                      isSelected ? 'text-black/80' : 'text-amber-400/80'
+                    }`} />
+                  </div>
+
+                  {/* Título do Banner (clique para selecionar) */}
+                  <button
+                    type="button"
+                    onClick={() => onSelectProductIndex(idx)}
+                    className="px-2 py-1 truncate max-w-[90px] sm:max-w-[130px] md:max-w-[170px] text-left select-none"
+                    title={`Selecionar banner #${idx + 1}: ${p.title}`}
+                  >
+                    {p.title}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 

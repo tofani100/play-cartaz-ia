@@ -29,9 +29,7 @@ import {
   Layers,
   RotateCcw,
   Sliders,
-  Store,
-  GripVertical,
-  ArrowUpDown
+  Store
 } from 'lucide-react';
 import { ProductItem, CuratedProduct, BannerCampaign, ThemeColors, BannerCustomStyles, AnimationEffect } from '../tiposGeradorBanner';
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
@@ -85,8 +83,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 }) => {
   const [showCatalogModal, setShowCatalogModal] = useState<boolean>(false);
   const [catalogSearch, setCatalogSearch] = useState<string>('');
-  const [draggedProductIdx, setDraggedProductIdx] = useState<number | null>(null);
-  const [dragOverProductIdx, setDragOverProductIdx] = useState<number | null>(null);
   const [catalogCategory, setCatalogCategory] = useState<string>('all');
   const [isSearchingRealImage, setIsSearchingRealImage] = useState<boolean>(false);
   const [isGeneratingAiImage, setIsGeneratingAiImage] = useState<boolean>(false);
@@ -444,17 +440,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
         </div>
       </div>
 
-      {/* Informação & Ajuda de Sequência dos Banners */}
-      {products.length > 1 && (
-        <div className="flex items-center justify-between px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] text-amber-300">
-          <span className="flex items-center gap-1 font-bold">
-            <ArrowUpDown className="w-3 h-3 text-amber-400" />
-            <span>Fila dos Banners:</span>
-          </span>
-          <span className="text-neutral-400 font-medium">Selecione no drop down ou arraste</span>
-        </div>
-      )}
-
       {/* Product List Cards */}
       <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
         {products.map((item, idx) => {
@@ -464,33 +449,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
             <div
               key={item.id}
               onClick={() => onSelectProductIndex(idx)}
-              draggable={Boolean(onReorderProduct)}
-              onDragStart={(e) => {
-                setDraggedProductIdx(idx);
-                e.dataTransfer.effectAllowed = 'move';
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                if (dragOverProductIdx !== idx) setDragOverProductIdx(idx);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (draggedProductIdx !== null && draggedProductIdx !== idx && onReorderProduct) {
-                  onReorderProduct(draggedProductIdx, idx);
-                }
-                setDraggedProductIdx(null);
-                setDragOverProductIdx(null);
-              }}
-              onDragEnd={() => {
-                setDraggedProductIdx(null);
-                setDragOverProductIdx(null);
-              }}
-              className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ${
-                draggedProductIdx === idx ? 'opacity-40 border-dashed border-amber-400 bg-amber-500/10' : ''
-              } ${
-                dragOverProductIdx === idx && draggedProductIdx !== idx ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-500/20' : ''
-              } ${
+              className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 item.hidden ? 'opacity-65 border-dashed border-neutral-800 bg-neutral-950/30' : ''
               } ${
                 isSelected
@@ -498,37 +457,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   : 'border-neutral-800 bg-neutral-950/60 hover:border-neutral-700'
               }`}
             >
-              <div className="flex items-center gap-1.5 min-w-0">
-                {/* Seletor Drop Down de Posição na Fila & Alça Drag and Drop */}
-                <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <div 
-                    className="cursor-grab active:cursor-grabbing text-neutral-600 hover:text-amber-400 p-0.5 transition-colors"
-                    title="Arrastar e soltar para reposicionar este banner na fila"
-                  >
-                    <GripVertical className="w-3.5 h-3.5" />
-                  </div>
-
-                  <div className="relative group/pos" title={`Posição na fila: #${idx + 1} de ${products.length}. Clique para trocar a sequência.`}>
-                    <select
-                      value={idx}
-                      onChange={(e) => {
-                        const targetPos = parseInt(e.target.value, 10);
-                        if (!isNaN(targetPos) && targetPos !== idx && onReorderProduct) {
-                          onReorderProduct(idx, targetPos);
-                        }
-                      }}
-                      className="bg-neutral-900 hover:bg-neutral-800 text-amber-400 font-extrabold text-[11px] h-6 pl-1.5 pr-4 rounded-md border border-amber-500/40 hover:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer appearance-none transition-all shadow-sm"
-                    >
-                      {products.map((p, pIdx) => (
-                        <option key={p.id || pIdx} value={pIdx} className="bg-neutral-900 text-white font-bold py-1">
-                          #{pIdx + 1} {pIdx === 0 ? '(1º da fila)' : pIdx === products.length - 1 ? `(${pIdx + 1}º Fim)` : `(${pIdx + 1}º)`}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-2.5 h-2.5 text-amber-400/80 pointer-events-none absolute right-1 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
+              <div className="flex items-center gap-2 min-w-0">
                 <img
                   src={item.imageUrl}
                   alt={item.title}
@@ -557,6 +486,9 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                         Oculto
                       </span>
                     )}
+                    <span className="text-[10px] text-neutral-400 font-bold">
+                      #{idx + 1}
+                    </span>
                   </div>
                   <h4 className={`text-xs font-bold truncate ${item.hidden ? 'text-neutral-400 line-through' : 'text-white'}`}>
                     {item.title}
@@ -928,31 +860,14 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
             className="flex items-center justify-between border-b border-neutral-800 pb-2.5 cursor-pointer group select-none"
           >
             <div className="flex items-center gap-2">
-              <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-                <select
-                  value={currentProductIndex}
-                  onChange={(e) => {
-                    const targetIdx = parseInt(e.target.value, 10);
-                    if (!isNaN(targetIdx) && targetIdx !== currentProductIndex && onReorderProduct) {
-                      onReorderProduct(currentProductIndex, targetIdx);
-                    }
-                  }}
-                  title="Alterar posição deste banner na fila (Drop Down)"
-                  className="bg-neutral-900 hover:bg-neutral-800 text-amber-400 font-black text-xs h-7 pl-2 pr-5 rounded-lg border border-amber-500/50 hover:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer appearance-none transition-all shadow-sm"
-                >
-                  {products.map((p, optIdx) => (
-                    <option key={p.id || optIdx} value={optIdx} className="bg-neutral-900 text-white font-bold py-1">
-                      #{optIdx + 1} {optIdx === 0 ? '(1º da fila)' : optIdx === products.length - 1 ? `(${optIdx + 1}º Fim)` : ''}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3 h-3 text-amber-400/80 pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2" />
+              <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-xs">
+                #{currentProductIndex + 1}
               </div>
               <div>
                 <span className="text-xs font-black text-white group-hover:text-amber-300">
                   2. Editando Item #{currentProductIndex + 1} de {products.length}
                 </span>
-                <span className="text-[10px] text-neutral-400 block truncate max-w-[180px]">
+                <span className="text-[10px] text-neutral-400 block truncate max-w-[210px]">
                   {activeProduct.title}
                 </span>
               </div>
