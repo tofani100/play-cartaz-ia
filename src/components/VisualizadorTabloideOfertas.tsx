@@ -399,7 +399,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Top Row: Client Logo & Campaign Master Title + Validity */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-3 sm:gap-4">
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-2.5 sm:gap-3.5">
             {/* Store Brand / Official Logo */}
             <div className="flex items-center justify-center shrink-0">
               {campaign.showClientLogo !== false && (
@@ -408,7 +408,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src="/logos/belissima-casa-di-frutas.png"
                     alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="max-h-14 sm:max-h-16 md:max-h-18 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-13 sm:max-h-14 md:max-h-15 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -420,7 +420,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src={campaign.clientLogoUrl}
                     alt={campaign.clientName || 'Logo'}
-                    className="max-h-14 sm:max-h-16 md:max-h-18 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-13 sm:max-h-14 md:max-h-15 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
@@ -455,6 +455,14 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 campaign.campaignSubtitle.trim().toLowerCase() !== validityDisplay.trim().toLowerCase() &&
                 !campaign.campaignSubtitle.toLowerCase().includes('válid');
 
+              // Escala de fonte inteligente para garantir exibição 100% integral sem corte (evita estourar o container em desktop)
+              const validityFontSize = 
+                validityDisplay.length > 52
+                  ? 'text-[6.8px] sm:text-[7.2px]'
+                  : validityDisplay.length > 38
+                  ? 'text-[7.2px] sm:text-[7.8px]'
+                  : 'text-[7.8px] sm:text-[8.5px]';
+
               return (
                 <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-start">
                   {/* Título Superior da Campanha (Cabeçalho) - Totalmente Visível Sem Cortar ou Sobrepor */}
@@ -482,11 +490,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                   {/* Texto de Validade das Ofertas - Linha Única Integral Sem Cortes em Linha Própria Separada */}
                   <div className="mt-1.5 w-full flex items-center justify-center sm:justify-end clear-both">
                     <div 
-                      className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-black/60 border border-white/20 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-amber-200/95 font-medium whitespace-nowrap max-w-full shadow-sm"
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/20 ${validityFontSize} text-amber-200/95 font-semibold whitespace-nowrap max-w-full shadow-sm`}
                       style={{ fontFamily: "'Montserrat', sans-serif" }}
                     >
-                      <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400/90 shrink-0" />
-                      <span className="uppercase whitespace-nowrap tracking-wide">{validityDisplay}</span>
+                      <Calendar className="w-2.5 h-2.5 text-amber-400/90 shrink-0" />
+                      <span className="uppercase whitespace-nowrap tracking-tight">{validityDisplay}</span>
                     </div>
                   </div>
                 </div>
