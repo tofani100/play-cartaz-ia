@@ -468,10 +468,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     </span>
                   )}
 
-                  {/* Texto de Validade das Ofertas - Discreto, Elegante e Sem Exagero (Conforme pedido: "não precisa ter tanto destaque") */}
-                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-black/45 border border-white/15 text-[10.5px] sm:text-xs text-amber-200/95 font-medium tracking-wide">
-                    <Calendar className="w-3 h-3 text-amber-400/80 shrink-0" />
-                    <span className="uppercase">{validityDisplay}</span>
+                  {/* Texto de Validade das Ofertas - Fonte Reduzida em Linha Única */}
+                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/45 border border-white/15 text-[8.5px] sm:text-[9.5px] md:text-[10px] text-amber-200/95 font-medium tracking-wide whitespace-nowrap max-w-full">
+                    <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400/80 shrink-0" />
+                    <span className="uppercase whitespace-nowrap">{validityDisplay}</span>
                   </div>
                 </div>
               );
