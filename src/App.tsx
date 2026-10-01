@@ -817,12 +817,17 @@ export default function App() {
       {/* Main Workspace Layout */}
       <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {/* Visual Stage (Center / Main Left) - Auto-Scale Canvas responsivo sem scroll */}
-        <div className={`flex-1 min-h-0 h-full flex flex-col items-center justify-center p-1 sm:p-2 ${campaign.format === 'tabloid' ? 'overflow-y-auto' : 'overflow-hidden'} bg-neutral-950/60`}>
+        <div className={`flex-1 min-h-0 h-full flex flex-col items-center ${campaign.format === 'tabloid' ? 'justify-start overflow-y-auto p-2 sm:p-4' : 'justify-center overflow-hidden p-1 sm:p-2'} bg-neutral-950/60`}>
 
 
           {/* Conditional Preview: Tabloid or Banner */}
           {campaign.format === 'tabloid' ? (
-            <VisualizadorTabloideOfertas campaign={campaign} theme={activeTheme} />
+            <VisualizadorTabloideOfertas 
+              campaign={campaign} 
+              theme={activeTheme} 
+              onUpdateCampaign={handleUpdateCampaign}
+              onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+            />
           ) : (
             <VisualizadorBannerTV
               campaign={campaign}
