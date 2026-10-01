@@ -398,7 +398,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Top Row: Client Logo & Campaign Master Title + Validity */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-3 sm:gap-5">
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-3 sm:gap-6">
             {/* Store Brand / Official Logo */}
             <div className="flex items-center justify-center shrink-0">
               {campaign.showClientLogo !== false && (
@@ -407,7 +407,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src="/logos/belissima-casa-di-frutas.png"
                     alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="max-h-20 sm:max-h-24 md:max-h-28 w-auto object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]"
+                    className="max-h-18 sm:max-h-22 md:max-h-24 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -419,7 +419,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src={campaign.clientLogoUrl}
                     alt={campaign.clientName || 'Logo'}
-                    className="max-h-20 sm:max-h-24 md:max-h-28 w-auto object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]"
+                    className="max-h-18 sm:max-h-22 md:max-h-24 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
@@ -455,22 +455,22 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 !campaign.campaignSubtitle.toLowerCase().includes('válid');
 
               return (
-                <div className="flex-1 flex flex-col items-center sm:items-end text-center sm:text-right justify-center">
-                  {/* Título Superior da Campanha (Cabeçalho) */}
-                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-[34px] font-black uppercase text-amber-300 drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] tracking-tight leading-tight">
+                <div className="flex-1 flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-0.5">
+                  {/* Título Superior da Campanha (Cabeçalho) - Diagramado com Tamanho e Espaçamento Harmonioso */}
+                  <h1 className="text-lg sm:text-xl md:text-2xl lg:text-[28px] font-black uppercase text-amber-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-tight max-w-[420px]">
                     {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
                   </h1>
 
                   {/* Subtítulo / Slogan (apenas se for slogan real) */}
                   {isSubtitleValid && (
-                    <span className="text-xs sm:text-sm text-white/90 font-bold uppercase tracking-wider mt-0.5 drop-shadow">
+                    <span className="text-[11px] sm:text-xs text-white/80 font-medium uppercase tracking-wider mt-0.5 drop-shadow">
                       {campaign.campaignSubtitle}
                     </span>
                   )}
 
-                  {/* Texto de Validade das Ofertas com Grande Destaque */}
-                  <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-black/85 border-2 border-amber-400 text-amber-300 font-black text-xs sm:text-sm md:text-base shadow-[0_4px_20px_rgba(0,0,0,0.85)] tracking-wide">
-                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+                  {/* Texto de Validade das Ofertas - Discreto, Elegante e Sem Exagero (Conforme pedido: "não precisa ter tanto destaque") */}
+                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-black/45 border border-white/15 text-[10.5px] sm:text-xs text-amber-200/95 font-medium tracking-wide">
+                    <Calendar className="w-3 h-3 text-amber-400/80 shrink-0" />
                     <span className="uppercase">{validityDisplay}</span>
                   </div>
                 </div>
@@ -478,17 +478,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             })()}
           </div>
 
-          {/* Sub Row: WhatsApp Direct Order Banner & Info */}
-          <div className="relative z-10 mt-3 w-full flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-white/20">
+          {/* Sub Row: WhatsApp Direct Order Banner (sem frases redundantes) */}
+          <div className="relative z-10 mt-2.5 w-full flex items-center justify-center sm:justify-start pt-2 border-t border-white/15">
             {/* WhatsApp CTA Call */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-700/90 border border-emerald-400/50 text-white text-xs sm:text-sm font-black shadow-sm">
-              <MessageCircle className="w-4 h-4 text-emerald-300 shrink-0" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-700/90 border border-emerald-400/50 text-white text-xs font-bold shadow-sm">
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
               <span>Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}</span>
-            </div>
-
-            {/* Segment / Store Highlight */}
-            <div className="text-[11px] sm:text-xs text-white/80 font-bold uppercase tracking-wide">
-              {campaign.segment || 'Hortifrúti Selecionado • Ofertas Especiais'}
             </div>
           </div>
         </div>
