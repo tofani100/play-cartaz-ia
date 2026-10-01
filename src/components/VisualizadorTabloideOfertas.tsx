@@ -588,24 +588,22 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       />
                     </div>
 
-                    {/* Product Title & Brand */}
-                    <div className="px-2.5 pt-1 pb-1.5 text-left">
-                      <h4 className={`font-black text-white line-clamp-2 leading-tight ${
-                        columns === 1 
-                          ? 'text-sm sm:text-base' 
-                          : columns === 2 
-                          ? 'text-xs sm:text-sm' 
-                          : columns === 3 
-                          ? 'text-[10.5px] sm:text-[11.5px]' 
-                          : 'text-[9.5px] sm:text-[10.5px]'
-                      }`}>
+                    {/* Product Title (Exibe o Nome Comercial por Inteiro em até 3 Linhas, sem a marca em amarelo) */}
+                    <div className="px-2.5 pt-1 pb-1.5 text-left flex-1 flex flex-col justify-start">
+                      <h4 
+                        className={`font-black text-white line-clamp-3 leading-snug break-words ${
+                          columns === 1 
+                            ? 'text-sm sm:text-base' 
+                            : columns === 2 
+                            ? 'text-xs sm:text-sm' 
+                            : columns === 3 
+                            ? 'text-[10px] sm:text-[11px]' 
+                            : 'text-[9px] sm:text-[10px]'
+                        }`}
+                        title={item.title}
+                      >
                         {item.title}
                       </h4>
-                      {item.brand && (
-                        <span className="text-[9px] sm:text-[10px] text-amber-300/80 font-bold block mt-0.5 truncate">
-                          {item.brand}
-                        </span>
-                      )}
                     </div>
 
                     {/* Supermarket Orange Price Section */}
