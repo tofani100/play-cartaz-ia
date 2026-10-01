@@ -2,5 +2,6 @@
  * Centralized Version Control for Play Comunique TV & Banners
  * Atualizado a cada entrega/versão conforme solicitação do usuário.
  */
-export const APP_VERSION = 'v-100';
-export const BUILD_TIMESTAMP = '2026.09.30-B100-TABLOIDE-CABECALHO-LINHAS-COLUNAS-WHATSAPP';
+export const APP_VERSION = 'v-101';
+export const BUILD_TIMESTAMP = '2026.09.30-B101-TABLOIDE-CABECALHO-DESTAQUE-VALIDADE';
+

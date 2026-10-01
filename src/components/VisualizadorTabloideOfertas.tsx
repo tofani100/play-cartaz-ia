@@ -388,7 +388,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-header"
-          className="relative p-4 sm:p-5 text-white text-center flex flex-col items-center justify-center border-b-4 border-amber-400 overflow-hidden"
+          className="relative p-4 sm:p-5 text-white flex flex-col justify-center border-b-4 border-amber-400 overflow-hidden"
           style={{ 
             background: campaign.customStyles?.bannerBgGradient || `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)` 
           }}
@@ -397,17 +397,17 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Top Row: Client Logo & Campaign Master Title */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-3 sm:gap-4">
+          {/* Top Row: Client Logo & Campaign Master Title + Validity */}
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-3 sm:gap-5">
             {/* Store Brand / Official Logo */}
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center justify-center shrink-0">
               {campaign.showClientLogo !== false && (
                 isBelissima ? (
                   <img 
                     crossOrigin="anonymous"
                     src="/logos/belissima-casa-di-frutas.png"
                     alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="max-h-16 sm:max-h-20 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-20 sm:max-h-24 md:max-h-28 w-auto object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -419,49 +419,76 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src={campaign.clientLogoUrl}
                     alt={campaign.clientName || 'Logo'}
-                    className="max-h-16 sm:max-h-20 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-20 sm:max-h-24 md:max-h-28 w-auto object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="bg-amber-400 text-black font-black text-xl sm:text-2xl px-4 py-2 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
+                  <div className="bg-amber-400 text-black font-black text-xl sm:text-2xl px-5 py-2.5 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
                     {campaign.clientName || 'SUPERMERCADO'}
                   </div>
                 )
               )}
-              
-              <div className="text-left hidden sm:flex flex-col">
-                <span className="text-[12px] uppercase tracking-wider text-amber-300 font-black block leading-none">
-                  {campaign.clientName || 'Belíssima Casa di Frutas'}
-                </span>
-                <span className="text-[10px] text-white/90 font-medium mt-1">
-                  {campaign.segment || 'Hortifrúti Selecionado • Desde 2004'}
-                </span>
-              </div>
             </div>
 
-            {/* Campaign Headline Title in Heavy Typography */}
-            <div className="flex-1 flex flex-col items-center sm:items-end text-center sm:text-right">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-black uppercase text-amber-300 drop-shadow-[0_3px_12px_rgba(0,0,0,0.95)] tracking-tight leading-tight">
-                {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
-              </h1>
-              <span className="text-[10px] sm:text-xs text-white/90 font-bold uppercase tracking-wider mt-0.5">
-                {campaign.campaignSubtitle || 'Jornal de Ofertas da Semana'}
-              </span>
-            </div>
+            {/* Campaign Headline & Validity Section */}
+            {(() => {
+              const defaultVal1 = 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques';
+              const defaultVal2 = 'Ofertas válidas até domingo ou enquanto durarem os estoques';
+              
+              // Determina o texto de validade com prioridade inteligente
+              let validityDisplay = campaign.validityText;
+              if (
+                (!validityDisplay || validityDisplay === defaultVal1 || validityDisplay === defaultVal2) &&
+                campaign.campaignSubtitle &&
+                campaign.campaignSubtitle.toLowerCase().includes('válid')
+              ) {
+                validityDisplay = campaign.campaignSubtitle;
+              }
+              if (!validityDisplay) {
+                validityDisplay = defaultVal2;
+              }
+
+              // Verifica se o subtítulo é um slogan real ou se duplica a validade
+              const isSubtitleValid = 
+                campaign.campaignSubtitle &&
+                campaign.campaignSubtitle.trim().toLowerCase() !== validityDisplay.trim().toLowerCase() &&
+                !campaign.campaignSubtitle.toLowerCase().includes('válid');
+
+              return (
+                <div className="flex-1 flex flex-col items-center sm:items-end text-center sm:text-right justify-center">
+                  {/* Título Superior da Campanha (Cabeçalho) */}
+                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-[34px] font-black uppercase text-amber-300 drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] tracking-tight leading-tight">
+                    {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
+                  </h1>
+
+                  {/* Subtítulo / Slogan (apenas se for slogan real) */}
+                  {isSubtitleValid && (
+                    <span className="text-xs sm:text-sm text-white/90 font-bold uppercase tracking-wider mt-0.5 drop-shadow">
+                      {campaign.campaignSubtitle}
+                    </span>
+                  )}
+
+                  {/* Texto de Validade das Ofertas com Grande Destaque */}
+                  <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-black/85 border-2 border-amber-400 text-amber-300 font-black text-xs sm:text-sm md:text-base shadow-[0_4px_20px_rgba(0,0,0,0.85)] tracking-wide">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+                    <span className="uppercase">{validityDisplay}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
-          {/* Sub Row: Validity Capsule & Direct WhatsApp Banner */}
-          <div className="relative z-10 mt-3 w-full flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/20">
-            {/* Validity Ribbon */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-200 text-xs sm:text-sm font-extrabold shadow-sm">
-              <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>{campaign.validityText || 'Ofertas válidas até domingo ou enquanto durarem os estoques'}</span>
+          {/* Sub Row: WhatsApp Direct Order Banner & Info */}
+          <div className="relative z-10 mt-3 w-full flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-white/20">
+            {/* WhatsApp CTA Call */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-700/90 border border-emerald-400/50 text-white text-xs sm:text-sm font-black shadow-sm">
+              <MessageCircle className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span>Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}</span>
             </div>
 
-            {/* WhatsApp CTA Call for Customers */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-700/80 border border-emerald-400/50 text-white text-xs font-black shadow-sm">
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-              <span>Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}</span>
+            {/* Segment / Store Highlight */}
+            <div className="text-[11px] sm:text-xs text-white/80 font-bold uppercase tracking-wide">
+              {campaign.segment || 'Hortifrúti Selecionado • Ofertas Especiais'}
             </div>
           </div>
         </div>
