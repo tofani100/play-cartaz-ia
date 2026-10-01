@@ -388,7 +388,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-header"
-          className="relative p-4 sm:p-5 text-white flex flex-col justify-center border-b-4 border-amber-400 overflow-hidden"
+          className="relative p-3.5 sm:p-4 text-white flex flex-col justify-center border-b-4 border-amber-400 overflow-hidden"
           style={{ 
             background: campaign.customStyles?.bannerBgGradient || `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)` 
           }}
@@ -398,7 +398,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Top Row: Client Logo & Campaign Master Title + Validity */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-3 sm:gap-6">
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-3 sm:gap-4">
             {/* Store Brand / Official Logo */}
             <div className="flex items-center justify-center shrink-0">
               {campaign.showClientLogo !== false && (
@@ -407,7 +407,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src="/logos/belissima-casa-di-frutas.png"
                     alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="max-h-18 sm:max-h-22 md:max-h-24 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-14 sm:max-h-16 md:max-h-18 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -419,11 +419,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src={campaign.clientLogoUrl}
                     alt={campaign.clientName || 'Logo'}
-                    className="max-h-18 sm:max-h-22 md:max-h-24 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-14 sm:max-h-16 md:max-h-18 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="bg-amber-400 text-black font-black text-xl sm:text-2xl px-5 py-2.5 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
+                  <div className="bg-amber-400 text-black font-black text-lg sm:text-xl px-4 py-2 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
                     {campaign.clientName || 'SUPERMERCADO'}
                   </div>
                 )
@@ -455,21 +455,21 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 !campaign.campaignSubtitle.toLowerCase().includes('válid');
 
               return (
-                <div className="flex-1 flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-0.5">
-                  {/* Título Superior da Campanha (Cabeçalho) - Diagramado com Tamanho e Espaçamento Harmonioso */}
-                  <h1 className="text-lg sm:text-xl md:text-2xl lg:text-[28px] font-black uppercase text-amber-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-tight max-w-[420px]">
+                <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-0.5">
+                  {/* Título Superior da Campanha (Cabeçalho) - Totalmente Visível Sem Cortar */}
+                  <h1 className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] tracking-tight leading-tight">
                     {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
                   </h1>
 
                   {/* Subtítulo / Slogan (apenas se for slogan real) */}
                   {isSubtitleValid && (
-                    <span className="text-[11px] sm:text-xs text-white/80 font-medium uppercase tracking-wider mt-0.5 drop-shadow">
+                    <span className="text-[10px] sm:text-[11px] text-white/80 font-medium uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full">
                       {campaign.campaignSubtitle}
                     </span>
                   )}
 
-                  {/* Texto de Validade das Ofertas - Fonte Reduzida em Linha Única */}
-                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/45 border border-white/15 text-[8.5px] sm:text-[9.5px] md:text-[10px] text-amber-200/95 font-medium tracking-wide whitespace-nowrap max-w-full">
+                  {/* Texto de Validade das Ofertas - Linha Única Integral Sem Cortes */}
+                  <div className="mt-1 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/45 border border-white/15 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-amber-200/95 font-medium whitespace-nowrap max-w-full">
                     <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400/80 shrink-0" />
                     <span className="uppercase whitespace-nowrap">{validityDisplay}</span>
                   </div>
