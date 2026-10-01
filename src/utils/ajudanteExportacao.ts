@@ -17,7 +17,7 @@ export async function downloadElementAsPng(elementId: string, filename: string =
 
   try {
     const sourceW = el.offsetWidth || 1120;
-    const sourceH = el.offsetHeight || 630;
+    const sourceH = Math.max(el.offsetHeight || 0, el.scrollHeight || 0) || 630;
     const canvas = await toCanvas(el, {
       quality: 1.0,
       pixelRatio: 2, // 2x Retina / 4K crispness

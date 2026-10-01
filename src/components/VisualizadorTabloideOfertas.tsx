@@ -390,7 +390,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           id="tabloid-header"
           className="relative p-3.5 sm:p-4 text-white flex flex-col justify-center border-b-4 border-amber-400 overflow-hidden"
           style={{ 
-            background: campaign.customStyles?.bannerBgGradient || `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)` 
+            background: campaign.customStyles?.bannerBgGradient || `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)`,
+            fontFamily: campaign.customStyles?.campaignTitleFont || "'Montserrat', sans-serif"
           }}
         >
           {/* Subtle geometric pattern watermark */}
@@ -455,23 +456,38 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 !campaign.campaignSubtitle.toLowerCase().includes('válid');
 
               return (
-                <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-0.5">
-                  {/* Título Superior da Campanha (Cabeçalho) - Totalmente Visível Sem Cortar */}
-                  <h1 className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] tracking-tight leading-tight">
+                <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-start">
+                  {/* Título Superior da Campanha (Cabeçalho) - Totalmente Visível Sem Cortar ou Sobrepor */}
+                  <h1 
+                    className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] tracking-tight leading-tight block break-words"
+                    style={{
+                      fontFamily: campaign.customStyles?.campaignTitleFont || "'Montserrat', sans-serif",
+                      height: 'auto',
+                      minHeight: 'fit-content'
+                    }}
+                  >
                     {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
                   </h1>
 
                   {/* Subtítulo / Slogan (apenas se for slogan real) */}
                   {isSubtitleValid && (
-                    <span className="text-[10px] sm:text-[11px] text-white/80 font-medium uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full">
+                    <span 
+                      className="text-[10px] sm:text-[11px] text-white/80 font-medium uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                    >
                       {campaign.campaignSubtitle}
                     </span>
                   )}
 
-                  {/* Texto de Validade das Ofertas - Linha Única Integral Sem Cortes */}
-                  <div className="mt-1 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/45 border border-white/15 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-amber-200/95 font-medium whitespace-nowrap max-w-full">
-                    <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400/80 shrink-0" />
-                    <span className="uppercase whitespace-nowrap">{validityDisplay}</span>
+                  {/* Texto de Validade das Ofertas - Linha Única Integral Sem Cortes em Linha Própria Separada */}
+                  <div className="mt-1.5 w-full flex items-center justify-center sm:justify-end clear-both">
+                    <div 
+                      className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-black/60 border border-white/20 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-amber-200/95 font-medium whitespace-nowrap max-w-full shadow-sm"
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                    >
+                      <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400/90 shrink-0" />
+                      <span className="uppercase whitespace-nowrap tracking-wide">{validityDisplay}</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -651,30 +667,34 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         {/* RODAPÉ DO TABLÓIDE: PAGAMENTOS, WHATSAPP, LOCALIZAÇÃO E LEGAL */}
         {/* ============================================================ */}
-        <div id="tabloid-footer" className="p-3 sm:p-4 bg-black border-t-2 border-amber-500/40 text-neutral-300 text-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-neutral-800">
+        <div 
+          id="tabloid-footer" 
+          className="p-3 sm:p-4 bg-black border-t-2 border-amber-500/40 text-neutral-300 text-xs"
+          style={{ fontFamily: "'Montserrat', sans-serif" }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800">
             {/* Accepted Payments */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               <CreditCard className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="text-[10px] sm:text-[11px] font-bold text-neutral-200">
+              <span className="text-[10px] sm:text-[11px] font-bold text-neutral-200 truncate">
                 Aceitamos PIX, Todos os Cartões e Vales Alimentação
               </span>
             </div>
 
-            {/* Direct Contact */}
-            <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-black text-amber-400">
-              <Phone className="w-3.5 h-3.5 shrink-0" />
-              <span>{campaign.phoneWhatsapp ? `WhatsApp: ${campaign.phoneWhatsapp}` : 'Fale Conosco'}</span>
+            {/* Direct Contact - WHATSAPP INTEGRAL EM LINHA ÚNICA SEM QUEBRA */}
+            <div className="flex items-center gap-1 text-[10.5px] sm:text-[11.5px] font-black text-amber-400 whitespace-nowrap shrink-0 ml-auto">
+              <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="whitespace-nowrap tracking-tight">{campaign.phoneWhatsapp ? `WhatsApp: ${campaign.phoneWhatsapp}` : 'Fale Conosco'}</span>
             </div>
           </div>
 
           {/* Address & Legal text */}
           <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[8.5px] sm:text-[9.5px] text-neutral-400">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 min-w-0">
               <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
-              <span>{campaign.storeAddress || 'Consulte a unidade mais próxima de você.'}</span>
+              <span className="truncate">{campaign.storeAddress || 'Consulte a unidade mais próxima de você.'}</span>
             </div>
-            <div className="text-right text-neutral-500">
+            <div className="text-right text-neutral-500 shrink-0 ml-auto">
               <span>{campaign.legalNotice || 'Imagens meramente ilustrativas. Ofertas válidas enquanto durarem os estoques.'}</span>
             </div>
           </div>

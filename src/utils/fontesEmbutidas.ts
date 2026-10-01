@@ -58,5 +58,22 @@ export const FONT_EMBED_CSS = `
 }
 .whitespace-nowrap {
   white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+#tabloid-header h1 {
+  height: auto !important;
+  min-height: fit-content !important;
+  width: 100% !important;
+  display: block !important;
+}
+#tabloid-header, #tabloid-header * {
+  box-sizing: border-box;
+}
+#tabloid-footer, #tabloid-footer * {
+  box-sizing: border-box;
+}
+#tabloid-footer .whitespace-nowrap {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 `;
