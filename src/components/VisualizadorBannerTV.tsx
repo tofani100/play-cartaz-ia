@@ -335,7 +335,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               isVertical
                 ? 'w-auto max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-14 sm:h-16 md:h-18'
                 : isSquare
-                ? 'w-auto max-w-[140px] sm:max-w-[170px] h-12 sm:h-14 md:h-16'
+                ? 'w-auto max-w-[180px] sm:max-w-[220px] md:max-w-[250px] h-16 sm:h-20 md:h-24'
                 : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
             }`}>
               {campaign.showClientLogo !== false && (
@@ -384,7 +384,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               isVertical 
                 ? 'items-end text-right pl-1 sm:pl-2' 
                 : isSquare
-                ? 'items-center text-center px-1 sm:px-2'
+                ? 'items-center text-center px-1 sm:px-3'
                 : 'items-center text-center px-2 sm:px-4'
             } justify-center min-w-0`}>
               <h1 
@@ -399,17 +399,26 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         : 'text-[15px] sm:text-[17px] md:text-[19px]')
                     : isSquare
                     ? (campaign.campaignTitle && campaign.campaignTitle.length > 30
-                        ? 'text-[14px] sm:text-[16px] md:text-[18px]'
-                        : 'text-[16px] sm:text-[18px] md:text-[20px]')
+                        ? 'text-lg sm:text-xl md:text-2xl'
+                        : 'text-xl sm:text-2xl md:text-[28px]')
                     : (campaign.campaignTitle && campaign.campaignTitle.length > 35
                         ? 'text-xs sm:text-sm md:text-base lg:text-xl'
                         : campaign.campaignTitle && campaign.campaignTitle.length > 25
                         ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
                         : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
-                } font-black uppercase drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full leading-tight tracking-tight break-words`}
+                } font-black uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] w-full leading-tight tracking-tight break-words`}
               >
                 {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
               </h1>
+
+              {/* No Feed 1:1, a Validade fica acoplada elegantemente ao título sem criar faixas escuras vazias */}
+              {isSquare && (
+                <div className="inline-flex items-center justify-center gap-1.5 mt-1.5 px-3.5 py-1 rounded-full bg-black/70 border border-amber-400/40 text-amber-200 font-extrabold text-[11px] sm:text-xs tracking-wide shadow-md max-w-full">
+                  <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-center leading-tight break-words">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
+                </div>
+              )}
+
               {!isVertical && !isSquare && (
                 <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
                   <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
@@ -424,8 +433,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             )}
           </div>
 
-          {/* Faixa de Validade em Destaque no Formato Vertical e Feed 1:1: 100% de largura, NUNCA CORTA! */}
-          {(isVertical || isSquare) && (
+          {/* Faixa de Validade em Destaque no Formato Vertical: 100% de largura, NUNCA CORTA! */}
+          {isVertical && (
             <div className="w-full flex items-center justify-center pt-0.5">
               <div className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-black/60 border border-white/20 backdrop-blur-md shadow-sm">
                 <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -438,14 +447,14 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
 
         {/* CENTER CONTENT: Perfectly Proportioned - Em Vertical, imagem no topo e dados/preço abaixo (conforme solicitado) */}
-        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5 gap-2 sm:gap-4 flex ${isVertical ? 'flex-col-reverse justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-visible`}>
+        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 ${isSquare ? 'px-3 sm:px-5 py-2' : 'px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5'} gap-2 sm:gap-4 flex ${isVertical ? 'flex-col-reverse justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-visible`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
           <div id="tv-anim-left-column" className={`flex flex-col ${
             isVertical 
               ? 'items-center text-center max-w-full w-full gap-2 sm:gap-2.5 py-1' 
               : isSquare
-              ? 'justify-between items-start text-left w-[44%] max-w-[44%] h-full max-h-full py-0.5'
+              ? 'justify-between items-start text-left w-[42%] max-w-[42%] h-full max-h-full py-1'
               : 'justify-between items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
           }`}>
             {/* Top Block (Bloco 1): Nome Comercial do Produto (exceto o selo) */}
@@ -466,10 +475,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug text-center'
                     : isSquare
                     ? (product.title || '').length > 40
-                      ? 'text-[14px] sm:text-[16px] md:text-[18px] leading-snug'
+                      ? 'text-[17px] sm:text-[20px] md:text-[23px] leading-tight'
                       : (product.title || '').length > 25
-                        ? 'text-[15px] sm:text-[17px] md:text-[20px] leading-snug'
-                        : 'text-[16px] sm:text-[19px] md:text-[22px] leading-snug'
+                        ? 'text-[19px] sm:text-[22px] md:text-[26px] leading-tight'
+                        : 'text-[22px] sm:text-[26px] md:text-[30px] leading-tight'
                     : (product.title || '').length > 40
                       ? 'text-[15px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[28px] leading-[1.14]'
                       : (product.title || '').length > 25
@@ -627,7 +636,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               key={`card-${product.id}-${animCycle}`}
               id="tv-anim-card-wrapper"
               {...getBlock2Props()}
-              className="relative w-full h-full flex items-center justify-center p-1 sm:p-2 overflow-visible"
+              className={`relative w-full h-full flex items-center justify-center ${isSquare ? 'p-0.5 sm:p-1' : 'p-1 sm:p-2'} overflow-visible`}
             >
                 {/* Standardized Mini Banner Container - Proporção 4:3 Idêntica e Padronizada para Todos os Produtos */}
                 {/* Standardized Mini Banner Container - Suporte Duplo: Modo Ambientado Full-Bleed (Print 1) ou Packshot Tradicional (Print 2) */}
@@ -785,7 +794,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         isVertical
                           ? 'w-full max-w-[340px] sm:max-w-[420px] aspect-[4/3] my-auto'
                           : isSquare
-                          ? 'w-full max-w-[360px] aspect-[4/3] my-auto'
+                          ? 'w-full h-full max-h-full'
                           : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-full shrink-0 my-auto'
                       } ${
                         isAmbient
@@ -811,32 +820,22 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         )}
                       </AnimatePresence>
 
-                      {/* MODE 1: AMBIENT (Fotografia Comercial Ambientada - Imagem 100% Integral e Não Cortada) */}
+                      {/* MODE 1: AMBIENT (Fotografia Comercial Ambientada - Ocupa 100% do espaço sem deixar margens no superior e inferior) */}
                       {isAmbient ? (
-                        <div className="absolute inset-1 rounded-[10px] sm:rounded-[14px] md:rounded-[18px] overflow-hidden pointer-events-none flex items-center justify-center bg-neutral-950">
-                          {/* Ambient Photography Blurred Backdrop - Preenche as margens sem cortes na imagem principal */}
-                          <img
-                            crossOrigin="anonymous"
-                            src={product.imageUrl}
-                            alt=""
-                            className="absolute inset-0 w-full h-full object-cover blur-md opacity-40 scale-110 pointer-events-none"
-                            referrerPolicy="no-referrer"
-                          />
-
-                          {/* Foto Comercial Principal - 100% INTEGRAL E NÃO CORTADA */}
+                        <div className="absolute inset-1 rounded-[10px] sm:rounded-[14px] md:rounded-[18px] overflow-hidden pointer-events-none">
                           <img
                             id="tv-anim-product-img"
                             crossOrigin="anonymous"
                             src={product.imageUrl}
                             alt={product.title}
                             onError={(e) => handleImageError(e, product.title, product.category)}
-                            className="relative z-10 w-full h-full object-contain object-center drop-shadow-[0_8px_20px_rgba(0,0,0,0.5)] transform group-hover:scale-105 transition-transform duration-700 pointer-events-none"
+                            className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 pointer-events-none"
                             referrerPolicy="no-referrer"
                             loading="eager"
                           />
 
                           {/* Ambient Stage Glow & Soft Vignette */}
-                          <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(0,0,0,0.3)] pointer-events-none z-20" />
+                          <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(0,0,0,0.3)] pointer-events-none" />
                         </div>
                       ) : (
                         /* MODE 2: CLASSIC WHITE STUDIO CUTOUT PACKSHOT */
