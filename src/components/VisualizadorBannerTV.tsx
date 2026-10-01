@@ -322,14 +322,15 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
 
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
+        {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
         <div 
           id="tv-banner-header"
-          className={`relative z-10 pl-3 sm:pl-6 md:pl-8 lg:pl-10 pr-3 sm:pr-6 md:pr-8 lg:pr-10 py-2 sm:py-2.5 lg:py-2 flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}
+          className={`relative z-10 px-3 sm:px-6 md:px-8 py-2 sm:py-2.5 flex items-center justify-between shrink-0 w-full`}
         >
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
             isVertical
-              ? 'w-auto max-w-[220px] h-12 sm:h-16'
+              ? 'w-auto max-w-[120px] sm:max-w-[150px] h-10 sm:h-12'
               : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
           }`}>
             {campaign.showClientLogo !== false && (
@@ -373,52 +374,58 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             )}
           </div>
 
-          {/* Top Center: Campaign Title & Validity - NUNCA corta com reticências (...) */}
-          {!isVertical && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-2 sm:px-4 min-w-0">
-              <h1 
-                style={{
-                  color: effectiveStyles.campaignTitleColor || '#fbbf24',
-                  fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
-                }}
-                className={`${
-                  campaign.campaignTitle && campaign.campaignTitle.length > 35
-                    ? 'text-xs sm:text-sm md:text-base lg:text-xl'
-                    : campaign.campaignTitle && campaign.campaignTitle.length > 25
-                    ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
-                    : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]'
-                } font-black uppercase drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full text-center leading-tight tracking-tight break-words`}
-              >
-                {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
-              </h1>
-              <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
-                <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
-                <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
-              </p>
-            </div>
-          )}
+          {/* Top Center / Right: Campaign Title & Validity - Suporte Completo a Vertical e Horizontal */}
+          <div className={`flex-1 flex flex-col ${
+            isVertical ? 'items-end text-right pl-2' : 'items-center text-center px-2 sm:px-4'
+          } justify-center min-w-0`}>
+            <h1 
+              style={{
+                color: effectiveStyles.campaignTitleColor || '#fbbf24',
+                fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
+              }}
+              className={`${
+                isVertical
+                  ? (campaign.campaignTitle && campaign.campaignTitle.length > 30
+                      ? 'text-[11px] sm:text-[13px] md:text-[15px]'
+                      : 'text-[13px] sm:text-[15px] md:text-[17px]')
+                  : (campaign.campaignTitle && campaign.campaignTitle.length > 35
+                      ? 'text-xs sm:text-sm md:text-base lg:text-xl'
+                      : campaign.campaignTitle && campaign.campaignTitle.length > 25
+                      ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
+                      : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
+              } font-black uppercase drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)] w-full leading-tight tracking-tight break-words`}
+            >
+              {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
+            </h1>
+            <p className={`text-[8.5px] sm:text-[10px] md:text-[11px] mt-0.5 text-neutral-100 flex items-center ${
+              isVertical ? 'justify-end' : 'justify-center'
+            } gap-1 sm:gap-1.5 font-semibold drop-shadow max-w-full leading-none`}>
+              <Calendar className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
+            </p>
+          </div>
 
-          {/* Right Symmetrical Spacer so Campaign Title is centered across the screen */}
+          {/* Right Symmetrical Spacer so Campaign Title is centered across the screen in Horizontal */}
           {!isVertical && (
             <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20" />
           )}
         </div>
 
-        {/* CENTER CONTENT: Perfectly Proportioned - Nunca cortado pelo cabeçalho ou rodapé */}
-        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5 gap-2 sm:gap-6 flex ${isVertical ? 'flex-col justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-visible`}>
+        {/* CENTER CONTENT: Perfectly Proportioned - Em Vertical, imagem no topo e dados/preço abaixo (conforme solicitado) */}
+        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5 gap-2 sm:gap-4 flex ${isVertical ? 'flex-col-reverse justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-visible`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
-          <div id="tv-anim-left-column" className={`flex flex-col justify-between min-w-0 ${
+          <div id="tv-anim-left-column" className={`flex flex-col ${
             isVertical 
-              ? 'items-center text-center max-w-full' 
-              : 'items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
+              ? 'items-center text-center max-w-full w-full gap-2 sm:gap-2.5 py-1' 
+              : 'justify-between items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
           }`}>
             {/* Top Block (Bloco 1): Nome Comercial do Produto (exceto o selo) */}
             <motion.div 
               key={`title-block-${product.id}-${animCycle}`}
               id="tv-anim-title-block" 
               {...getBlock1Props()}
-              className="flex flex-col items-start w-full shrink-0 bg-transparent mt-3 sm:mt-5 md:mt-6"
+              className={`flex flex-col ${isVertical ? 'items-center text-center mt-0.5 sm:mt-1' : 'items-start text-left mt-3 sm:mt-5 md:mt-6'} w-full shrink-0 bg-transparent`}
             >
               {/* Nome Comercial do Produto com o 1º Selo Promocional ocupando o início da primeira linha à frente do texto */}
               <h2 
@@ -428,7 +435,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 }}
                 className={`${
                   isVertical
-                    ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug'
+                    ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug text-center'
                     : (product.title || '').length > 40
                       ? 'text-[15px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[28px] leading-[1.14]'
                       : (product.title || '').length > 25
@@ -476,7 +483,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               key={`price-block-${product.id}-${animCycle}`}
               id="tv-anim-price-block" 
               {...getBlock3Props()}
-              className={`flex flex-col ${isVertical ? 'items-center' : 'items-start mb-[calc(4%+2px)] sm:mb-[calc(4%+6px)]'} w-fit shrink-0 bg-transparent mt-auto`}
+              className={`flex flex-col ${isVertical ? 'items-center mt-1 sm:mt-1.5' : 'items-start mb-[calc(4%+2px)] sm:mb-[calc(4%+6px)] mt-auto'} w-fit shrink-0 bg-transparent`}
             >
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
