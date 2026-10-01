@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { BannerFormat, ThemePresetId, ClientProfile } from '../tiposGeradorBanner';
 import { APP_VERSION } from '../versao';
+import { isDevEnvironment, firebaseConfig } from '../services/firebaseConfig';
 
 interface BarraSuperiorProps {
   format: BannerFormat;
@@ -54,12 +55,46 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
   activeProductCount = 0,
 }) => {
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
+  const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const formatDropdownRef = useRef<HTMLDivElement>(null);
+
+  const FORMAT_OPTIONS: { id: BannerFormat; label: string; sublabel: string; icon: React.ReactNode }[] = [
+    {
+      id: '16:9',
+      label: 'TV 16:9',
+      sublabel: 'Horizontal (1920x1080)',
+      icon: <Tv className="w-3.5 h-3.5" />,
+    },
+    {
+      id: '9:16',
+      label: 'Vertical 9:16',
+      sublabel: 'Totem / Reels / Stories (1080x1920)',
+      icon: <Smartphone className="w-3.5 h-3.5" />,
+    },
+    {
+      id: '1:1',
+      label: 'Feed 1:1',
+      sublabel: 'Quadrado (1080x1080)',
+      icon: <Square className="w-3.5 h-3.5" />,
+    },
+    {
+      id: 'tabloid',
+      label: 'Tablóide de Ofertas',
+      sublabel: 'Encarte / Multi-ofertas',
+      icon: <Newspaper className="w-3.5 h-3.5" />,
+    },
+  ];
+
+  const currentFormat = FORMAT_OPTIONS.find((f) => f.id === format) || FORMAT_OPTIONS[0];
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsClientDropdownOpen(false);
+      }
+      if (formatDropdownRef.current && !formatDropdownRef.current.contains(e.target as Node)) {
+        setIsFormatDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -68,37 +103,20 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-2 sm:px-4 py-1.5 shrink-0">
-      <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar">
-        {/* Brand & Client Name */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/20">
-              <Tv className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-white font-['Montserrat']">
-                  PLAY <span className="text-amber-400">COMUNIQUE</span>
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  TV & Ads
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400">playcomunique.com.br</p>
-            </div>
-          </div>
-
+      <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2.5">
+        {/* Left Side: Client Selector & Collapsible Format Selector */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Client Quick Switcher & Active Banners Badge */}
-          <div ref={dropdownRef} className="relative hidden sm:flex items-center pl-3 border-l border-neutral-800">
+          <div ref={dropdownRef} className="relative flex items-center">
             <button
               id="btn-client-quick-switch"
               type="button"
               onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
-              className="flex items-center gap-2 bg-neutral-800/90 hover:bg-neutral-800 border border-neutral-700/80 hover:border-amber-500/50 rounded-lg px-2.5 py-1 text-xs text-white transition-all cursor-pointer shadow-sm group"
+              className="flex items-center gap-2 bg-neutral-800/90 hover:bg-neutral-800 border border-neutral-700/80 hover:border-amber-500/50 rounded-lg px-2.5 py-1.5 text-xs text-white transition-all cursor-pointer shadow-sm group"
               title="Clique para alternar entre clientes ou ver os banners salvos de cada um"
             >
               <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <div className="flex items-center gap-1.5 max-w-[150px] md:max-w-[200px]">
+              <div className="flex items-center gap-1.5 max-w-[130px] sm:max-w-[180px] md:max-w-[220px]">
                 <span className="font-bold truncate text-white">{clientName}</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-extrabold border border-amber-500/30 shrink-0">
                   {activeProductCount} {activeProductCount === 1 ? 'banner' : 'banners'}
@@ -109,7 +127,7 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
 
             {/* Quick Switcher Dropdown */}
             {isClientDropdownOpen && (
-              <div className="absolute top-full left-3 mt-1.5 w-72 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in">
+              <div className="absolute top-full left-0 mt-1.5 w-72 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in">
                 <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-neutral-800 flex items-center justify-between">
                   <span>Alternar Cliente</span>
                   <span>Banners Salvos</span>
@@ -165,69 +183,59 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Format Selector Pills */}
-        <div className="flex items-center bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-xs font-medium shrink-0">
-          <button
-            id="btn-format-16-9"
-            onClick={() => onFormatChange('16:9')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all ${
-              format === '16:9'
-                ? 'bg-amber-500 text-black font-bold shadow'
-                : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-            }`}
-            title="TV Indoor Horizontal (1920x1080 - 16:9)"
-          >
-            <Tv className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">TV 16:9</span>
-            <span className="md:hidden">16:9</span>
-          </button>
+          {/* Item 2: Collapsible Format Selector (Default: TV 16:9) */}
+          <div ref={formatDropdownRef} className="relative flex items-center">
+            <button
+              id="btn-format-collapsible-menu"
+              type="button"
+              onClick={() => setIsFormatDropdownOpen(!isFormatDropdownOpen)}
+              className="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 hover:border-amber-500/50 rounded-lg px-2.5 py-1.5 text-xs transition-all cursor-pointer shadow-sm group"
+              title="Escolha o formato do banner (Padrão: TV 16:9)"
+            >
+              <span className="text-amber-400">{currentFormat.icon}</span>
+              <span className="font-bold text-amber-400">{currentFormat.label}</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isFormatDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          <button
-            id="btn-format-9-16"
-            onClick={() => onFormatChange('9:16')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all ${
-              format === '9:16'
-                ? 'bg-amber-500 text-black font-bold shadow'
-                : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-            }`}
-            title="Totem Vertical / Stories / Reels / TikTok (1080x1920 - 9:16)"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Vertical 9:16</span>
-            <span className="md:hidden">9:16</span>
-          </button>
-
-          <button
-            id="btn-format-1-1"
-            onClick={() => onFormatChange('1:1')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all ${
-              format === '1:1'
-                ? 'bg-amber-500 text-black font-bold shadow'
-                : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-            }`}
-            title="Feed Instagram / Facebook / WhatsApp (1:1 Quadrado)"
-          >
-            <Square className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Feed 1:1</span>
-            <span className="md:hidden">1:1</span>
-          </button>
-
-          <button
-            id="btn-format-tabloid"
-            onClick={() => onFormatChange('tabloid')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all ${
-              format === 'tabloid'
-                ? 'bg-amber-500 text-black font-bold shadow'
-                : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-            }`}
-            title="Jornal de Ofertas / Encarte de Supermercado (Grid Multi-ofertas)"
-          >
-            <Newspaper className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Tablóide de Ofertas</span>
-            <span className="md:hidden">Tablóide</span>
-          </button>
+            {isFormatDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1.5 w-60 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in">
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-neutral-800">
+                  Formato do Banner
+                </div>
+                <div className="py-1 space-y-0.5">
+                  {FORMAT_OPTIONS.map((opt) => {
+                    const isSelected = opt.id === format;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        id={`btn-format-${opt.id}`}
+                        onClick={() => {
+                          onFormatChange(opt.id);
+                          setIsFormatDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                            : 'text-neutral-200 hover:bg-neutral-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={isSelected ? 'text-amber-400' : 'text-neutral-400'}>{opt.icon}</span>
+                          <div>
+                            <div className="font-bold">{opt.label}</div>
+                            <div className="text-[10px] text-neutral-400">{opt.sublabel}</div>
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Action Controls */}
@@ -299,11 +307,22 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
                 ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse'
                 : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
             }`}
-            title="Sincronização em Nuvem ativa (Firebase Firestore - cartaz-ia-playcomunique)"
+            title={`Sincronização em Nuvem ativa (Firebase Firestore - ${firebaseConfig.projectId})`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'syncing' ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
             <span>{cloudSyncStatus === 'syncing' ? 'Salvando na Nuvem...' : 'Nuvem Conectada ☁️'}</span>
           </div>
+
+          {/* Badge de Ambiente DEV */}
+          {isDevEnvironment() && (
+            <div
+              id="badge-ambiente-dev"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-600 text-white font-black text-xs shadow-md border border-orange-400 select-none cursor-default shrink-0 animate-pulse"
+              title={`Ambiente de Desenvolvimento Isolado (${firebaseConfig.projectId})`}
+            >
+              <span>🧪 DEV</span>
+            </div>
+          )}
 
           {/* Badge de Versão Amarelo Ouro solicitado pelo usuário */}
           <div

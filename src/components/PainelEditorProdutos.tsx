@@ -29,7 +29,8 @@ import {
   Layers,
   RotateCcw,
   Sliders,
-  Store
+  Store,
+  X
 } from 'lucide-react';
 import { ProductItem, CuratedProduct, BannerCampaign, ThemeColors, BannerCustomStyles, AnimationEffect } from '../tiposGeradorBanner';
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
@@ -57,6 +58,7 @@ interface PainelEditorProdutosProps {
   onUpdateProduct: (idx: number, updated: Partial<ProductItem>) => void;
   onAddProduct: (product: ProductItem) => void;
   onRemoveProduct: (idx: number) => void;
+  onRestoreProduct?: (product: ProductItem) => void;
   onReorderProduct?: (fromIndex: number, toIndex: number) => void;
   showClientLogo?: boolean;
   onToggleShowLogo?: () => void;
@@ -73,6 +75,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   onUpdateProduct,
   onAddProduct,
   onRemoveProduct,
+  onRestoreProduct,
   onReorderProduct,
   showClientLogo = true,
   onToggleShowLogo,
@@ -82,6 +85,21 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   onUpdateCampaign,
 }) => {
   const [showCatalogModal, setShowCatalogModal] = useState<boolean>(false);
+  const [showTrashModal, setShowTrashModal] = useState<boolean>(false);
+  const [trashItems, setTrashItems] = useState<Array<{ product: ProductItem; clientName: string; deletedAt: string }>>([]);
+
+  const loadTrash = () => {
+    try {
+      const raw = localStorage.getItem('playcomunique_lixeira_banners');
+      if (raw) {
+        setTrashItems(JSON.parse(raw));
+      } else {
+        setTrashItems([]);
+      }
+    } catch {
+      setTrashItems([]);
+    }
+  };
   const [catalogSearch, setCatalogSearch] = useState<string>('');
   const [catalogCategory, setCatalogCategory] = useState<string>('all');
   const [isSearchingRealImage, setIsSearchingRealImage] = useState<boolean>(false);
@@ -421,12 +439,25 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 
         <div className="flex items-center gap-1.5">
           <button
+            type="button"
+            onClick={() => {
+              loadTrash();
+              setShowTrashModal(true);
+            }}
+            className="px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-bold text-xs rounded-lg flex items-center gap-1 border border-neutral-700 cursor-pointer"
+            title="Lixeira de Banners - Recuperar itens excluídos"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Lixeira</span>
+          </button>
+
+          <button
             onClick={() => setShowCatalogModal(true)}
             className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-xs rounded-lg flex items-center gap-1 border border-neutral-700 cursor-pointer"
             title="Adicionar produto da biblioteca comercial com foto em alta"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Catálogo Brasil</span>
+            <span className="hidden sm:inline">Catálogo</span>
           </button>
 
           <button
@@ -441,7 +472,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       </div>
 
       {/* Product List Cards */}
-      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+      <div className="space-y-1.5 max-h-60 sm:max-h-72 overflow-y-auto pr-1">
         {products.map((item, idx) => {
           const isSelected = idx === currentProductIndex;
 
@@ -449,7 +480,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
             <div
               key={item.id}
               onClick={() => onSelectProductIndex(idx)}
-              className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 ${
                 item.hidden ? 'opacity-65 border-dashed border-neutral-800 bg-neutral-950/30' : ''
               } ${
                 isSelected
@@ -457,145 +488,153 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   : 'border-neutral-800 bg-neutral-950/60 hover:border-neutral-700'
               }`}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <img
-                  src={item.imageUrl}
-                  alt={item.title}
-                  onError={(e) => handleImageError(e, item.title, item.category)}
-                  className="w-9 h-9 object-contain rounded-lg bg-neutral-900 border border-neutral-800 p-0.5 shrink-0"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span 
-                      style={{
-                        backgroundColor: item.badgeBgColor || (item.customStyles?.badgeBgColor) || theme?.badgeBg || '#1a472a',
-                        color: item.badgeTextColor || (item.customStyles?.badgeTextColor) || theme?.badgeText || '#ffffff',
-                      }}
-                      className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded border border-white/20 shrink-0"
-                    >
-                      {item.badge || 'OFERTA'}
-                    </span>
-                    {item.secondBadgeEnabled && item.secondBadge && (
-                      <span className="text-[8px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        2º Selo
-                      </span>
-                    )}
-                    {item.hidden && (
-                      <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                        Oculto
-                      </span>
-                    )}
-                    <span className="text-[10px] text-neutral-400 font-bold">
-                      #{idx + 1}
-                    </span>
-                  </div>
-                  <h4 className={`text-xs font-bold truncate ${item.hidden ? 'text-neutral-400 line-through' : 'text-white'}`}>
+              {/* Imagem do produto ampliada para identificação imediata */}
+              <img
+                src={item.imageUrl}
+                alt={item.title}
+                onError={(e) => handleImageError(e, item.title, item.category)}
+                className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-lg bg-neutral-950 border border-neutral-800 p-1 shrink-0 shadow-inner"
+                referrerPolicy="no-referrer"
+              />
+
+              {/* Informações limpas: Identificação, Título e Botões de Ação */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] font-extrabold text-amber-400 shrink-0">
+                    #{idx + 1}
+                  </span>
+                  <h4 
+                    className={`text-xs sm:text-[13px] font-bold truncate ${item.hidden ? 'text-neutral-400 line-through' : 'text-white'}`}
+                    title={item.title}
+                  >
                     {item.title}
                   </h4>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <div className="text-right leading-tight pr-1">
-                  <div className="text-xs font-black text-amber-400">R$ {item.price}</div>
-                  <div className="text-[9px] text-neutral-400">/{item.unit}</div>
+                  {item.hidden && (
+                    <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                      Oculto
+                    </span>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownloadIndividualBanner(idx);
-                  }}
-                  className="p-1 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
-                  title={`Baixar banner de "${item.title}" (PNG)`}
-                >
-                  {downloadingIndex === idx ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                  ) : (
-                    <Download className="w-3.5 h-3.5" />
-                  )}
-                </button>
+                {/* Botões de Ação reposicionados diretamente abaixo da descrição */}
+                <div className="flex items-center gap-1 mt-1 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadIndividualBanner(idx);
+                    }}
+                    className="p-1 rounded-md text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
+                    title={`Baixar banner de "${item.title}" (PNG)`}
+                  >
+                    {downloadingIndex === idx ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownloadIndividualVideo(idx);
-                  }}
-                  className="p-1 rounded-lg text-neutral-400 hover:text-purple-300 hover:bg-neutral-800 transition-colors"
-                  title={`Baixar banner em vídeo (MP4) de "${item.title}"`}
-                >
-                  {recordingVideoIndex === idx ? (
-                    <div className="flex items-center gap-0.5">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
-                      {recordingVideoProgress > 0 && (
-                        <span className="text-[8px] text-purple-400 font-bold">{recordingVideoProgress}%</span>
-                      )}
-                    </div>
-                  ) : (
-                    <Film className="w-3.5 h-3.5 text-neutral-400 hover:text-purple-300" />
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadIndividualVideo(idx);
+                    }}
+                    className="p-1 rounded-md text-neutral-400 hover:text-purple-300 hover:bg-neutral-800 transition-colors"
+                    title={`Baixar banner em vídeo (MP4) de "${item.title}"`}
+                  >
+                    {recordingVideoIndex === idx ? (
+                      <div className="flex items-center gap-0.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                        {recordingVideoProgress > 0 && (
+                          <span className="text-[8px] text-purple-400 font-bold">{recordingVideoProgress}%</span>
+                        )}
+                      </div>
+                    ) : (
+                      <Film className="w-3.5 h-3.5 text-neutral-400 hover:text-purple-300" />
+                    )}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateProduct(idx, { hidden: !item.hidden });
-                  }}
-                  className="p-1 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
-                  title={item.hidden ? 'Item OCULTO na TV. Clique para exibir.' : 'Item VISÍVEL na TV. Clique para ocultar.'}
-                >
-                  {item.hidden ? <EyeOff className="w-3.5 h-3.5 text-amber-400" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateProduct(idx, { hidden: !item.hidden });
+                    }}
+                    className="p-1 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+                    title={item.hidden ? 'Item OCULTO na TV. Clique para exibir.' : 'Item VISÍVEL na TV. Clique para ocultar.'}
+                  >
+                    {item.hidden ? <EyeOff className="w-3.5 h-3.5 text-amber-400" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const duplicated: ProductItem = {
-                      ...item,
-                      id: `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                      title: `${item.title} (Cópia)`,
-                    };
-                    onAddProduct(duplicated);
-                  }}
-                  className="p-1 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
-                  title="Duplicar banner"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const duplicated: ProductItem = {
+                        ...item,
+                        id: `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        title: `${item.title} (Cópia)`,
+                      };
+                      onAddProduct(duplicated);
+                    }}
+                    className="p-1 rounded-md text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
+                    title="Duplicar banner"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (products.length === 1) {
-                      if (confirm('Deseja limpar este banner e iniciar um novo em branco para este cliente?')) {
-                        onUpdateProduct(idx, {
-                          title: 'Novo Produto em Oferta',
-                          price: '0,00',
-                          originalPrice: '',
-                          badge: 'SUPER OFERTA',
-                          category: 'Geral',
-                          unit: 'un',
-                          imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&auto=format&fit=crop&q=85',
-                          imageDisplayMode: 'ambient',
-                        });
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (products.length === 1) {
+                        const confirmReset = window.confirm(
+                          `⚠️ LIMPAR BANNER ÚNICO\n\n` +
+                          `Este é o único banner restante na lista.\n\n` +
+                          `Deseja redefini-lo para um novo banner em branco?\n\n` +
+                          `O banner atual "${item.title}" será enviado com segurança para a Lixeira e você poderá recuperá-lo a qualquer momento.`
+                        );
+                        if (confirmReset) {
+                          try {
+                            const lixeiraRaw = localStorage.getItem('playcomunique_lixeira_banners');
+                            const lixeira = lixeiraRaw ? JSON.parse(lixeiraRaw) : [];
+                            lixeira.unshift({
+                              product: item,
+                              clientName: clientName || '',
+                              deletedAt: new Date().toISOString(),
+                            });
+                            localStorage.setItem('playcomunique_lixeira_banners', JSON.stringify(lixeira.slice(0, 50)));
+                          } catch (err) {}
+                          onUpdateProduct(idx, {
+                            title: 'Novo Produto em Oferta',
+                            price: '0,00',
+                            originalPrice: '',
+                            badge: 'SUPER OFERTA',
+                            category: 'Geral',
+                            unit: 'un',
+                            imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&auto=format&fit=crop&q=85',
+                            imageDisplayMode: 'ambient',
+                          });
+                        }
+                      } else {
+                        const confirmDelete = window.confirm(
+                          `⚠️ CONFIRMAÇÃO OBRIGATÓRIA DE EXCLUSÃO DE BANNER\n\n` +
+                          `Banner #${idx + 1}: "${item.title}"\n\n` +
+                          `Atenção: O banner será removido desta lista e enviado para a Lixeira de Banners, onde ficará salvo para restauração a qualquer momento com 1 clique.\n\n` +
+                          `Deseja realmente excluir este banner?`
+                        );
+                        if (confirmDelete) {
+                          onRemoveProduct(idx);
+                        }
                       }
-                    } else {
-                      if (confirm(`Tem certeza que deseja excluir o banner "${item.title}"?`)) {
-                        onRemoveProduct(idx);
-                      }
-                    }
-                  }}
-                  className="p-1 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-neutral-800 transition-colors"
-                  title="Excluir banner"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                    }}
+                    className="p-1 rounded-md text-neutral-500 hover:text-red-400 hover:bg-neutral-800 transition-colors"
+                    title="Excluir banner (com confirmação e lixeira de segurança)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -1853,6 +1892,135 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Lixeira de Banners - Proteção contra perda e restauração em 1 clique */}
+      {showTrashModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-2xl bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 sm:p-5 border-b border-neutral-800 flex items-center justify-between bg-neutral-950">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
+                  <RotateCcw className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Lixeira de Banners</h3>
+                  <p className="text-xs text-neutral-400">
+                    Recupere banners excluídos a qualquer momento com apenas 1 clique.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTrashModal(false)}
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
+              {trashItems.length === 0 ? (
+                <div className="text-center py-12 text-neutral-500">
+                  <RotateCcw className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm font-semibold">A Lixeira de Banners está vazia.</p>
+                  <p className="text-xs text-neutral-600 mt-1">
+                    Nenhum banner foi removido recentemente. Quando você excluir um item, ele ficará protegido aqui.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800 text-xs text-neutral-400">
+                    <span>{trashItems.length} banner(s) salvos na lixeira:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trashItems.forEach((t) => onRestoreProduct?.(t.product));
+                        setTrashItems([]);
+                        localStorage.removeItem('playcomunique_lixeira_banners');
+                        setShowTrashModal(false);
+                      }}
+                      className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline"
+                    >
+                      Restaurar Todos
+                    </button>
+                  </div>
+                  {trashItems.map((item, index) => (
+                    <div
+                      key={index}
+                      className="p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={item.product.imageUrl}
+                          alt={item.product.title}
+                          onError={(e) => handleImageError(e, item.product.title, item.product.category)}
+                          className="w-12 h-12 object-contain rounded bg-neutral-900 border border-neutral-800 p-0.5 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-white truncate" title={item.product.title}>
+                            {item.product.title}
+                          </h4>
+                          <div className="flex items-center gap-2 text-[10px] text-neutral-400 mt-0.5">
+                            <span className="text-amber-400 font-bold">R$ {item.product.price}</span>
+                            {item.product.originalPrice && (
+                              <span className="line-through text-neutral-500">R$ {item.product.originalPrice}</span>
+                            )}
+                            {item.clientName && (
+                              <span className="bg-neutral-800 px-1.5 py-0.2 rounded text-neutral-300">
+                                {item.clientName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onRestoreProduct) {
+                              onRestoreProduct(item.product);
+                            }
+                            const updated = trashItems.filter((_, i) => i !== index);
+                            setTrashItems(updated);
+                            localStorage.setItem('playcomunique_lixeira_banners', JSON.stringify(updated));
+                          }}
+                          className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-lg flex items-center gap-1 transition-all"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restaurar</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = trashItems.filter((_, i) => i !== index);
+                            setTrashItems(updated);
+                            localStorage.setItem('playcomunique_lixeira_banners', JSON.stringify(updated));
+                          }}
+                          className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                          title="Remover definitivamente da lixeira"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-neutral-950 border-t border-neutral-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTrashModal(false)}
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-xl transition-colors"
+              >
+                Fechar
+              </button>
             </div>
           </div>
         </div>

@@ -294,10 +294,10 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
             if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
               const compressed = await compressImageToDataUrl(p.imageUrl, 800, 800, 0.76);
               saveLocalImage(p.id, compressed).catch(() => {});
-              saveProductImageToCloud(p.id, compressed).catch(() => {});
+              await saveProductImageToCloud(p.id, compressed).catch(() => {});
               return {
                 ...p,
-                imageUrl: compressed,
+                imageUrl: `cloud-img:${p.id}`,
               };
             }
             return p;

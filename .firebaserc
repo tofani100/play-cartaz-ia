@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "cartaz-ia-playcomunique"
+    "default": "cartaz-ia-playcomunique",
+    "prod": "cartaz-ia-playcomunique",
+    "dev": "cartaz-ia-dev-778bc"
   }
 }

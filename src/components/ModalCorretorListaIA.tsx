@@ -22,8 +22,9 @@ import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/com
 interface ModalCorretorListaIAProps {
   isOpen: boolean;
   onClose: () => void;
-  onApplyProducts: (newProducts: ProductItem[], campaignTitle?: string, validityText?: string) => void;
+  onApplyProducts: (newProducts: ProductItem[], campaignTitle?: string, validityText?: string, mode?: 'append' | 'replace') => void;
   currentSegment: string;
+  existingProductsCount?: number;
 }
 
 const SAMPLE_LIST = `coca 2l 8,99
@@ -40,6 +41,7 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
   onClose,
   onApplyProducts,
   currentSegment,
+  existingProductsCount = 0,
 }) => {
   const [rawText, setRawText] = useState<string>('');
   const [segment, setSegment] = useState<string>(currentSegment || 'Supermercado e Varejo');
@@ -55,6 +57,7 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
   const [generatingIdx, setGeneratingIdx] = useState<number | null>(null);
   const [isGeneratingAll, setIsGeneratingAll] = useState<boolean>(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [importMode, setImportMode] = useState<'append' | 'replace'>('append');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -226,6 +229,13 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
   const handleConfirmImport = () => {
     if (!parsedResult || !parsedResult.items) return;
 
+    if (importMode === 'replace' && existingProductsCount > 0) {
+      const ok = window.confirm(
+        `⚠️ ATENÇÃO: Substituição Total!\n\nVocê selecionou "Substituir lista existente". Isto apagará os ${existingProductsCount} banners existentes e deixará apenas os novos ${parsedResult.items.length} produtos.\n\nDeseja realmente SUBSTITUIR tudo? (Se cancelar, você pode escolher "Adicionar à lista existente" para manter todos os banners).`
+      );
+      if (!ok) return;
+    }
+
     const formattedProducts: ProductItem[] = parsedResult.items.map((item: any, idx: number) => {
       const imgUrl = item.imageUrl || buscarMelhorImagemProduto(item.searchKey || item.title, item.category, item.unit);
 
@@ -246,7 +256,7 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
       };
     });
 
-    onApplyProducts(formattedProducts, parsedResult.campaignTitle, parsedResult.validityText);
+    onApplyProducts(formattedProducts, parsedResult.campaignTitle, parsedResult.validityText, importMode);
     onClose();
   };
 
@@ -614,41 +624,89 @@ export const ModalCorretorListaIA: React.FC<ModalCorretorListaIAProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-neutral-800 bg-neutral-950 flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-bold text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-          >
-            Cancelar
-          </button>
+        <div className="p-4 border-t border-neutral-800 bg-neutral-950 flex flex-col sm:flex-row items-center justify-between gap-3">
+          {parsedResult && existingProductsCount > 0 ? (
+            <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setImportMode('append')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  importMode === 'append'
+                    ? 'bg-amber-500 text-black shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+                title="Preserva todos os banners existentes e adiciona os novos"
+              >
+                <span>➕ Manter e Adicionar aos {existingProductsCount} existentes</span>
+              </button>
 
-          {!parsedResult ? (
-            <button
-              onClick={handleProcessWithAi}
-              disabled={isLoading || !rawText.trim()}
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 text-neutral-950 font-black px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Analisando e corrigindo com Gemini...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 fill-black" />
-                  <span>Interpretar Lista com IA</span>
-                </>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={() => setImportMode('replace')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  importMode === 'replace'
+                    ? 'bg-red-500/90 text-white shadow-sm'
+                    : 'text-neutral-400 hover:text-red-400'
+                }`}
+                title="Substitui a lista de banners (requer confirmação)"
+              >
+                <span>🔄 Substituir lista inteira</span>
+              </button>
+            </div>
           ) : (
             <button
-              onClick={handleConfirmImport}
-              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition-all"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg text-xs font-bold text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
             >
-              <Check className="w-4 h-4" />
-              <span>Aplicar {parsedResult.items.length} Produtos no Banner</span>
+              Cancelar
             </button>
           )}
+
+          <div className="flex items-center gap-2">
+            {parsedResult && existingProductsCount > 0 && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg text-xs font-bold text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+              >
+                Cancelar
+              </button>
+            )}
+            {!parsedResult ? (
+              <button
+                onClick={handleProcessWithAi}
+                disabled={isLoading || !rawText.trim()}
+                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 text-neutral-950 font-black px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Analisando e corrigindo com Gemini...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 fill-black" />
+                    <span>Interpretar Lista com IA</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleConfirmImport}
+                className={`flex items-center gap-2 ${
+                  importMode === 'replace'
+                    ? 'bg-red-500 hover:bg-red-400 text-white'
+                    : 'bg-emerald-500 hover:bg-emerald-400 text-black'
+                } font-black px-5 py-2.5 rounded-xl text-xs shadow-lg transition-all`}
+              >
+                <Check className="w-4 h-4" />
+                <span>
+                  {importMode === 'append'
+                    ? `Adicionar +${parsedResult.items.length} Produtos (Total: ${existingProductsCount + parsedResult.items.length})`
+                    : `Substituir por ${parsedResult.items.length} Produtos`}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

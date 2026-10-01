@@ -274,6 +274,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
     >
         {/* GPU Isolated Background Layer: Rendered once, zero redraw overhead on frame updates */}
         <div 
+          id="tv-banner-bg-layer"
           style={{ contain: 'strict', willChange: 'contents', transform: 'translateZ(0)' }}
           className="absolute inset-0 pointer-events-none overflow-hidden"
         >
@@ -321,7 +322,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
 
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
-        <div className={`relative z-10 pl-3 sm:pl-6 md:pl-8 lg:pl-10 pr-3 sm:pr-6 md:pr-8 lg:pr-10 py-2 sm:py-2.5 lg:py-2 flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}>
+        <div 
+          id="tv-banner-header"
+          className={`relative z-10 pl-3 sm:pl-6 md:pl-8 lg:pl-10 pr-3 sm:pr-6 md:pr-8 lg:pr-10 py-2 sm:py-2.5 lg:py-2 flex ${isVertical ? 'flex-col items-center gap-2 text-center' : 'items-center justify-between'} shrink-0`}
+        >
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
             isVertical
@@ -331,6 +335,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             {campaign.showClientLogo !== false && (
               isBelissima ? (
                 <img
+                  id="tv-banner-client-logo"
                   crossOrigin="anonymous"
                   src="/logos/belissima-casa-di-frutas.png"
                   alt={campaign.clientName || 'Belíssima Casa di Frutas'}
@@ -345,6 +350,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 />
               ) : campaign.clientLogoUrl ? (
                 <img
+                  id="tv-banner-client-logo"
                   crossOrigin="anonymous"
                   src={campaign.clientLogoUrl}
                   alt={campaign.clientName || 'Logo Oficial'}
@@ -475,49 +481,65 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               {/* "De: R$ 10,99" regular price */}
               {product.originalPrice && (
                 <div 
-                  style={{ color: effectiveStyles.priceOriginalColor || 'rgba(255, 255, 255, 0.9)' }}
-                  className="text-xs sm:text-sm md:text-base font-bold mb-1 tracking-tight bg-transparent"
+                  id="tv-anim-original-price"
+                  style={{ 
+                    color: effectiveStyles.priceOriginalColor || 'rgba(255, 255, 255, 0.9)',
+                    fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
+                  }}
+                  className="text-xs sm:text-sm md:text-base font-bold mb-1 tracking-tight bg-transparent whitespace-nowrap"
                 >
                   De: R${product.originalPrice.replace('R$', '').trim()}
                 </div>
               )}
 
-              {/* Main Supermarket Orange Price Box */}
-              <div className="inline-flex items-center">
+              {/* Main Supermarket Orange/Yellow Price Box */}
+              <div id="tv-anim-price-box-wrapper" className="inline-flex items-center w-auto min-w-max shrink-0">
                 <div 
+                  id="tv-anim-price-box"
                   style={{ 
                     backgroundColor: effectiveStyles.priceBoxBgColor || '#ea580c', 
                     backgroundImage: effectiveStyles.priceBoxBgColor 
                       ? `linear-gradient(180deg, ${effectiveStyles.priceBoxBgColor}dd 0%, ${effectiveStyles.priceBoxBgColor} 50%, #00000033 100%)`
                       : 'linear-gradient(180deg, #f97316 0%, #ea580c 50%, #c2410c 100%)',
                     color: effectiveStyles.priceBoxTextColor || '#ffffff',
+                    fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                   }}
-                  className="relative overflow-hidden rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-2 sm:gap-3 flex items-center transition-transform hover:scale-[1.02] origin-bottom-left"
+                  className="relative overflow-hidden rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-2 sm:gap-3 flex flex-nowrap items-center w-auto min-w-max shrink-0 transition-transform hover:scale-[1.02] origin-bottom-left"
                 >
                   {/* Glossy top highlight overlay for TV commercial acrylic look */}
                   <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none rounded-t-xl" />
                   
                   {/* Left: "POR R$" */}
-                  <div className="flex flex-col justify-start self-start pt-0.5 leading-none">
-                    <span className="text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-wider opacity-95">
+                  <div 
+                    style={{ fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif" }}
+                    className="flex flex-col justify-start self-start pt-0.5 leading-none shrink-0 select-none"
+                  >
+                    <span className="text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-wider opacity-95 whitespace-nowrap">
                       POR
                     </span>
-                    <span className="text-xs sm:text-sm md:text-base font-black mt-0.5">
+                    <span className="text-xs sm:text-sm md:text-base font-black mt-0.5 whitespace-nowrap">
                       R$
                     </span>
                   </div>
 
                   {/* Big Integer Number */}
-                  <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[76px] font-black leading-none tracking-tighter drop-shadow-sm font-sans">
+                  <div 
+                    style={{ fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif" }}
+                    className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[76px] font-black leading-none tracking-tighter drop-shadow-sm shrink-0 whitespace-nowrap select-none"
+                  >
                     {intPrice}
                   </div>
 
                   {/* Right: ",99" and "2L" / unit */}
-                  <div className="flex flex-col justify-start self-start pt-0.5 leading-none pl-0.5">
-                    <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black leading-none">
+                  <div 
+                    id="tv-anim-price-unit-col"
+                    style={{ fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif" }}
+                    className="flex flex-col justify-start self-start pt-0.5 leading-none pl-0.5 min-w-max w-auto shrink-0 select-none whitespace-nowrap"
+                  >
+                    <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black leading-none whitespace-nowrap">
                       ,{centsPrice}
                     </span>
-                    <span className="text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider opacity-95 mt-1">
+                    <span className="text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider opacity-95 mt-1 whitespace-nowrap">
                       {product.unit || '2L'}
                     </span>
                   </div>
@@ -559,7 +581,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           </div>
 
           {/* Right Column (Bloco 2): Framed Commercial Mini Banner Showcase Card - Dimensões e Proporção 4:3 Padronizadas */}
-          <div className={`relative flex-1 min-w-0 flex items-center justify-center ${isVertical ? 'w-full py-1' : 'h-full max-h-full'}`}>
+          <div id="tv-anim-right-column" className={`relative flex-1 min-w-0 flex items-center justify-center ${isVertical ? 'w-full py-1' : 'h-full max-h-full'}`}>
             <motion.div
               key={`card-${product.id}-${animCycle}`}
               id="tv-anim-card-wrapper"
@@ -851,7 +873,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         </div>
 
         {/* BOTTOM FOOTER: Slim Broadcast Legal Bar - Fundo Preto Limpo sem Letreiro */}
-        <div className="relative z-10 px-3 sm:px-6 py-1 sm:py-1.5 text-[9px] sm:text-[10px] md:text-[11px] bg-[#050505] text-neutral-300 flex items-center justify-between border-t border-neutral-800/80 shrink-0 w-full">
+        <div id="tv-banner-footer" className="relative z-10 px-3 sm:px-6 py-1 sm:py-1.5 text-[9px] sm:text-[10px] md:text-[11px] bg-[#050505] text-neutral-300 flex items-center justify-between border-t border-neutral-800/80 shrink-0 w-full">
           <span 
             style={{ color: effectiveStyles.footerLegalColor || undefined }}
             className="truncate max-w-[75%] font-medium"

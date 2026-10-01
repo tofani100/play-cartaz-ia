@@ -137,6 +137,7 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
       defaultTickerText: formTicker.trim(),
       phoneWhatsapp: formPhone.trim(),
       storeAddress: formAddress.trim(),
+      products: editingClient?.products || [],
     };
 
     onSaveClient(clientToSave);

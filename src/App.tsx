@@ -27,101 +27,22 @@ import {
   saveClientsToCloud,
 } from './services/cloudCampaignSync';
 
-const INITIAL_PRODUCTS: ProductItem[] = [
-  {
-    id: 'prod-cafe-caboclo-500g',
-    title: 'Café Torrado e Moído Caboclo Tradicional a Vácuo 500g',
-    brand: 'Caboclo',
-    category: 'Mercearia',
-    unit: '500g',
-    price: '32,99',
-    originalPrice: '38,90',
-    discountPercentage: 15,
-    badge: 'SUPER OFERTA',
-    imageUrl: 'https://images.unsplash.com/photo-1509785307050-d4066910ec1e?w=1200&auto=format&fit=crop&q=85',
-    imageDisplayMode: 'ambient',
-    isHero: true,
-  },
-  {
-    id: 'prod-coca-2l',
-    title: 'Refrigerante Coca-Cola Garrafa 2L',
-    brand: 'Coca-Cola',
-    category: 'Bebidas',
-    unit: '2L',
-    price: '8,99',
-    originalPrice: '10,99',
-    discountPercentage: 19,
-    badge: 'OFERTA DO DIA',
-    imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=1200&auto=format&fit=crop&q=85',
-    imageDisplayMode: 'ambient',
-    isHero: false,
-  },
-  {
-    id: 'prod-heineken-330ml',
-    title: 'Cerveja Heineken Puro Malte Garrafa Long Neck 330ml',
-    brand: 'Heineken',
-    category: 'Bebidas',
-    unit: '330ml',
-    price: '6,49',
-    originalPrice: '7,99',
-    discountPercentage: 19,
-    badge: 'GELADA',
-    imageUrl: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=1200&auto=format&fit=crop&q=85',
-    imageDisplayMode: 'ambient',
-  },
-  {
-    id: 'prod-ype-neutro-500ml',
-    title: 'Detergente Líquido Lava-Louças Ypê Neutro 500ml',
-    brand: 'Ypê',
-    category: 'Limpeza',
-    unit: '500ml',
-    price: '2,19',
-    originalPrice: '2,89',
-    discountPercentage: 24,
-    badge: 'ECONOMIA',
-    imageUrl: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=1200&auto=format&fit=crop&q=85',
-    imageDisplayMode: 'ambient',
-  },
-  {
-    id: 'prod-leite-piracanjuba-1l',
-    title: 'Leite Integral Piracanjuba UHT Tetra Pak 1L',
-    brand: 'Piracanjuba',
-    category: 'Laticínios',
-    unit: '1L',
-    price: '4,69',
-    originalPrice: '5,99',
-    discountPercentage: 22,
-    badge: 'PREÇO BAIXO',
-    imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=1200&auto=format&fit=crop&q=85',
-    imageDisplayMode: 'ambient',
-  },
-  {
-    id: 'prod-feijao-camil-1kg',
-    title: 'Feijão Carioca Tipo 1 Camil Pacote 1kg',
-    brand: 'Camil',
-    category: 'Mercearia',
-    unit: '1kg',
-    price: '7,49',
-    originalPrice: '9,20',
-    discountPercentage: 18,
-    badge: 'DA TERRA',
-    imageUrl: 'https://images.unsplash.com/photo-1551462147-ff29053bfc14?w=1200&auto=format&fit=crop&q=85',
-    imageDisplayMode: 'ambient',
-  },
-];
+const BELISSIMA_CLIENT = CLIENTES_PREDEFINIDOS.find((c) => c.id === 'cli-belissima') || CLIENTES_PREDEFINIDOS[0];
+const INITIAL_PRODUCTS: ProductItem[] = BELISSIMA_CLIENT?.products || [];
 
 const DEFAULT_CAMPAIGN: BannerCampaign = {
   id: 'camp-1',
+  clientId: 'cli-belissima',
   clientName: 'Belíssima Casa di Frutas',
   clientLogoUrl: '/logos/belissima-casa-di-frutas.png',
   showClientLogo: true,
   segment: 'Hortifrúti & Frutas Selecionadas',
-  campaignTitle: 'FESTIVAL DE OFERTAS PLAY COMUNIQUE',
+  campaignTitle: 'FESTIVAL DE OFERTAS BELÍSSIMA CASA DI FRUTAS',
   campaignSubtitle: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
   validityText: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
-  legalNotice: 'Imagens meramente ilustrativas. Produto estoqu de bebidas a menores de 18 anos.',
+  legalNotice: 'Imagens meramente ilustrativas. Proibida venda de bebidas a menores de 18 anos.',
   footerBrandText: 'ts.playcomunique.com.br',
-  tickerText: '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ NOSSO APLICATIVO É GAM DEMAIS! ★★ OFERTAS VÁLIDAS PARA TODAS AS FILIAIS DA BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★',
+  tickerText: '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ QUALIDADE BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★',
   format: '16:9',
   themeId: 'hortifruti-green',
   products: INITIAL_PRODUCTS,
@@ -145,9 +66,17 @@ export default function App() {
       const saved = localStorage.getItem('playcomunique_campanha');
       if (saved) {
         const parsed = JSON.parse(saved);
+        let products = parsed.products || [];
+        // Proteção contra perda acidental: se Belíssima tiver menos de 15 produtos, recupera o acervo de 22 produtos
+        if ((parsed.clientName === 'Belíssima Casa di Frutas' || parsed.clientId === 'cli-belissima' || !parsed.clientId) && products.length < 15) {
+          console.log('[Recuperação] Restaurando 22 produtos autênticos da Belíssima no carregamento inicial.');
+          products = INITIAL_PRODUCTS;
+        }
+
         return {
           ...DEFAULT_CAMPAIGN,
           ...parsed,
+          products,
           clientLogoUrl:
             parsed.clientName === 'Belíssima Casa di Frutas' || parsed.id === 'camp-1'
               ? (parsed.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
@@ -177,19 +106,13 @@ export default function App() {
           const localProducts = prev.products || [];
           const remoteProducts = cloudCampaign.products || [];
 
-          const localTimestamp = (prev as any)._syncTimestamp
-            ? new Date((prev as any)._syncTimestamp).getTime()
-            : 0;
-          const remoteTimestamp = (cloudCampaign as any)._syncTimestamp
-            ? new Date((cloudCampaign as any)._syncTimestamp).getTime()
-            : 0;
-
-          // Se o localStorage local possui produtos e a nuvem está vazia, ou se o local foi salvo mais recentemente:
-          // PRESERVA os produtos locais e sincroniza para a nuvem!
-          if (localProducts.length > 0 && (remoteProducts.length === 0 || localTimestamp > remoteTimestamp)) {
-            console.log('[CloudSync] Protegendo banners locais contra perda de dados no F5:', localProducts.length);
-            saveCampaignToCloud(prev).catch(() => {});
-            return prev;
+          // PROTEÇÃO CONTRA PERDA: Se a nuvem tem mais produtos que o local (ex: acervo completo de 22 itens),
+          // prioriza sempre a integridade da nuvem para não truncar dados.
+          let finalProducts = remoteProducts;
+          if (localProducts.length > remoteProducts.length) {
+            finalProducts = localProducts;
+          } else if (remoteProducts.length === 0) {
+            finalProducts = localProducts.length > 0 ? localProducts : INITIAL_PRODUCTS;
           }
 
           isRemoteUpdateRef.current = true;
@@ -200,6 +123,7 @@ export default function App() {
           return {
             ...prev,
             ...cloudCampaign,
+            products: finalProducts,
             clientLogoUrl:
               cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1'
                 ? (cloudCampaign.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
@@ -322,12 +246,10 @@ export default function App() {
           const predefined = CLIENTES_PREDEFINIDOS.find((p) => p.id === c.id || p.name.toLowerCase() === c.name.toLowerCase());
           
           let clientProducts = c.products;
-          if (!clientProducts || clientProducts.length === 0) {
-            if ((c.name === 'Belíssima Casa di Frutas' || c.id === 'cli-belissima') && savedCampaign?.products?.length > 0) {
-              clientProducts = savedCampaign.products;
-            } else {
-              clientProducts = predefined?.products || [];
-            }
+          if ((c.name === 'Belíssima Casa di Frutas' || c.id === 'cli-belissima') && (!clientProducts || clientProducts.length < 15)) {
+            clientProducts = predefined?.products || INITIAL_PRODUCTS;
+          } else if (!clientProducts || clientProducts.length === 0) {
+            clientProducts = predefined?.products || [];
           }
 
           return {
@@ -539,17 +461,43 @@ export default function App() {
   const handleApplyAiProducts = (
     newProducts: ProductItem[],
     campaignTitle?: string,
-    validityText?: string
+    validityText?: string,
+    mode: 'append' | 'replace' = 'append'
   ) => {
     lastLocalEditTimeRef.current = Date.now();
     const now = new Date().toISOString();
 
     setCampaign((prev) => {
-      const nextProducts = newProducts;
+      // PROTEÇÃO MÁXIMA CONTRA PERDA DE BANNERS:
+      // Se mode === 'replace', salva todos os produtos anteriores na lixeira para recuperação
+      if (mode === 'replace' && prev.products && prev.products.length > 0) {
+        try {
+          const lixeiraRaw = localStorage.getItem('playcomunique_lixeira_banners');
+          const lixeira = lixeiraRaw ? JSON.parse(lixeiraRaw) : [];
+          prev.products.forEach((p) => {
+            lixeira.unshift({
+              product: p,
+              clientName: prev.clientName,
+              deletedAt: now,
+            });
+          });
+          localStorage.setItem('playcomunique_lixeira_banners', JSON.stringify(lixeira.slice(0, 50)));
+        } catch (e) {
+          console.warn('Erro ao salvar backup na lixeira:', e);
+        }
+      }
+
+      // Por padrão, sempre ADICIONA (append) aos banners existentes para NUNCA perder os já prontos!
+      const nextProducts = mode === 'replace'
+        ? newProducts
+        : [...(prev.products || []), ...newProducts];
+
+      const targetIndex = mode === 'replace' ? 0 : Math.max(0, (prev.products?.length || 0));
+
       const nextCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
-        activeProductIndex: 0,
+        activeProductIndex: targetIndex,
         campaignTitle: campaignTitle || prev.campaignTitle,
         validityText: validityText || prev.validityText,
         _syncTimestamp: now,
@@ -707,6 +655,22 @@ export default function App() {
     lastLocalEditTimeRef.current = Date.now();
     const now = new Date().toISOString();
     setCampaign((prev) => {
+      const removedProduct = prev.products[idx];
+      if (removedProduct) {
+        try {
+          const lixeiraRaw = localStorage.getItem('playcomunique_lixeira_banners');
+          const lixeira = lixeiraRaw ? JSON.parse(lixeiraRaw) : [];
+          lixeira.unshift({
+            product: removedProduct,
+            clientName: prev.clientName,
+            deletedAt: now,
+          });
+          localStorage.setItem('playcomunique_lixeira_banners', JSON.stringify(lixeira.slice(0, 50)));
+        } catch (e) {
+          console.warn('Erro ao salvar produto excluído na lixeira:', e);
+        }
+      }
+
       const next = prev.products.filter((_, i) => i !== idx);
       const nextIdx = Math.min(prev.activeProductIndex, Math.max(0, next.length - 1));
       const nextCampaign: BannerCampaign = {
@@ -734,6 +698,46 @@ export default function App() {
       });
 
       saveCampaignToCloud(nextCampaign).catch(() => {});
+      return nextCampaign;
+    });
+  };
+
+  const handleRestoreProduct = (productToRestore: ProductItem) => {
+    lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
+    setCampaign((prev) => {
+      const nextProducts = [...prev.products, productToRestore];
+      const nextCampaign: BannerCampaign = {
+        ...prev,
+        products: nextProducts,
+        activeProductIndex: nextProducts.length - 1,
+        _syncTimestamp: now,
+      } as any;
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+      } catch (e) {}
+
+      setClients((prevClients) => {
+        const updatedClients = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? { ...c, products: nextProducts }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
+        } catch (e) {}
+        saveClientsToCloud(updatedClients).catch(() => {});
+        return updatedClients;
+      });
+
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
+
       return nextCampaign;
     });
   };
@@ -845,6 +849,7 @@ export default function App() {
             onUpdateProduct={handleUpdateProduct}
             onAddProduct={handleAddProduct}
             onRemoveProduct={handleRemoveProduct}
+            onRestoreProduct={handleRestoreProduct}
             onReorderProduct={handleReorderProduct}
             showClientLogo={campaign.showClientLogo !== false}
             onToggleShowLogo={() => handleUpdateCampaign({ showClientLogo: !campaign.showClientLogo })}
@@ -862,6 +867,7 @@ export default function App() {
         onClose={() => setIsAiModalOpen(false)}
         onApplyProducts={handleApplyAiProducts}
         currentSegment={campaign.segment}
+        existingProductsCount={campaign.products?.length || 0}
       />
 
       <ModalPlayerTvIndoor
