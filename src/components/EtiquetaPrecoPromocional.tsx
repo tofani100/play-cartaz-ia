@@ -11,7 +11,7 @@ interface EtiquetaPrecoProps {
     priceBg?: string;
     priceText?: string;
   };
-  size?: 'sm' | 'md' | 'lg' | 'hero';
+  size?: 'compact' | 'xs' | 'sm' | 'md' | 'lg' | 'hero';
 }
 
 export const EtiquetaPrecoPromocional: React.FC<EtiquetaPrecoProps> = ({
@@ -30,17 +30,20 @@ export const EtiquetaPrecoPromocional: React.FC<EtiquetaPrecoProps> = ({
   const isHero = size === 'hero';
   const isLg = size === 'lg';
   const isMd = size === 'md';
+  const isSm = size === 'sm';
+  const isXs = size === 'xs';
+  const isCompact = size === 'compact';
 
   return (
-    <div className="flex flex-col items-start select-none">
+    <div className="flex flex-col items-start select-none min-w-0">
       {/* Promotional Badge (e.g., SUPER PREÇO, OFERTA, SÓ HOJE) */}
       {badge && (
         <div 
-          className="mb-1 uppercase font-black tracking-wider px-2.5 py-0.5 rounded shadow-sm text-center flex items-center justify-center border border-black/10 animate-pulse whitespace-nowrap shrink-0"
+          className="mb-1 uppercase font-black tracking-wider px-2 py-0.5 rounded shadow-sm text-center flex items-center justify-center border border-black/10 animate-pulse whitespace-nowrap shrink-0"
           style={{
             backgroundColor: themeStyle?.badgeBg || '#FACC15',
             color: themeStyle?.badgeText || '#000000',
-            fontSize: isHero ? '13px' : isLg ? '11px' : '9px',
+            fontSize: isHero ? '13px' : isLg ? '11px' : isMd ? '10px' : isSm ? '9px' : '7.5px',
             whiteSpace: 'nowrap',
           }}
         >
@@ -50,50 +53,92 @@ export const EtiquetaPrecoPromocional: React.FC<EtiquetaPrecoProps> = ({
 
       {/* "De:" regular price strike-through */}
       {originalPrice && (
-        <div className="text-neutral-300 font-bold tracking-tight line-through opacity-85 text-xs sm:text-sm pl-1">
+        <div className={`text-neutral-300 font-bold tracking-tight line-through opacity-85 pl-0.5 ${
+          isCompact ? 'text-[7.5px]' : isXs ? 'text-[8.5px]' : isSm ? 'text-[10px]' : 'text-xs sm:text-sm'
+        }`}>
           De: R$ {originalPrice.replace('R$', '').trim()}
         </div>
       )}
 
       {/* Main Supermarket Price Tag Badge */}
       <div 
-        className="rounded-xl p-2 sm:p-3 shadow-2xl flex items-baseline border-2 border-white/20 transition-transform"
+        className={`shadow-2xl flex items-baseline border transition-transform ${
+          isCompact 
+            ? 'rounded-lg p-1 px-1.5 border-white/20' 
+            : isXs 
+            ? 'rounded-lg p-1 px-1.5 border-white/20' 
+            : isSm 
+            ? 'rounded-xl p-1.5 sm:p-2 border-2 border-white/20' 
+            : 'rounded-xl p-2 sm:p-3 border-2 border-white/20'
+        }`}
         style={{
           backgroundColor: themeStyle?.priceBg || '#FACC15',
           color: themeStyle?.priceText || '#7F1D1D',
         }}
       >
-        {/* "R$" label */}
-        <div className="flex flex-col justify-start mr-1 sm:mr-1.5 self-start pt-1">
-          <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-90 leading-none">
+        {/* "POR R$" label */}
+        <div className="flex flex-col justify-start mr-0.5 sm:mr-1 self-start pt-0.5 sm:pt-1">
+          <span className={`font-black uppercase tracking-wider opacity-90 leading-none ${
+            isCompact ? 'text-[6px]' : isXs ? 'text-[6.5px]' : isSm ? 'text-[8.5px]' : 'text-[10px] sm:text-xs'
+          }`}>
             POR
           </span>
-          <span className="font-extrabold text-xs sm:text-sm leading-tight">
+          <span className={`font-extrabold leading-tight ${
+            isCompact ? 'text-[7.5px]' : isXs ? 'text-[8.5px]' : isSm ? 'text-[10px]' : 'text-xs sm:text-sm'
+          }`}>
             R$
           </span>
         </div>
 
-        {/* Huge Integer Number */}
+        {/* Integer Number */}
         <div 
           className="font-['Bebas_Neue',_Impact,_sans-serif] tracking-tight leading-none drop-shadow-sm font-black"
           style={{
-            fontSize: isHero ? '5.5rem' : isLg ? '4.2rem' : isMd ? '3rem' : '2rem',
+            fontSize: isHero 
+              ? '5.5rem' 
+              : isLg 
+              ? '4.2rem' 
+              : isMd 
+              ? '3rem' 
+              : isSm 
+              ? '2rem' 
+              : isXs 
+              ? '1.45rem' 
+              : '1.25rem',
           }}
         >
           {intPart}
         </div>
 
         {/* Elevated Cents and Unit */}
-        <div className="flex flex-col justify-start pl-0.5 self-start pt-1">
+        <div className="flex flex-col justify-start pl-0.5 self-start pt-0.5 sm:pt-1 min-w-0">
           <span 
             className="font-['Bebas_Neue',_Impact,_sans-serif] font-bold leading-none"
             style={{
-              fontSize: isHero ? '2.4rem' : isLg ? '1.8rem' : isMd ? '1.3rem' : '1rem',
+              fontSize: isHero 
+                ? '2.4rem' 
+                : isLg 
+                ? '1.8rem' 
+                : isMd 
+                ? '1.3rem' 
+                : isSm 
+                ? '1rem' 
+                : isXs 
+                ? '0.75rem' 
+                : '0.65rem',
             }}
           >
             ,{centsPart}
           </span>
-          <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider mt-0.5 opacity-90 bg-black/10 px-1 py-0.2 rounded text-center">
+          <span className={`font-black uppercase tracking-tight mt-0.5 opacity-90 bg-black/15 rounded text-center truncate block leading-tight ${
+            isCompact 
+              ? 'text-[6.5px] px-0.5 py-0.2 max-w-[44px]' 
+              : isXs 
+              ? 'text-[7.5px] px-1 py-0.2 max-w-[56px]' 
+              : isSm 
+              ? 'text-[8.5px] sm:text-[9.5px] px-1 py-0.2 max-w-[70px]' 
+              : 'text-[10px] sm:text-[11px] px-1 py-0.2 max-w-[90px]'
+          }`}>
             {unit || 'cada'}
           </span>
         </div>

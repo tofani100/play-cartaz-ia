@@ -551,7 +551,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
 
                     {/* Unit Pill Top Right */}
                     <div className="absolute top-2 right-2 z-10">
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-black/80 text-amber-300 border border-white/10 shadow-sm">
+                      <span className={`font-black uppercase rounded bg-black/80 text-amber-300 border border-white/10 shadow-sm truncate max-w-[65px] block ${
+                        columns >= 3 ? 'text-[7.5px] px-1 py-0.2' : 'text-[9px] px-1.5 py-0.5'
+                      }`}>
                         {item.unit || 'UN'}
                       </span>
                     </div>
@@ -562,7 +564,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         ? 'min-h-[180px] sm:min-h-[220px]' 
                         : columns === 2 
                         ? 'min-h-[140px] sm:min-h-[170px]' 
-                        : 'min-h-[120px] sm:min-h-[140px]'
+                        : columns === 3
+                        ? 'min-h-[110px] sm:min-h-[130px]'
+                        : 'min-h-[95px] sm:min-h-[115px]'
                     }`}>
                       <div className="absolute bottom-2 w-3/4 h-4 bg-black/60 rounded-full blur-md" />
                       <img
@@ -575,7 +579,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                             ? 'max-h-40 sm:max-h-48' 
                             : columns === 2 
                             ? 'max-h-28 sm:max-h-36' 
-                            : 'max-h-24 sm:max-h-28'
+                            : columns === 3
+                            ? 'max-h-22 sm:max-h-26'
+                            : 'max-h-18 sm:max-h-22'
                         }`}
                         referrerPolicy="no-referrer"
                         loading="lazy"
@@ -585,7 +591,13 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     {/* Product Title & Brand */}
                     <div className="px-2.5 pt-1 pb-1.5 text-left">
                       <h4 className={`font-black text-white line-clamp-2 leading-tight ${
-                        columns === 1 ? 'text-sm sm:text-base' : columns === 2 ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-xs'
+                        columns === 1 
+                          ? 'text-sm sm:text-base' 
+                          : columns === 2 
+                          ? 'text-xs sm:text-sm' 
+                          : columns === 3 
+                          ? 'text-[10.5px] sm:text-[11.5px]' 
+                          : 'text-[9.5px] sm:text-[10.5px]'
                       }`}>
                         {item.title}
                       </h4>
@@ -597,7 +609,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     </div>
 
                     {/* Supermarket Orange Price Section */}
-                    <div className="px-2.5 pb-2.5 pt-1 bg-black/60 border-t border-neutral-800 flex items-center justify-between gap-1">
+                    <div className={`${columns >= 3 ? 'px-1.5 pb-2 pt-1' : 'px-2.5 pb-2.5 pt-1'} bg-black/60 border-t border-neutral-800 flex items-center justify-between gap-1 min-w-0`}>
                       <EtiquetaPrecoPromocional
                         price={item.price}
                         originalPrice={item.originalPrice}
@@ -606,16 +618,20 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                           priceBg: item.customStyles?.priceBoxBgColor || theme.priceBg || '#ea580c',
                           priceText: item.customStyles?.priceBoxTextColor || theme.priceText || '#ffffff',
                         }}
-                        size={columns === 1 ? 'md' : columns === 2 ? 'sm' : 'sm'}
+                        size={columns === 1 ? 'md' : columns === 2 ? 'sm' : columns === 3 ? 'xs' : 'compact'}
                       />
 
                       {/* Economy Tag */}
                       {item.discountPercentage && item.discountPercentage > 0 && (
-                        <div className="text-right shrink-0">
-                          <span className="text-[8px] sm:text-[9px] font-black text-red-400 block leading-none">
-                            ECONOMIZE
+                        <div className="text-right shrink-0 flex flex-col items-end justify-center min-w-0 pl-0.5">
+                          <span className={`font-black text-red-400 block leading-none uppercase ${
+                            columns >= 3 ? 'text-[7px]' : 'text-[8px] sm:text-[9px]'
+                          }`}>
+                            {columns >= 3 ? 'ECON.' : 'ECONOMIZE'}
                           </span>
-                          <span className="text-[10px] sm:text-xs font-black text-amber-400 leading-none">
+                          <span className={`font-black text-amber-400 leading-none mt-0.5 ${
+                            columns >= 4 ? 'text-[8.5px]' : columns === 3 ? 'text-[9.5px]' : 'text-[10px] sm:text-xs'
+                          }`}>
                             -{item.discountPercentage}%
                           </span>
                         </div>
