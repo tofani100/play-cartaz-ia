@@ -325,12 +325,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
         <div 
           id="tv-banner-header"
-          className={`relative z-10 px-3 sm:px-6 md:px-8 py-2 sm:py-2.5 flex items-center justify-between shrink-0 w-full`}
+          className={`relative z-10 px-3 sm:px-5 md:px-7 py-2 sm:py-3 flex items-center justify-between shrink-0 w-full gap-2.5 sm:gap-4`}
         >
           {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
           <div className={`flex items-center shrink-0 ${
             isVertical
-              ? 'w-auto max-w-[120px] sm:max-w-[150px] h-10 sm:h-12'
+              ? 'w-auto max-w-[160px] sm:max-w-[190px] md:max-w-[210px] h-16 sm:h-20 md:h-22'
               : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
           }`}>
             {campaign.showClientLogo !== false && (
@@ -376,8 +376,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
           {/* Top Center / Right: Campaign Title & Validity - Suporte Completo a Vertical e Horizontal */}
           <div className={`flex-1 flex flex-col ${
-            isVertical ? 'items-end text-right pl-2' : 'items-center text-center px-2 sm:px-4'
-          } justify-center min-w-0`}>
+            isVertical ? 'items-end text-right pl-1 sm:pl-2 gap-1 justify-center' : 'items-center text-center px-2 sm:px-4 justify-center'
+          } min-w-0`}>
             <h1 
               style={{
                 color: effectiveStyles.campaignTitleColor || '#fbbf24',
@@ -386,8 +386,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               className={`${
                 isVertical
                   ? (campaign.campaignTitle && campaign.campaignTitle.length > 30
-                      ? 'text-[11px] sm:text-[13px] md:text-[15px]'
-                      : 'text-[13px] sm:text-[15px] md:text-[17px]')
+                      ? 'text-[12px] sm:text-[14px] md:text-[16px]'
+                      : 'text-[14px] sm:text-[16px] md:text-[18px]')
                   : (campaign.campaignTitle && campaign.campaignTitle.length > 35
                       ? 'text-xs sm:text-sm md:text-base lg:text-xl'
                       : campaign.campaignTitle && campaign.campaignTitle.length > 25
@@ -397,12 +397,16 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             >
               {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
             </h1>
-            <p className={`text-[8.5px] sm:text-[10px] md:text-[11px] mt-0.5 text-neutral-100 flex items-center ${
+            
+            {/* Cápsula de Validade elegante e legível */}
+            <div className={`inline-flex items-center ${
               isVertical ? 'justify-end' : 'justify-center'
-            } gap-1 sm:gap-1.5 font-semibold drop-shadow max-w-full leading-none`}>
+            } gap-1.5 px-2.5 py-0.5 rounded-full bg-black/40 border border-white/20 backdrop-blur-xs max-w-full mt-0.5`}>
               <Calendar className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
-              <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
-            </p>
+              <span className="text-[8.5px] sm:text-[10px] md:text-[11px] text-neutral-100 font-bold drop-shadow truncate">
+                {campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}
+              </span>
+            </div>
           </div>
 
           {/* Right Symmetrical Spacer so Campaign Title is centered across the screen in Horizontal */}
