@@ -549,10 +549,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       </div>
                     )}
 
-                    {/* Unit Pill Top Right */}
+                    {/* Unit Pill Top Right - Totalmente Visível Sem Cortar */}
                     <div className="absolute top-2 right-2 z-10">
-                      <span className={`font-black uppercase rounded bg-black/80 text-amber-300 border border-white/10 shadow-sm truncate max-w-[65px] block ${
-                        columns >= 3 ? 'text-[7.5px] px-1 py-0.2' : 'text-[9px] px-1.5 py-0.5'
+                      <span className={`font-black uppercase rounded bg-black/85 text-amber-300 border border-white/15 shadow-sm whitespace-nowrap inline-block ${
+                        columns === 1 
+                          ? 'text-[10px] px-2 py-0.5' 
+                          : columns === 2 
+                          ? 'text-[9px] px-1.5 py-0.5' 
+                          : columns === 3 
+                          ? 'text-[7.5px] px-1 py-0.5' 
+                          : 'text-[6.5px] px-1 py-0.2'
                       }`}>
                         {item.unit || 'UN'}
                       </span>
@@ -621,13 +627,13 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
 
                       {/* Economy Tag */}
                       {item.discountPercentage && item.discountPercentage > 0 && (
-                        <div className="text-right shrink-0 flex flex-col items-end justify-center min-w-0 pl-0.5">
-                          <span className={`font-black text-red-400 block leading-none uppercase ${
+                        <div className="text-right shrink-0 flex flex-col items-end justify-center min-w-0 pl-1">
+                          <span className={`font-black text-red-400 block leading-none uppercase whitespace-nowrap ${
                             columns >= 3 ? 'text-[7px]' : 'text-[8px] sm:text-[9px]'
                           }`}>
                             {columns >= 3 ? 'ECON.' : 'ECONOMIZE'}
                           </span>
-                          <span className={`font-black text-amber-400 leading-none mt-0.5 ${
+                          <span className={`font-black text-amber-400 leading-none mt-0.5 whitespace-nowrap ${
                             columns >= 4 ? 'text-[8.5px]' : columns === 3 ? 'text-[9.5px]' : 'text-[10px] sm:text-xs'
                           }`}>
                             -{item.discountPercentage}%

@@ -130,14 +130,14 @@ export const EtiquetaPrecoPromocional: React.FC<EtiquetaPrecoProps> = ({
           >
             ,{centsPart}
           </span>
-          <span className={`font-black uppercase tracking-tight mt-0.5 opacity-90 bg-black/15 rounded text-center truncate block leading-tight ${
+          <span className={`font-black uppercase tracking-tight mt-0.5 opacity-90 bg-black/15 rounded text-center whitespace-nowrap block leading-tight ${
             isCompact 
-              ? 'text-[6.5px] px-0.5 py-0.2 max-w-[44px]' 
+              ? 'text-[6.5px] px-1 py-0.2' 
               : isXs 
-              ? 'text-[7.5px] px-1 py-0.2 max-w-[56px]' 
+              ? 'text-[7.5px] px-1.5 py-0.2' 
               : isSm 
-              ? 'text-[8.5px] sm:text-[9.5px] px-1 py-0.2 max-w-[70px]' 
-              : 'text-[10px] sm:text-[11px] px-1 py-0.2 max-w-[90px]'
+              ? 'text-[8.5px] sm:text-[9.5px] px-1.5 py-0.5' 
+              : 'text-[10px] sm:text-[11px] px-2 py-0.5'
           }`}>
             {unit || 'cada'}
           </span>
