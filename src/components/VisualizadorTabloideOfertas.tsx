@@ -980,41 +980,23 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
 
                       {/* Lado Esquerdo: Selos, Título Comercial e Bloco de Preços (Estilo TV Banner) */}
                       <div className="w-[46%] sm:w-[48%] flex flex-col justify-between p-2 sm:p-2.5 min-w-0 z-10 select-none">
-                        {/* Topo do Lado Esquerdo: Selos e Nome do Produto */}
+                        {/* Topo do Lado Esquerdo: Selo Promocional Oficial (sem a tag de unidade) */}
                         <div className="flex flex-col items-start gap-1 min-w-0">
-                          {/* Selo Promocional + Pílula de Unidade */}
-                          <div className="flex flex-wrap items-center gap-1 max-w-full">
-                            {item.badge && (
-                              <span 
-                                className={`${
-                                  effectiveRows >= 4 ? 'text-[7px] px-1 py-0.2' :
-                                  effectiveRows === 3 ? 'text-[7.5px] sm:text-[8px] px-1.5 py-0.5' :
-                                  'text-[8.5px] sm:text-[9px] px-2 py-0.5'
-                                } uppercase font-black rounded-md shadow-md text-center tracking-wider truncate inline-block max-w-full`}
-                                style={{
-                                  backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
-                                  color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
-                                }}
-                              >
-                                {item.badge}
-                              </span>
-                            )}
-
+                          {item.badge && (
                             <span 
-                              style={{
-                                background: paletaHarmonica.unitPillBackground,
-                                color: paletaHarmonica.unitPillTextColor,
-                                border: paletaHarmonica.unitPillBorder,
-                              }}
                               className={`${
-                                effectiveRows >= 4 ? 'text-[6px] px-1 py-0.2' :
-                                effectiveRows === 3 ? 'text-[7px] px-1.5 py-0.5' :
-                                'text-[8px] px-1.5 py-0.5'
-                              } font-black uppercase rounded shadow-sm whitespace-nowrap inline-block`}
+                                effectiveRows >= 4 ? 'text-[7.5px] px-1.5 py-0.5' :
+                                effectiveRows === 3 ? 'text-[8.5px] sm:text-[9.5px] px-2 py-0.5' :
+                                'text-[9.5px] sm:text-[10.5px] px-2.5 py-0.5'
+                              } uppercase font-black rounded-md shadow-md text-center tracking-wider truncate inline-block max-w-full`}
+                              style={{
+                                backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
+                                color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
+                              }}
                             >
-                              {item.unit || 'UN'}
+                              {item.badge}
                             </span>
-                          </div>
+                          )}
 
                           {/* Título Comercial do Produto em Destaque */}
                           <h4 
@@ -1194,12 +1176,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     {/* Header Superior do Card: Badge à esquerda, Ações e Unidade à direita (sem sobreposição) */}
                     <div className="absolute top-1.5 inset-x-1.5 z-20 flex items-start justify-between gap-1 pointer-events-none">
                       {/* Left: Badge Promocional */}
-                      <div className="pointer-events-auto shrink-0 max-w-[62%]">
+                      <div className="pointer-events-auto shrink-0 max-w-[85%]">
                         {item.badge && (
                           <span 
                             className={`${
-                              effectiveRows >= 4 ? 'text-[7px] px-1 py-0.2' :
-                              effectiveRows === 3 ? 'text-[7.5px] sm:text-[8px] px-1.5 py-0.5' :
+                              effectiveRows >= 4 ? 'text-[7px] px-1.5 py-0.5' :
+                              effectiveRows === 3 ? 'text-[8px] sm:text-[8.5px] px-2 py-0.5' :
                               'text-[8.5px] sm:text-[9.5px] px-2 py-0.5'
                             } uppercase font-black rounded-md shadow-md text-center tracking-wider truncate block`}
                             style={{
@@ -1212,10 +1194,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         )}
                       </div>
 
-                      {/* Right: Botão Duplo + Pílula de Unidade */}
-                      <div className="flex items-center gap-1 pointer-events-auto ml-auto shrink-0">
-                        {/* Botão Duplo rápido (Não visível no PNG de exportação) */}
-                        {!isExporting && (
+                      {/* Right: Botão Duplo rápido (Não visível no PNG de exportação) */}
+                      {!isExporting && (
+                        <div className="pointer-events-auto ml-auto shrink-0">
                           <button
                             type="button"
                             onClick={(e) => handleToggleHero(item.id, e)}
@@ -1229,24 +1210,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                             <Star className={`w-2 h-2 ${isHero ? 'fill-black text-black' : 'text-amber-400'}`} />
                             <span className="hidden sm:inline">{isHero ? 'Duplo' : '1x'}</span>
                           </button>
-                        )}
-
-                        {/* Unit Pill com harmonização cromática */}
-                        <span 
-                          style={{
-                            background: paletaHarmonica.unitPillBackground,
-                            color: paletaHarmonica.unitPillTextColor,
-                            border: paletaHarmonica.unitPillBorder,
-                          }}
-                          className={`font-black uppercase rounded shadow-sm whitespace-nowrap inline-block ${
-                            effectiveRows >= 4 ? 'text-[6px] px-1 py-0.2' :
-                            effectiveRows === 3 ? 'text-[7px] px-1.5 py-0.5' :
-                            'text-[8px] sm:text-[9px] px-1.5 py-0.5'
-                          }`}
-                        >
-                          {item.unit || 'UN'}
-                        </span>
-                      </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Product Image Frame com Pedestal Estúdio: flex-1 elástico para auto-ajuste perfeito sem estourar o card */}
