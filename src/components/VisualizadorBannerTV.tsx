@@ -424,15 +424,6 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   >
                     {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
                   </h1>
-
-                  {campaign.campaignSubtitle && (
-                    <span 
-                      className="text-[9px] sm:text-[10px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
-                      style={{ fontFamily: "'Montserrat', sans-serif" }}
-                    >
-                      {campaign.campaignSubtitle}
-                    </span>
-                  )}
                 </div>
 
                 {/* WhatsApp CTA */}
