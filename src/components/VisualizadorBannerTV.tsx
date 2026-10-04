@@ -329,7 +329,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         {(isSquare || isVertical) ? (
           <div 
             id="tv-banner-header"
-            className="relative z-10 px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5 flex flex-col shrink-0 w-full justify-between border-b-2 sm:border-b-4 overflow-hidden"
+            className={`relative z-10 ${
+              isVertical ? 'px-2.5 sm:px-3 pt-2 sm:pt-2.5 pb-1 sm:pb-1.5' : 'px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5'
+            } flex flex-col shrink-0 w-full justify-between border-b-2 sm:border-b-4 overflow-hidden`}
             style={{
               borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
               fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
@@ -375,9 +377,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             <div className="absolute top-1/2 left-10 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
 
             {/* Linha Superior do Cabeçalho: Logo à Esquerda e Título + WhatsApp à Direita */}
-            <div className="relative z-10 flex flex-row items-center justify-between w-full gap-2 sm:gap-4 pb-1 sm:pb-1.5">
+            <div className="relative z-10 flex flex-row items-center justify-between w-full gap-2 sm:gap-3 pb-1 sm:pb-1.5">
               {/* Esquerda: Logo Oficial */}
-              <div className="flex items-center justify-start shrink-0 max-w-[44%] sm:max-w-[46%] py-0.5">
+              <div className={`flex items-center justify-start shrink-0 ${isVertical ? 'max-w-[38%]' : 'max-w-[44%] sm:max-w-[46%]'} py-0.5`}>
                 {campaign.showClientLogo !== false && (
                   isBelissima ? (
                     <img
@@ -385,7 +387,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       crossOrigin="anonymous"
                       src="/logos/belissima-casa-di-frutas.png"
                       alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                      className="max-h-20 sm:max-h-24 md:max-h-28 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
+                      className={`${
+                        isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
+                      } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none`}
                       referrerPolicy="no-referrer"
                       onError={(e) => {
                         const target = e.currentTarget;
@@ -400,11 +404,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       crossOrigin="anonymous"
                       src={campaign.clientLogoUrl}
                       alt={campaign.clientName || 'Logo Oficial'}
-                      className="max-h-20 sm:max-h-24 md:max-h-28 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
+                      className={`${
+                        isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
+                      } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none`}
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="bg-amber-400 text-black font-black text-sm sm:text-base px-3 py-1.5 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
+                    <div className="bg-amber-400 text-black font-black text-xs sm:text-sm px-2.5 py-1 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
                       {campaign.clientName || 'SUPERMERCADO'}
                     </div>
                   )
@@ -412,11 +418,13 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               </div>
 
               {/* Direita: Título da Campanha e WhatsApp CTA */}
-              <div className="flex-1 min-w-0 max-w-[56%] flex flex-col items-end text-right justify-center gap-1 sm:gap-1.5">
+              <div className={`flex-1 min-w-0 ${isVertical ? 'max-w-[62%]' : 'max-w-[56%]'} flex flex-col items-end text-right justify-center gap-1 sm:gap-1.5`}>
                 {/* Título Superior */}
                 <div className="w-full flex flex-col items-end text-right">
                   <h1 
-                    className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.15] block break-words"
+                    className={`w-full ${
+                      isVertical ? 'text-[13px] sm:text-[15px] md:text-base leading-tight' : 'text-base sm:text-lg md:text-xl lg:text-[22px] leading-[1.15]'
+                    } font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight block break-words`}
                     style={{
                       fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
                       color: effectiveStyles.campaignTitleColor || '#fde047',
@@ -426,14 +434,20 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   </h1>
                 </div>
 
-                {/* WhatsApp CTA */}
+                {/* WhatsApp CTA: Sempre em Linha Única sem Cortar Informações */}
                 <div className="w-full flex items-center justify-end">
                   <div 
-                    className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.2 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-[10px] sm:text-[11px] font-black shadow-md backdrop-blur-xs transition-colors max-w-full"
+                    className={`inline-flex items-center ${
+                      isVertical ? 'gap-1 px-2 py-0.5' : 'gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.2'
+                    } rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-md backdrop-blur-xs transition-colors shrink-0 max-w-full`}
                     title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
                   >
-                    <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-200 shrink-0" />
-                    <span className="tracking-tight whitespace-nowrap truncate">
+                    <MessageCircle className={`${isVertical ? 'w-2.5 h-2.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
+                    <span className={`${
+                      isVertical
+                        ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[6.8px] sm:text-[7.2px]' : 'text-[7.5px] sm:text-[8px]')
+                        : 'text-[9.5px] sm:text-[10.5px]'
+                    } font-black tracking-tight whitespace-nowrap`}>
                       Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
                     </span>
                   </div>
@@ -441,11 +455,15 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               </div>
             </div>
 
-            {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Uma Linha */}
-            <div className="relative z-10 w-full flex items-center justify-center gap-1.5 pt-1 border-t border-white/10 text-center">
-              <Calendar className="w-3 h-3 text-amber-400 shrink-0 drop-shadow" />
+            {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Linha Única sem Cortar */}
+            <div className="relative z-10 w-full flex items-center justify-center gap-1 sm:gap-1.5 pt-1 border-t border-white/10 text-center px-1">
+              <Calendar className={`${isVertical ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-amber-400 shrink-0 drop-shadow`} />
               <span 
-                className="text-[8.5px] sm:text-[9.5px] md:text-[10px] font-bold text-amber-200 tracking-wider uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] truncate max-w-full"
+                className={`${
+                  isVertical
+                    ? ((campaign.validityText && campaign.validityText.length > 55) ? 'text-[6.8px] sm:text-[7.2px]' : 'text-[7.5px] sm:text-[8px]')
+                    : 'text-[8.5px] sm:text-[9.5px] md:text-[10px]'
+                } font-bold text-amber-200 ${isVertical ? 'tracking-normal' : 'tracking-wide'} uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
                 style={{ fontFamily: "'Montserrat', sans-serif" }}
                 title={campaign.validityText || 'Ofertas válidas até domingo ou enquanto durarem os estoques'}
               >

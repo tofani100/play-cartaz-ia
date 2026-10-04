@@ -683,14 +683,20 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     )}
                   </div>
 
-                  {/* WhatsApp CTA */}
+                  {/* WhatsApp CTA: Sempre em Linha Única sem Cortar */}
                   <div className="w-full flex items-center justify-center sm:justify-end">
                     <div 
-                      className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.2 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-[10.5px] sm:text-[11.5px] font-black shadow-md backdrop-blur-xs transition-colors max-w-full"
+                      className={`inline-flex items-center ${
+                        targetPreset === 'whatsapp-mobile' ? 'gap-1 px-2 py-0.5' : 'gap-1.5 px-3 py-1 sm:py-1.2'
+                      } rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-md backdrop-blur-xs transition-colors shrink-0 max-w-full`}
                       title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
                     >
-                      <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-200 shrink-0" />
-                      <span className="tracking-tight whitespace-nowrap truncate">
+                      <MessageCircle className={`${targetPreset === 'whatsapp-mobile' ? 'w-2.5 h-2.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
+                      <span className={`${
+                        targetPreset === 'whatsapp-mobile'
+                          ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[7.2px]' : 'text-[8px] sm:text-[8.5px]')
+                          : 'text-[10px] sm:text-[11px]'
+                      } font-black tracking-tight whitespace-nowrap`}>
                         Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
                       </span>
                     </div>
@@ -698,11 +704,15 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 </div>
               </div>
 
-              {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Uma Linha */}
-              <div className="relative z-10 w-full flex items-center justify-center gap-1.5 pt-1 border-t border-white/10 text-center">
-                <Calendar className="w-3 h-3 text-amber-400 shrink-0 drop-shadow" />
+              {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Linha Única sem Cortar */}
+              <div className="relative z-10 w-full flex items-center justify-center gap-1 sm:gap-1.5 pt-1 border-t border-white/10 text-center px-1">
+                <Calendar className={`${targetPreset === 'whatsapp-mobile' ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-amber-400 shrink-0 drop-shadow`} />
                 <span 
-                  className="text-[8.5px] sm:text-[9.5px] md:text-[10px] font-bold text-amber-200 tracking-wider uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] truncate max-w-full"
+                  className={`${
+                    targetPreset === 'whatsapp-mobile'
+                      ? (validityDisplay.length > 55 ? 'text-[7px] sm:text-[7.5px]' : 'text-[7.5px] sm:text-[8px]')
+                      : 'text-[8.5px] sm:text-[9.5px] md:text-[10px]'
+                  } font-bold text-amber-200 ${targetPreset === 'whatsapp-mobile' ? 'tracking-normal' : 'tracking-wide'} uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
                   style={{ fontFamily: "'Montserrat', sans-serif" }}
                   title={validityDisplay}
                 >
