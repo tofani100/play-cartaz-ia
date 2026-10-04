@@ -418,12 +418,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               </div>
 
               {/* Direita: Título da Campanha e WhatsApp CTA */}
-              <div className={`flex-1 min-w-0 ${isVertical ? 'max-w-[62%]' : 'max-w-[56%]'} flex flex-col items-end text-right justify-center gap-1 sm:gap-1.5`}>
+              <div className={`flex-1 min-w-0 ${isVertical ? 'max-w-[63%]' : 'max-w-[56%]'} flex flex-col items-end text-right justify-center gap-1.5 sm:gap-2`}>
                 {/* Título Superior */}
                 <div className="w-full flex flex-col items-end text-right">
                   <h1 
                     className={`w-full ${
-                      isVertical ? 'text-[13px] sm:text-[15px] md:text-base leading-tight' : 'text-base sm:text-lg md:text-xl lg:text-[22px] leading-[1.15]'
+                      isVertical ? 'text-[15px] sm:text-[17px] md:text-[18px] leading-[1.12]' : 'text-base sm:text-lg md:text-xl lg:text-[22px] leading-[1.15]'
                     } font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight block break-words`}
                     style={{
                       fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
@@ -434,18 +434,18 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   </h1>
                 </div>
 
-                {/* WhatsApp CTA: Sempre em Linha Única sem Cortar Informações */}
+                {/* WhatsApp CTA: Destaque visual aumentado, chamativo e sempre em linha única */}
                 <div className="w-full flex items-center justify-end">
                   <div 
                     className={`inline-flex items-center ${
-                      isVertical ? 'gap-1 px-2 py-0.5' : 'gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.2'
-                    } rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-md backdrop-blur-xs transition-colors shrink-0 max-w-full`}
+                      isVertical ? 'gap-1.5 px-2.5 py-1' : 'gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.2'
+                    } rounded-full bg-emerald-600 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-lg backdrop-blur-xs transition-colors shrink-0 max-w-full`}
                     title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
                   >
-                    <MessageCircle className={`${isVertical ? 'w-2.5 h-2.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
+                    <MessageCircle className={`${isVertical ? 'w-3 h-3 sm:w-3.5 sm:h-3.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
                     <span className={`${
                       isVertical
-                        ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[6.8px] sm:text-[7.2px]' : 'text-[7.5px] sm:text-[8px]')
+                        ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[8px] sm:text-[8.5px]' : 'text-[9px] sm:text-[9.5px]')
                         : 'text-[9.5px] sm:text-[10.5px]'
                     } font-black tracking-tight whitespace-nowrap`}>
                       Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}

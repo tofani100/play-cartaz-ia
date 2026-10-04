@@ -687,14 +687,14 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                   <div className="w-full flex items-center justify-center sm:justify-end">
                     <div 
                       className={`inline-flex items-center ${
-                        targetPreset === 'whatsapp-mobile' ? 'gap-1 px-2 py-0.5' : 'gap-1.5 px-3 py-1 sm:py-1.2'
-                      } rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-md backdrop-blur-xs transition-colors shrink-0 max-w-full`}
+                        targetPreset === 'whatsapp-mobile' ? 'gap-1.5 px-2.5 py-1' : 'gap-1.5 px-3 py-1 sm:py-1.2'
+                      } rounded-full bg-emerald-600 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-lg backdrop-blur-xs transition-colors shrink-0 max-w-full`}
                       title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
                     >
-                      <MessageCircle className={`${targetPreset === 'whatsapp-mobile' ? 'w-2.5 h-2.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
+                      <MessageCircle className={`${targetPreset === 'whatsapp-mobile' ? 'w-3 h-3 sm:w-3.5 sm:h-3.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
                       <span className={`${
                         targetPreset === 'whatsapp-mobile'
-                          ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[7.2px]' : 'text-[8px] sm:text-[8.5px]')
+                          ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[8px] sm:text-[8.5px]' : 'text-[9px] sm:text-[9.5px]')
                           : 'text-[10px] sm:text-[11px]'
                       } font-black tracking-tight whitespace-nowrap`}>
                         Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
