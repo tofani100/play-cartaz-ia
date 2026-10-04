@@ -19,7 +19,11 @@ import {
   CheckCircle2,
   MessageCircle,
   Eye,
-  Grid
+  Grid,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical
 } from 'lucide-react';
 import { BannerCampaign, ThemeColors, ProductItem, BannerCustomStyles } from '../tiposGeradorBanner';
 import { EtiquetaPrecoPromocional } from './EtiquetaPrecoPromocional';
@@ -33,6 +37,8 @@ interface VisualizadorTabloideOfertasProps {
   currentProductIndex?: number;
   onUpdateCampaign?: (updated: Partial<BannerCampaign>) => void;
   onSelectProductIndex?: (index: number) => void;
+  onUpdateProduct?: (index: number, updated: Partial<ProductItem>) => void;
+  onReorderProduct?: (fromIndex: number, toIndex: number) => void;
 }
 
 export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasProps> = ({ 
@@ -41,6 +47,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
   currentProductIndex,
   onUpdateCampaign,
   onSelectProductIndex,
+  onUpdateProduct,
+  onReorderProduct,
 }) => {
   const targetProdIdx = currentProductIndex ?? campaign.activeProductIndex ?? 0;
   const activeProduct = campaign.products[targetProdIdx] || campaign.products[0];
@@ -58,38 +66,130 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
   // Target format preset: 'whatsapp-mobile' | 'instagram-feed' | 'classic-a4'
   const targetPreset = campaign.tabloidTarget || 'whatsapp-mobile';
 
-  // Product Selection State
+  // Product Selection & Drag State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null);
 
   const isBelissima = 
     campaign.clientName.toLowerCase().includes('belíssima') || 
     campaign.clientName.toLowerCase().includes('belissima') ||
     (campaign.clientLogoUrl && campaign.clientLogoUrl.includes('belissima'));
 
-  // Calculate slots available
+  // Calculate slots available in the chosen grid
   const totalSlots = rows === 0 ? campaign.products.length : columns * rows;
 
-  // Selected products for the tabloid
+  // Candidatos de produtos para o tablóide respeitando a ordem de campaign.products
+  const candidateProducts: ProductItem[] = useMemo(() => {
+    if (campaign.tabloidSelectedProductIds && campaign.tabloidSelectedProductIds.length > 0) {
+      const idSet = new Set(campaign.tabloidSelectedProductIds);
+      return campaign.products.filter(p => idSet.has(p.id));
+    }
+    return campaign.products;
+  }, [campaign.products, campaign.tabloidSelectedProductIds]);
+
+  // Lista de produtos renderizados respeitando o limite de vagas
+  // Se qualquer banner for duplo, ele consome 2 vagas (quando colunas > 1).
+  // "Caso não caiba na quantidade selecionada, que elimine o ultimo da lista"
+  const productsToRender: ProductItem[] = useMemo(() => {
+    if (rows === 0) return candidateProducts;
+
+    const maxCapacity = columns * rows;
+    const result: ProductItem[] = [];
+    let currentUsedSlots = 0;
+
+    for (const item of candidateProducts) {
+      const cost = (item.isHero && columns > 1) ? 2 : 1;
+      if (currentUsedSlots + cost <= maxCapacity) {
+        result.push(item);
+        currentUsedSlots += cost;
+      }
+      if (currentUsedSlots >= maxCapacity) {
+        break;
+      }
+    }
+
+    return result;
+  }, [candidateProducts, columns, rows]);
+
+  // Total de vagas efetivamente ocupadas na grade
+  const slotsUsed = useMemo(() => {
+    return productsToRender.reduce((sum, item) => sum + ((item.isHero && columns > 1) ? 2 : 1), 0);
+  }, [productsToRender, columns]);
+
+  // Selected products for the tabloid modal
   const activeSelectedIds = useMemo(() => {
     if (campaign.tabloidSelectedProductIds && campaign.tabloidSelectedProductIds.length > 0) {
       return campaign.tabloidSelectedProductIds;
     }
-    // Default: first N products
-    return campaign.products.slice(0, totalSlots).map(p => p.id);
-  }, [campaign.tabloidSelectedProductIds, campaign.products, totalSlots]);
+    return productsToRender.map(p => p.id);
+  }, [campaign.tabloidSelectedProductIds, productsToRender]);
 
-  // Filtered products list to render in the grid
-  const productsToRender: ProductItem[] = useMemo(() => {
-    if (activeSelectedIds.length > 0) {
-      const selected = campaign.products.filter(p => activeSelectedIds.includes(p.id));
-      if (selected.length > 0) {
-        return rows === 0 ? selected : selected.slice(0, totalSlots);
+  // Toggle duplo / super destaque (isHero) em qualquer banner
+  const handleToggleHero = (productId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const prodIdx = campaign.products.findIndex(p => p.id === productId);
+    if (prodIdx === -1) return;
+    const currentHero = Boolean(campaign.products[prodIdx].isHero);
+    const nextHero = !currentHero;
+
+    if (onUpdateProduct) {
+      onUpdateProduct(prodIdx, { isHero: nextHero });
+    } else if (onUpdateCampaign) {
+      const updatedProducts = [...campaign.products];
+      updatedProducts[prodIdx] = { ...updatedProducts[prodIdx], isHero: nextHero };
+      onUpdateCampaign({ products: updatedProducts });
+    }
+
+    setToastMessage(
+      nextHero
+        ? `⭐ Banner #${prodIdx + 1} marcado como DUPLO (ocupa 2 vagas de destaque)!`
+        : `✓ Banner #${prodIdx + 1} definido como NORMAL (1 vaga).`
+    );
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  // Reordenar banners (drag and drop ou setas)
+  const handleReorder = (fromId: string, toId: string) => {
+    if (!fromId || !toId || fromId === toId) return;
+    const fromIdx = campaign.products.findIndex(p => p.id === fromId);
+    const toIdx = campaign.products.findIndex(p => p.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    if (onReorderProduct) {
+      onReorderProduct(fromIdx, toIdx);
+    } else if (onUpdateCampaign) {
+      const updatedProducts = [...campaign.products];
+      const [moved] = updatedProducts.splice(fromIdx, 1);
+      updatedProducts.splice(toIdx, 0, moved);
+      onUpdateCampaign({ products: updatedProducts });
+    }
+
+    if (campaign.tabloidSelectedProductIds && campaign.tabloidSelectedProductIds.length > 0 && onUpdateCampaign) {
+      const currentList = [...campaign.tabloidSelectedProductIds];
+      const fPos = currentList.indexOf(fromId);
+      const tPos = currentList.indexOf(toId);
+      if (fPos !== -1 && tPos !== -1) {
+        const [m] = currentList.splice(fPos, 1);
+        currentList.splice(tPos, 0, m);
+        onUpdateCampaign({ tabloidSelectedProductIds: currentList });
       }
     }
-    return rows === 0 ? campaign.products : campaign.products.slice(0, totalSlots);
-  }, [campaign.products, activeSelectedIds, totalSlots, rows]);
+
+    setToastMessage('↔️ Posição dos banners reorganizada com sucesso!');
+    setTimeout(() => setToastMessage(null), 2000);
+  };
+
+  const handleShiftPosition = (productId: string, direction: 'prev' | 'next', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const currentIdx = campaign.products.findIndex(p => p.id === productId);
+    if (currentIdx === -1) return;
+    const targetIdx = direction === 'prev' ? currentIdx - 1 : currentIdx + 1;
+    if (targetIdx < 0 || targetIdx >= campaign.products.length) return;
+    handleReorder(productId, campaign.products[targetIdx].id);
+  };
 
   // Update Grid Columns
   const handleSetColumns = (newCols: number) => {
@@ -157,13 +257,25 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     }
   };
 
-  // Auto-fill exactly the number of slots
+  // Auto-fill exactly the number of slots, accounting for duplo items
   const handleFillSlots = () => {
-    const fillIds = campaign.products.slice(0, totalSlots).map(p => p.id);
+    const maxCapacity = rows === 0 ? campaign.products.length : columns * rows;
+    const fillIds: string[] = [];
+    let used = 0;
+
+    for (const prod of campaign.products) {
+      const cost = (prod.isHero && columns > 1) ? 2 : 1;
+      if (used + cost <= maxCapacity) {
+        fillIds.push(prod.id);
+        used += cost;
+      }
+      if (used >= maxCapacity) break;
+    }
+
     if (onUpdateCampaign) {
       onUpdateCampaign({ tabloidSelectedProductIds: fillIds });
     }
-    setToastMessage(`✅ ${fillIds.length} produtos preenchidos automaticamente para as ${totalSlots} vagas.`);
+    setToastMessage(`✅ ${fillIds.length} produtos preenchidos automaticamente ocupando as ${used} vagas da grade.`);
     setTimeout(() => setToastMessage(null), 2500);
   };
 
@@ -197,11 +309,23 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     const el = document.getElementById('tabloid-capture');
     if (!el) return;
 
+    setIsExporting(true);
     setToastMessage('Copiando imagem para WhatsApp Web...');
     try {
       const canvas = await toCanvas(el, {
         quality: 1.0,
         pixelRatio: 2,
+        filter: (node) => {
+          if (node instanceof HTMLElement && (
+            node.classList.contains('group-hover:opacity-100') ||
+            node.classList.contains('no-export') ||
+            node.dataset.exportHide === 'true' ||
+            node.id === 'tv-card-toolbar'
+          )) {
+            return false;
+          }
+          return true;
+        },
       });
 
       canvas.toBlob(async (blob) => {
@@ -219,6 +343,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
       console.warn('Erro ao copiar imagem:', err);
       // Fallback: download
       handleDownloadImage();
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -574,7 +700,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             </div>
           ) : (
             <div 
-              className={`grid gap-2.5 sm:gap-3.5 ${
+              className={`grid gap-2.5 sm:gap-3.5 [grid-auto-flow:dense] ${
                 columns === 1
                   ? 'grid-cols-1'
                   : columns === 2
@@ -591,9 +717,42 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                   ...(item.customStyles || {}),
                 };
 
+                const isDragging = draggedCardId === item.id;
+                const isDragOver = dragOverCardId === item.id && draggedCardId !== item.id;
+
                 return (
                   <div
                     key={item.id || idx}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedCardId(item.id);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', item.id);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverCardId !== item.id) {
+                        setDragOverCardId(item.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverCardId === item.id) {
+                        setDragOverCardId(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedCardId && draggedCardId !== item.id) {
+                        handleReorder(draggedCardId, item.id);
+                      }
+                      setDraggedCardId(null);
+                      setDragOverCardId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedCardId(null);
+                      setDragOverCardId(null);
+                    }}
                     onClick={() => {
                       if (onSelectProductIndex) {
                         const originalIdx = campaign.products.findIndex(p => p.id === item.id);
@@ -603,11 +762,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     style={{
                       borderColor: itemStyles.cardBorderColor ? `${itemStyles.cardBorderColor}aa` : undefined,
                     }}
-                    className={`group relative rounded-xl overflow-hidden border transition-all flex flex-col justify-between cursor-pointer select-none ${
+                    className={`group relative rounded-xl overflow-hidden border transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing select-none ${
                       isHero && columns > 1
                         ? 'col-span-2 bg-gradient-to-br from-neutral-900 via-neutral-850 to-neutral-950 border-amber-400 shadow-xl'
                         : 'bg-neutral-900/95 border-neutral-800 hover:border-amber-500/60 shadow-md hover:shadow-xl'
+                    } ${
+                      isDragging ? 'opacity-35 scale-95 border-dashed border-amber-400' : ''
+                    } ${
+                      isDragOver ? 'ring-2 ring-amber-400 bg-amber-500/25 scale-[1.02]' : ''
                     }`}
+                    title="Arraste para mover de posição ou clique para editar este produto"
                   >
                     {/* Badge Promotional Stamp Top Left */}
                     {item.badge && (
@@ -621,6 +785,25 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         >
                           {item.badge}
                         </span>
+                      </div>
+                    )}
+
+                    {/* Botão Flutuante: Alternar Duplo (2 Vagas) / 1 Vaga (Não visível na exportação) */}
+                    {!isExporting && (
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 no-export opacity-85 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleHero(item.id, e)}
+                          className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase flex items-center gap-1 shadow-md transition-all cursor-pointer ${
+                            isHero
+                              ? 'bg-amber-400 hover:bg-amber-300 text-black ring-1 ring-amber-300'
+                              : 'bg-black/80 hover:bg-neutral-900 text-neutral-300 hover:text-amber-300 border border-white/20'
+                          }`}
+                          title={isHero ? 'Clique para voltar ao tamanho normal (1 vaga)' : 'Clique para tornar DUPLO (2 vagas de destaque)'}
+                        >
+                          <Star className={`w-2.5 h-2.5 ${isHero ? 'fill-black text-black' : 'text-amber-400'}`} />
+                          <span>{isHero ? '⭐ Duplo (2x)' : '1 Vaga'}</span>
+                        </button>
                       </div>
                     )}
 
@@ -659,9 +842,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                           columns === 1 
                             ? 'max-h-40 sm:max-h-48' 
                             : columns === 2 
-                            ? 'max-h-28 sm:max-h-36' 
+                            ? (isHero ? 'max-h-36 sm:max-h-44' : 'max-h-28 sm:max-h-36') 
                             : columns === 3
-                            ? 'max-h-22 sm:max-h-26'
+                            ? (isHero ? 'max-h-28 sm:max-h-34' : 'max-h-22 sm:max-h-26')
                             : 'max-h-18 sm:max-h-22'
                         }`}
                         referrerPolicy="no-referrer"
@@ -716,6 +899,14 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         </div>
                       )}
                     </div>
+
+                    {/* Dica de arrasto sutil no rodapé ao passar o mouse */}
+                    {!isExporting && (
+                      <div className="absolute bottom-1 right-1 z-10 no-export opacity-0 group-hover:opacity-60 transition-opacity text-[8px] font-bold text-neutral-400 flex items-center gap-0.5 pointer-events-none">
+                        <GripVertical className="w-2.5 h-2.5" />
+                        <span>Arraste</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -767,8 +958,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
       {/* MODAL INTERATIVO: ESCOLHER QUAIS IMAGENS / PRODUTOS EXIBIR   */}
       {/* ============================================================ */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-3xl max-h-[85vh] bg-neutral-900 border-2 border-amber-400/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl max-h-[88vh] bg-neutral-900 border-2 border-amber-400/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="p-4 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between">
               <div>
@@ -776,8 +967,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                   <SlidersHorizontal className="w-5 h-5 text-amber-400" />
                   <span>Escolher Imagens e Produtos do Tablóide</span>
                 </h3>
-                <p className="text-xs text-neutral-400 mt-0.5">
-                  Selecione exatamente quais produtos serão exibidos na lâmina ({activeSelectedIds.length} selecionados para {totalSlots} vagas).
+                <p className="text-xs text-neutral-400 mt-1 flex flex-wrap items-center gap-2">
+                  <span>Grade Selecionada: <strong className="text-amber-400">{columns} cols × {rows === 0 ? 'Todas' : `${rows} linhas`} ({totalSlots} vagas)</strong></span>
+                  <span>•</span>
+                  <span>Vagas Ocupadas: <strong className="text-white">{slotsUsed} de ${totalSlots} vagas</strong> por <strong className="text-amber-400">{productsToRender.length} banner(s)</strong></span>
                 </p>
               </div>
 
@@ -796,9 +989,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 <button
                   type="button"
                   onClick={handleFillSlots}
-                  className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-lg cursor-pointer transition-colors"
+                  className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-lg cursor-pointer transition-colors shadow-sm"
+                  title="Preencher exatamente as vagas disponíveis na grade com os primeiros banners da lista"
                 >
-                  Preencher Vagas ({totalSlots})
+                  Preencher Grade ({totalSlots} Vagas)
                 </button>
                 <button
                   type="button"
@@ -816,34 +1010,122 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 </button>
               </div>
 
-              <span className="text-neutral-400 font-bold">
-                Total disponível: {campaign.products.length} banners
-              </span>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-neutral-400 font-bold">
+                  Total de banners: {campaign.products.length}
+                </span>
+                <span className="text-amber-300/80 text-[11px] hidden sm:inline">
+                  💡 Arraste os cards para mudar a ordem ou clique em ⭐ para tornar Duplo
+                </span>
+              </div>
             </div>
 
-            {/* Products Grid to Check/Uncheck */}
+            {/* Products Grid to Check/Uncheck, Reorder, and Toggle Duplo */}
             <div className="p-4 overflow-y-auto flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 bg-neutral-900">
               {campaign.products.map((prod, idx) => {
                 const isSelected = activeSelectedIds.includes(prod.id);
+                const isRendered = productsToRender.some(p => p.id === prod.id);
+                const isDuplo = Boolean(prod.isHero);
+
+                const isDragging = draggedCardId === prod.id;
+                const isDragOver = dragOverCardId === prod.id && draggedCardId !== prod.id;
 
                 return (
                   <div
                     key={prod.id}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedCardId(prod.id);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', prod.id);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverCardId !== prod.id) {
+                        setDragOverCardId(prod.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverCardId === prod.id) {
+                        setDragOverCardId(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedCardId && draggedCardId !== prod.id) {
+                        handleReorder(draggedCardId, prod.id);
+                      }
+                      setDraggedCardId(null);
+                      setDragOverCardId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedCardId(null);
+                      setDragOverCardId(null);
+                    }}
                     onClick={() => handleToggleProductSelection(prod.id)}
-                    className={`relative p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                      isSelected
+                    className={`relative p-2.5 rounded-xl border transition-all cursor-grab active:cursor-grabbing flex flex-col justify-between select-none ${
+                      isRendered
                         ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30 shadow-md'
-                        : 'bg-neutral-950 border-neutral-800 opacity-60 hover:opacity-100'
+                        : isSelected
+                        ? 'bg-red-500/10 border-red-500/50 opacity-70'
+                        : 'bg-neutral-950 border-neutral-800 opacity-50 hover:opacity-90'
+                    } ${
+                      isDragging ? 'opacity-30 scale-95 border-dashed border-amber-400' : ''
+                    } ${
+                      isDragOver ? 'ring-2 ring-amber-400 bg-amber-500/20 scale-[1.02]' : ''
                     }`}
                   >
-                    {/* Checkbox indicator */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-black text-neutral-400">#{idx + 1}</span>
-                      {isSelected ? (
-                        <CheckSquare className="w-5 h-5 text-amber-400" />
-                      ) : (
-                        <Square className="w-5 h-5 text-neutral-600" />
-                      )}
+                    {/* Top Row: Reorder buttons, Index, and Checkbox */}
+                    <div className="flex items-center justify-between mb-1.5 gap-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] font-black text-amber-400">#{idx + 1}</span>
+                        {/* Quick Reorder shift buttons */}
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={(e) => handleShiftPosition(prod.id, 'prev', e)}
+                          className="p-0.5 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-20 cursor-pointer"
+                          title="Mover banner antes"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === campaign.products.length - 1}
+                          onClick={(e) => handleShiftPosition(prod.id, 'next', e)}
+                          className="p-0.5 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-20 cursor-pointer"
+                          title="Mover banner depois"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Checkbox indicator */}
+                      <div>
+                        {isSelected ? (
+                          <CheckSquare className="w-5 h-5 text-amber-400" />
+                        ) : (
+                          <Square className="w-5 h-5 text-neutral-600" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Botão de Destaque Duplo (2 Vagas) */}
+                    <div className="flex items-center justify-between gap-1 mb-2">
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleHero(prod.id, e)}
+                        className={`w-full py-1 px-2 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                          isDuplo
+                            ? 'bg-amber-400 text-black hover:bg-amber-300 ring-1 ring-amber-300 shadow-md'
+                            : 'bg-neutral-800 hover:bg-neutral-750 text-neutral-300 hover:text-white border border-neutral-700'
+                        }`}
+                        title={isDuplo ? 'Banner DUPLO (ocupa 2 vagas). Clique para voltar para 1 vaga.' : 'Tornar este banner DUPLO (2 vagas de destaque no tablóide)'}
+                      >
+                        <Star className={`w-3 h-3 ${isDuplo ? 'fill-black text-black' : 'text-amber-400'}`} />
+                        <span>{isDuplo ? '⭐ Duplo (2 Vagas)' : '1 Vaga (Normal)'}</span>
+                      </button>
                     </div>
 
                     {/* Image Thumbnail */}
@@ -857,14 +1139,27 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       />
                     </div>
 
-                    {/* Title & Price */}
+                    {/* Title & Price & Status */}
                     <div>
                       <h5 className="text-[11px] font-bold text-white line-clamp-1 leading-tight">
                         {prod.title}
                       </h5>
-                      <span className="text-xs font-black text-amber-400 mt-1 block">
-                        R$ {prod.price} <span className="text-[9px] text-neutral-400 font-normal">/{prod.unit}</span>
-                      </span>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs font-black text-amber-400">
+                          R$ {prod.price} <span className="text-[9px] text-neutral-400 font-normal">/{prod.unit}</span>
+                        </span>
+
+                        {/* Status badge */}
+                        {isRendered ? (
+                          <span className="text-[8.5px] font-black uppercase text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
+                            Exibindo
+                          </span>
+                        ) : isSelected ? (
+                          <span className="text-[8px] font-black uppercase text-red-400 bg-red-950/80 px-1 py-0.5 rounded border border-red-800" title="Eliminado por exceder a capacidade da grade">
+                            Cortado
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 );
@@ -872,14 +1167,21 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between">
-              <span className="text-xs text-neutral-400">
-                {activeSelectedIds.length} produto{activeSelectedIds.length !== 1 ? 's' : ''} ativo{activeSelectedIds.length !== 1 ? 's' : ''} no tablóide
-              </span>
+            <div className="p-3.5 bg-neutral-950 border-t border-neutral-800 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-col text-xs text-neutral-400">
+                <span>
+                  <strong className="text-emerald-400">{productsToRender.length} banner(s)</strong> exibidos preenchendo <strong className="text-amber-400">{slotsUsed} de {totalSlots} vagas</strong>.
+                </span>
+                {activeSelectedIds.length > productsToRender.length && (
+                  <span className="text-[11px] text-amber-400/90 font-medium">
+                    ⚠️ {activeSelectedIds.length - productsToRender.length} banner(s) excedente(s) foram cortados automaticamente do final da lista.
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs shadow-lg transition-transform active:scale-95 cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs shadow-lg transition-transform active:scale-95 cursor-pointer ml-auto"
               >
                 Concluir e Exibir Tablóide
               </button>

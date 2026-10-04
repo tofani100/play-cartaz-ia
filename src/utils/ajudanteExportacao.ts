@@ -28,7 +28,12 @@ export async function downloadElementAsPng(elementId: string, filename: string =
       cacheBust: false,
       fontEmbedCSS: FONT_EMBED_CSS,
       filter: (node) => {
-        if (node instanceof HTMLElement && (node.classList.contains('group-hover:opacity-100') || node.id === 'tv-card-toolbar')) {
+        if (node instanceof HTMLElement && (
+          node.classList.contains('group-hover:opacity-100') || 
+          node.classList.contains('no-export') ||
+          node.dataset.exportHide === 'true' ||
+          node.id === 'tv-card-toolbar'
+        )) {
           return false;
         }
         return true;

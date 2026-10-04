@@ -455,12 +455,30 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   <span className="text-[11px] font-extrabold text-amber-400 shrink-0">
                     #{idx + 1}
                   </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateProduct(idx, { isHero: !item.isHero });
+                    }}
+                    className={`p-0.5 rounded transition-colors cursor-pointer shrink-0 ${
+                      item.isHero ? 'text-amber-400 hover:text-amber-300' : 'text-neutral-600 hover:text-neutral-400'
+                    }`}
+                    title={item.isHero ? '⭐ Banner DUPLO (2 vagas no tablóide). Clique para desmarcar.' : 'Clique para tornar banner DUPLO (2 vagas de destaque)'}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${item.isHero ? 'fill-amber-400 text-amber-400' : ''}`} />
+                  </button>
                   <h4 
                     className={`text-xs sm:text-[13px] font-bold truncate ${item.hidden ? 'text-neutral-400 line-through' : 'text-white'}`}
                     title={item.title}
                   >
                     {item.title}
                   </h4>
+                  {item.isHero && (
+                    <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                      Duplo
+                    </span>
+                  )}
                   {item.hidden && (
                     <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
                       Oculto
@@ -470,6 +488,34 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 
                 {/* Botões de Ação reposicionados diretamente abaixo da descrição */}
                 <div className="flex items-center gap-1 mt-1 pt-0.5">
+                  {onReorderProduct && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReorderProduct(idx, idx - 1);
+                        }}
+                        className="p-1 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-20 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                        title="Mover banner para cima"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === products.length - 1}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReorderProduct(idx, idx + 1);
+                        }}
+                        className="p-1 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-20 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                        title="Mover banner para baixo"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => {

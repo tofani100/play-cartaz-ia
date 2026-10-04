@@ -828,6 +828,8 @@ export default function App() {
               currentProductIndex={campaign.activeProductIndex}
               onUpdateCampaign={handleUpdateCampaign}
               onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+              onUpdateProduct={handleUpdateProduct}
+              onReorderProduct={handleReorderProduct}
             />
           ) : (
             <VisualizadorBannerTV
