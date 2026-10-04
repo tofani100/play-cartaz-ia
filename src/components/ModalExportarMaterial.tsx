@@ -19,6 +19,7 @@ import {
   downloadElementAsPng, 
   gerarVideoAnimadoBanner, 
   gerarVideoAnimadoProdutoIndividual, 
+  buildExportFilename,
   VideoExportResult 
 } from '../utils/ajudanteExportacao';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
@@ -73,7 +74,17 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
     setIsExportingImage(true);
     try {
       const targetId = campaign.format === 'tabloid' ? 'tabloid-capture' : 'tv-banner-capture';
-      await downloadElementAsPng(targetId, `playcomunique-${campaign.format}-${Date.now()}.png`);
+      const currentProd = campaign.products[campaign.activeProductIndex || 0];
+      const filename = buildExportFilename({
+        clientName: campaign.clientName,
+        productTitle: campaign.format === 'tabloid' ? undefined : currentProd?.title,
+        campaignTitle: campaign.campaignTitle,
+        format: campaign.format,
+        tabloidTarget: campaign.tabloidTarget,
+        index: campaign.format === 'tabloid' ? undefined : (campaign.activeProductIndex || 0),
+        extension: 'png',
+      });
+      await downloadElementAsPng(targetId, filename);
     } catch (e) {
       console.error(e);
     } finally {
@@ -100,13 +111,14 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
           await new Promise((r) => setTimeout(r, 350));
         }
         const item = campaign.products[idx];
-        const cleanTitle = (item?.title || `produto-${idx + 1}`)
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]/g, '-')
-          .slice(0, 30);
-        const filename = `banner-${cleanTitle}-${idx + 1}.png`;
+        const filename = buildExportFilename({
+          clientName: campaign.clientName,
+          productTitle: item?.title,
+          campaignTitle: campaign.campaignTitle,
+          format: campaign.format,
+          index: idx,
+          extension: 'png',
+        });
         await downloadElementAsPng('tv-banner-capture', filename);
         await new Promise((r) => setTimeout(r, 250));
       }

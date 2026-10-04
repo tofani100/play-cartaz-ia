@@ -1,9 +1,101 @@
-// Utility to capture canvas / DOM elements and record dynamic animated MP4/WebM video with individual element motion
-// Arquitetura de Alta Fidelidade com Motor Nativo do Browser (SVG ForeignObject / toPng) e Fontes Embutidas em Base64
-import { BannerCampaign, ThemeColors } from '../tiposGeradorBanner';
+import { BannerCampaign, BannerFormat, ThemeColors } from '../tiposGeradorBanner';
 import { toCanvas, toPng } from 'html-to-image';
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 import { FONT_EMBED_CSS } from './fontesEmbutidas';
+
+/**
+ * Converte strings para um formato limpo, legível e seguro para sistemas de arquivos
+ * Remove acentos, caracteres especiais e substitui espaços por hifens
+ */
+export function sanitizeFilenamePart(text: string, maxLength = 35): string {
+  if (!text) return '';
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[^a-zA-Z0-9\s_-]/g, '') // remove pontuações/caracteres inválidos
+    .trim()
+    .replace(/\s+/g, '-') // espaços viram hifens
+    .replace(/-+/g, '-') // remove múltiplos hifens consecutivos
+    .slice(0, maxLength);
+}
+
+/**
+ * Retorna o rótulo descritivo de plataforma e formato para a engenharia de arquivos
+ */
+export function getPlatformFormatLabel(
+  format: BannerFormat = '16:9',
+  tabloidTarget?: 'whatsapp-mobile' | 'instagram-feed' | 'classic-a4' | 'instagram-square' | string
+): string {
+  if (format === 'tabloid') {
+    switch (tabloidTarget) {
+      case 'instagram-feed':
+        return 'Tabloide-Instagram-Feed-4x5';
+      case 'instagram-square':
+        return 'Tabloide-Instagram-Feed-1x1';
+      case 'classic-a4':
+        return 'Tabloide-Encarte-A4-Impresso';
+      case 'whatsapp-mobile':
+      default:
+        return 'Tabloide-WhatsApp-Status-9x16';
+    }
+  }
+
+  switch (format) {
+    case '16:9':
+      return 'TV-16x9';
+    case '9:16':
+      return 'WhatsApp-Stories-9x16';
+    case '4:5':
+      return 'Instagram-Feed-4x5';
+    case '1:1':
+      return 'Feed-Quadrado-1x1';
+    default:
+      return 'Banner';
+  }
+}
+
+export interface BuildExportFilenameParams {
+  clientName?: string;
+  productTitle?: string;
+  campaignTitle?: string;
+  format?: BannerFormat;
+  tabloidTarget?: 'whatsapp-mobile' | 'instagram-feed' | 'classic-a4' | 'instagram-square' | string;
+  index?: number;
+  extension?: string;
+}
+
+/**
+ * Engenharia Inteligente de Nomenclatura de Arquivos:
+ * Combina [Cliente]_[Produto/Campanha]_[Formato-Plataforma]_[Data].[ext]
+ */
+export function buildExportFilename({
+  clientName,
+  productTitle,
+  campaignTitle,
+  format = '16:9',
+  tabloidTarget,
+  index,
+  extension = 'png',
+}: BuildExportFilenameParams): string {
+  const cleanClient = sanitizeFilenamePart(clientName || 'Cliente', 30);
+  
+  let cleanItem = '';
+  if (productTitle) {
+    cleanItem = sanitizeFilenamePart(productTitle, 35);
+  } else if (campaignTitle) {
+    cleanItem = sanitizeFilenamePart(campaignTitle, 35);
+  } else {
+    cleanItem = 'Oferta';
+  }
+
+  const indexPrefix = typeof index === 'number' ? `${String(index + 1).padStart(2, '0')}-` : '';
+  const platformLabel = getPlatformFormatLabel(format, tabloidTarget);
+  
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  return `${cleanClient}_${indexPrefix}${cleanItem}_${platformLabel}_${dateStr}.${extension}`;
+}
 
 /**
  * Downloads the visual banner directly as a crisp high-resolution PNG using html-to-image
@@ -1153,16 +1245,14 @@ export async function gerarVideoAnimadoProdutoIndividual(
     onSelectProductIndex(originalIndex);
   }
 
-  const cleanTitle = (prod?.title || `produto-${productIndex + 1}`)
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 30);
-
-  const filename = `banner-animado-${cleanTitle}-${Date.now()}.mp4`;
+  const filename = buildExportFilename({
+    clientName: campaign.clientName,
+    productTitle: prod?.title,
+    campaignTitle: campaign.campaignTitle,
+    format: campaign.format,
+    index: productIndex,
+    extension: 'mp4',
+  });
 
   // 3. Record dynamic video with individual element motion graphics
   return recordLayeredSlidesToVideo(
@@ -1282,15 +1372,12 @@ export async function gerarVideoAnimadoBanner(
 
   const totalDurationSec = totalProducts * perProductSec;
 
-  const cleanTitle = (campaign.campaignTitle || 'ofertas')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 30);
-  const filename = `playcomunique-tv-${campaign.format || '16x9'}-${cleanTitle}-${Date.now()}.mp4`;
+  const filename = buildExportFilename({
+    clientName: campaign.clientName,
+    campaignTitle: campaign.campaignTitle,
+    format: campaign.format,
+    extension: 'mp4',
+  });
 
   // Record using layered motion graphics engine
   return recordLayeredSlidesToVideo(

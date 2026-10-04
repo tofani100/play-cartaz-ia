@@ -84,7 +84,7 @@ export interface BannerCampaign {
   tabloidColumns?: number; // 1, 2, 3, 4 colunas (padrão: 2 para celular/whatsapp)
   tabloidRows?: number; // 2, 3, 4, 5, 6 ou 0 para todas as linhas
   tabloidSelectedProductIds?: string[]; // IDs dos produtos escolhidos para exibição no tablóide
-  tabloidTarget?: 'whatsapp-mobile' | 'instagram-feed' | 'classic-a4'; // Destino / preset do tablóide
+  tabloidTarget?: 'whatsapp-mobile' | 'instagram-feed' | 'instagram-square' | 'classic-a4'; // Destino / preset do tablóide
 }
 
 export interface BannerCustomStyles {

@@ -13,7 +13,8 @@ import {
   Image as ImageIcon,
   ChevronDown,
   Plus,
-  Check
+  Check,
+  Instagram
 } from 'lucide-react';
 import { BannerFormat, ThemePresetId, ClientProfile } from '../tiposGeradorBanner';
 import { APP_VERSION } from '../versao';
@@ -69,13 +70,19 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
     {
       id: '9:16',
       label: 'Vertical 9:16',
-      sublabel: 'Totem / Reels / Stories (1080x1920)',
+      sublabel: 'WhatsApp Status / Stories (1080x1920)',
       icon: <Smartphone className="w-3.5 h-3.5" />,
+    },
+    {
+      id: '4:5',
+      label: 'Instagram Feed (4:5)',
+      sublabel: 'Retrato / Carrossel (1080x1350)',
+      icon: <Instagram className="w-3.5 h-3.5" />,
     },
     {
       id: '1:1',
       label: 'Feed 1:1',
-      sublabel: 'Quadrado (1080x1080)',
+      sublabel: 'Quadrado Instagram & Face (1080x1080)',
       icon: <Square className="w-3.5 h-3.5" />,
     },
     {

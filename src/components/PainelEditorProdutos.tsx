@@ -34,7 +34,7 @@ import { ProductItem, CuratedProduct, BannerCampaign, ThemeColors, BannerCustomS
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
 import { handleImageError } from '../utils/imageFallback';
-import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual } from '../utils/ajudanteExportacao';
+import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual, buildExportFilename } from '../utils/ajudanteExportacao';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
 
 const PALETA_CORES_RAPIDAS = [
@@ -229,13 +229,14 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       onSelectProductIndex(idx);
       await new Promise((r) => setTimeout(r, 280));
       const targetProd = products[idx];
-      const cleanTitle = (targetProd?.title || `produto-${idx + 1}`)
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '-')
-        .slice(0, 35);
-      const filename = `banner-${cleanTitle}-${Date.now()}.png`;
+      const filename = buildExportFilename({
+        clientName: campaign?.clientName || clientName,
+        productTitle: targetProd?.title,
+        campaignTitle: campaign?.campaignTitle,
+        format: campaign?.format || '16:9',
+        index: idx,
+        extension: 'png',
+      });
       await downloadElementAsPng('tv-banner-capture', filename);
     } catch (err) {
       console.error('Erro ao baixar banner individual do produto:', err);

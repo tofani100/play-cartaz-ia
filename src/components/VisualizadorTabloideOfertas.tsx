@@ -28,7 +28,7 @@ import {
 import { BannerCampaign, ThemeColors, ProductItem, BannerCustomStyles } from '../tiposGeradorBanner';
 import { EtiquetaPrecoPromocional } from './EtiquetaPrecoPromocional';
 import { handleImageError } from '../utils/imageFallback';
-import { downloadElementAsPng } from '../utils/ajudanteExportacao';
+import { downloadElementAsPng, buildExportFilename } from '../utils/ajudanteExportacao';
 import { toCanvas } from 'html-to-image';
 import { gerarPaletaHarmonicaTabloide } from '../utils/coloristaHarmonizadorTabloide';
 
@@ -217,16 +217,19 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
   };
 
   // Preset Selection Handler
-  const handleSelectPreset = (preset: 'whatsapp-mobile' | 'instagram-feed' | 'classic-a4') => {
+  const handleSelectPreset = (preset: 'whatsapp-mobile' | 'instagram-feed' | 'instagram-square' | 'classic-a4') => {
     let newCols = 2;
     let newRows = 3;
 
     if (preset === 'whatsapp-mobile') {
       newCols = 2;
-      newRows = 3; // 2x3 = 6 products, perfect for smartphone screens & WhatsApp
+      newRows = 3; // 2x3 = 6 products, perfect for smartphone screens & WhatsApp (9:16)
     } else if (preset === 'instagram-feed') {
       newCols = 2;
-      newRows = 2; // 2x2 = 4 products or 2x3 = 6 products, perfect for square / 4:5 post
+      newRows = 2; // 2x2 = 4 products (or 2x3), perfect for 4:5 portrait post
+    } else if (preset === 'instagram-square') {
+      newCols = 2;
+      newRows = 2; // 2x2 = 4 products, perfect for 1:1 square post
     } else if (preset === 'classic-a4') {
       newCols = 3;
       newRows = 3; // 3x3 = 9 products, standard supermarket paper leaflet
@@ -239,7 +242,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         tabloidRows: newRows,
       });
     }
-    setToastMessage(`✨ Formato ajustado para: ${preset === 'whatsapp-mobile' ? 'WhatsApp & Celular (9:16)' : preset === 'instagram-feed' ? 'Instagram & Facebook (Feed)' : 'Encarte A4 Clássico'}`);
+    const label = 
+      preset === 'whatsapp-mobile' ? 'WhatsApp & Celular (9:16)' :
+      preset === 'instagram-feed' ? 'Instagram Feed (4:5 Retrato)' :
+      preset === 'instagram-square' ? 'Feed Quadrado (1:1)' :
+      'Encarte A4 Clássico';
+    setToastMessage(`✨ Formato ajustado para: ${label}`);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -293,14 +301,35 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     }
   };
 
-  // Export as PNG for WhatsApp and Social Media
+  // Dynamic download button label according to target preset
+  const downloadButtonLabel = useMemo(() => {
+    switch (targetPreset) {
+      case 'instagram-feed':
+        return 'Instagram 4:5';
+      case 'instagram-square':
+        return 'Feed 1:1';
+      case 'classic-a4':
+        return 'Encarte A4';
+      case 'whatsapp-mobile':
+      default:
+        return 'WhatsApp 9:16';
+    }
+  }, [targetPreset]);
+
+  // Export as PNG for WhatsApp, Instagram and Social Media
   const handleDownloadImage = async () => {
     setIsExporting(true);
-    setToastMessage('Gerando imagem em alta resolução para WhatsApp...');
+    setToastMessage(`Gerando imagem em alta resolução para ${downloadButtonLabel}...`);
     try {
-      const filename = `tabloide-whatsapp-${(campaign.clientName || 'ofertas').toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.png`;
+      const filename = buildExportFilename({
+        clientName: campaign.clientName,
+        campaignTitle: campaign.campaignTitle,
+        format: 'tabloid',
+        tabloidTarget: targetPreset,
+        extension: 'png',
+      });
       await downloadElementAsPng('tabloid-capture', filename);
-      setToastMessage('✅ Imagem salva com sucesso! Pronta para enviar aos clientes.');
+      setToastMessage('✅ Imagem salva com sucesso! Pronta para envio ou publicação.');
       setTimeout(() => setToastMessage(null), 4000);
     } catch (err) {
       console.error('Erro ao baixar tabloide:', err);
@@ -363,10 +392,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
   // Responsive container width according to target preset
   const containerMaxWidth = 
     targetPreset === 'whatsapp-mobile'
-      ? 'max-w-[560px]'
+      ? 'max-w-[520px]'
       : targetPreset === 'instagram-feed'
-      ? 'max-w-[660px]'
-      : 'max-w-[880px]';
+      ? 'max-w-[580px]'
+      : targetPreset === 'instagram-square'
+      ? 'max-w-[620px]'
+      : 'max-w-[860px]';
 
   return (
     <div className="w-full flex flex-col items-center p-2 sm:p-4 select-none pb-12">
@@ -411,7 +442,20 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
               }`}
             >
               <Instagram className="w-3.5 h-3.5 text-pink-300" />
-              <span>Instagram & Face (Feed)</span>
+              <span>Instagram Feed (4:5)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSelectPreset('instagram-square')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                targetPreset === 'instagram-square'
+                  ? 'bg-indigo-600 text-white shadow-lg border border-indigo-400'
+                  : 'bg-neutral-800 hover:bg-neutral-750 text-neutral-300 border border-neutral-700'
+              }`}
+            >
+              <Square className="w-3.5 h-3.5 text-indigo-300" />
+              <span>Feed Quadrado (1:1)</span>
             </button>
 
             <button
@@ -491,10 +535,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
               disabled={isExporting}
               onClick={handleDownloadImage}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-              title="Baixar imagem em altíssima qualidade pronta para o WhatsApp e Redes Sociais"
+              title="Baixar imagem em altíssima qualidade pronta para o formato selecionado"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Baixar (WhatsApp)</span>
+              <span>Baixar ({downloadButtonLabel})</span>
             </button>
 
             <button
