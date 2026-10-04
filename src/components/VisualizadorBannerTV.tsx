@@ -475,10 +475,53 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           /* Cabeçalho Normal para TV 16:9 Horizontal */
           <div 
             id="tv-banner-header"
-            className="relative z-10 px-3 sm:px-5 md:px-7 py-2 sm:py-2.5 flex flex-col shrink-0 w-full gap-1 sm:gap-1.5"
+            className="relative z-10 px-3 sm:px-5 md:px-7 py-2 sm:py-2.5 flex flex-col shrink-0 w-full gap-1 sm:gap-1.5 border-b-2 sm:border-b-4 overflow-hidden"
+            style={{
+              borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
+              fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
+            }}
           >
+            {/* Ondas Finas e Elegantes no Fundo (Linhas Douradas Sinuosas de Alta Sofisticação) */}
+            <svg 
+              className="absolute inset-0 w-full h-full pointer-events-none opacity-45 overflow-hidden" 
+              preserveAspectRatio="none" 
+              viewBox="0 0 1000 240"
+            >
+              <defs>
+                <linearGradient id="tvHorizontalGoldWave1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
+                  <stop offset="35%" stopColor="#fde047" stopOpacity="0.8" />
+                  <stop offset="70%" stopColor="#d97706" stopOpacity="0.65" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.15" />
+                </linearGradient>
+                <linearGradient id="tvHorizontalGoldWave2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#fde047" stopOpacity="0.08" />
+                  <stop offset="50%" stopColor="#ffffff" stopOpacity="0.7" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.18" />
+                </linearGradient>
+                <linearGradient id="tvHorizontalGoldWave3" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.12" />
+                  <stop offset="45%" stopColor="#fef08a" stopOpacity="0.75" />
+                  <stop offset="85%" stopColor="#b45309" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+
+              <path d="M -60,35 Q 220,185 500,65 T 1060,105" fill="none" stroke="url(#tvHorizontalGoldWave1)" strokeWidth="1.6" />
+              <path d="M -60,60 Q 240,210 520,90 T 1060,130" fill="none" stroke="url(#tvHorizontalGoldWave2)" strokeWidth="1.0" />
+              <path d="M -60,105 Q 200,245 560,115 T 1060,170" fill="none" stroke="url(#tvHorizontalGoldWave1)" strokeWidth="1.4" />
+              
+              <path d="M -60,165 Q 320,35 680,175 T 1060,85" fill="none" stroke="url(#tvHorizontalGoldWave3)" strokeWidth="1.2" />
+              <path d="M -60,190 Q 340,60 700,200 T 1060,110" fill="none" stroke="url(#tvHorizontalGoldWave2)" strokeWidth="1.0" />
+              <path d="M -60,225 Q 380,95 740,230 T 1060,145" fill="none" stroke="url(#tvHorizontalGoldWave1)" strokeWidth="1.8" />
+            </svg>
+
+            {/* Sutil iluminação ambiente */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/2 left-10 -translate-y-1/2 w-80 h-80 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+
             {/* Linha Superior do Cabeçalho: Logo (Esquerda) e Título da Campanha (Direita) */}
-            <div className="flex items-center justify-between w-full gap-2.5 sm:gap-4">
+            <div className="relative z-10 flex items-center justify-between w-full gap-2.5 sm:gap-4">
               {/* Left: Client Logo without any artificial container */}
               <div className="flex items-center shrink-0 w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24">
                 {campaign.showClientLogo !== false && (
