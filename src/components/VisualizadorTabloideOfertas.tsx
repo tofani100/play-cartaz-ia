@@ -418,7 +418,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         return {
           aspectRatioStyle: '4 / 5',
           targetAspectRatioClass: 'aspect-[4/5]',
-          containerMaxWidth: 'max-w-[520px]',
+          containerMaxWidth: 'max-w-[540px]',
         };
       case 'instagram-square':
         return {
@@ -430,7 +430,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         return {
           aspectRatioStyle: '9 / 16',
           targetAspectRatioClass: 'aspect-[9/16]',
-          containerMaxWidth: 'max-w-[420px]',
+          containerMaxWidth: 'max-w-[440px]',
         };
       case 'classic-a4':
       default:
@@ -1009,60 +1009,41 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       </div>
                     </div>
 
-                    {/* Product Image Frame com Pedestal Estúdio */}
-                    {(() => {
-                      const imgContainerHeight = 
-                        effectiveRows >= 4 
-                          ? 'h-20 sm:h-24 min-h-[75px]' 
-                          : effectiveRows === 3 
-                          ? 'h-28 sm:h-32 min-h-[105px]' 
-                          : columns === 1
-                          ? 'h-44 sm:h-52 min-h-[160px]'
-                          : isHero
-                          ? 'h-36 sm:h-44 min-h-[140px]'
-                          : 'h-32 sm:h-40 min-h-[120px]';
+                    {/* Product Image Frame com Pedestal Estúdio: flex-1 elástico para auto-ajuste perfeito sem estourar o card */}
+                    <div className="relative flex-1 min-h-[46px] w-full pt-6 pb-1 px-1.5 flex items-center justify-center overflow-hidden">
+                      {/* Halo Iluminado do Packshot */}
+                      <div 
+                        className="absolute inset-0 pointer-events-none rounded-t-xl"
+                        style={{ background: paletaHarmonica.imagePedestalGradient }}
+                      />
+                      <div className="absolute bottom-1 w-3/4 h-2 bg-black/40 rounded-full blur-sm" />
 
-                      const imgMaxHeight = 
-                        effectiveRows >= 4 
-                          ? 'max-h-[68px] sm:max-h-[82px]' 
-                          : effectiveRows === 3 
-                          ? 'max-h-[95px] sm:max-h-[112px]' 
-                          : columns === 1
-                          ? 'max-h-[150px] sm:max-h-[190px]'
-                          : isHero
-                          ? 'max-h-[130px] sm:max-h-[160px]'
-                          : 'max-h-[110px] sm:max-h-[140px]';
+                      <img
+                        crossOrigin="anonymous"
+                        src={item.imageUrl}
+                        alt={item.title}
+                        onError={(e) => handleImageError(e, item.title, item.category)}
+                        className="relative z-10 w-auto h-auto max-h-full max-w-[90%] object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-200"
+                        style={{
+                          maxHeight: 
+                            effectiveRows >= 4 || columns >= 4 ? '70px' :
+                            effectiveRows === 3 || columns === 3 ? '100px' :
+                            '150px',
+                        }}
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
+                    </div>
 
-                      return (
-                        <div className={`relative w-full ${imgContainerHeight} pt-5 pb-1 px-1.5 flex items-center justify-center overflow-hidden shrink-0`}>
-                          {/* Halo Iluminado do Packshot */}
-                          <div 
-                            className="absolute inset-0 pointer-events-none rounded-t-xl"
-                            style={{ background: paletaHarmonica.imagePedestalGradient }}
-                          />
-                          <div className="absolute bottom-1 w-3/4 h-2.5 bg-black/40 rounded-full blur-md" />
-
-                          <img
-                            crossOrigin="anonymous"
-                            src={item.imageUrl}
-                            alt={item.title}
-                            onError={(e) => handleImageError(e, item.title, item.category)}
-                            className={`relative z-10 w-auto ${imgMaxHeight} max-w-[92%] object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-300`}
-                            referrerPolicy="no-referrer"
-                            loading="lazy"
-                          />
-                        </div>
-                      );
-                    })()}
-
-                    {/* Product Title (Nitidez Máxima WCAG AAA) */}
-                    <div className="px-1.5 sm:px-2 pt-0.5 pb-1 text-left shrink-0">
+                    {/* Product Title (Nitidez Máxima WCAG AAA) - shrink-0 garantido */}
+                    <div className="px-1.5 sm:px-2 pt-0.5 pb-0.5 text-left shrink-0">
                       <h4 
                         className={`font-black ${
-                          effectiveRows >= 4 ? 'text-[7.5px] sm:text-[8px] line-clamp-1 leading-tight' :
-                          effectiveRows === 3 ? 'text-[9px] sm:text-[9.5px] line-clamp-2 leading-tight' :
-                          columns >= 3 ? 'text-[9.5px] sm:text-[10.5px] line-clamp-2 leading-tight' :
-                          'text-xs sm:text-sm line-clamp-2 leading-snug'
+                          effectiveRows >= 4 || columns >= 4
+                            ? 'text-[7px] sm:text-[7.5px] line-clamp-1 leading-tight'
+                            : effectiveRows === 3 || columns === 3
+                            ? 'text-[8.5px] sm:text-[9.5px] line-clamp-1 leading-tight'
+                            : 'text-xs sm:text-sm line-clamp-2 leading-snug'
                         } break-words`}
                         style={{
                           color: paletaHarmonica.titleColor,
@@ -1074,16 +1055,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       </h4>
                     </div>
 
-                    {/* Supermarket Orange Price Section (Rodapé do Card Integrado) */}
+                    {/* Supermarket Orange Price Section (Rodapé do Card Integrado) - shrink-0 garantido */}
                     <div 
                       style={{
                         background: paletaHarmonica.priceBarBackground,
                         borderTop: paletaHarmonica.priceBarBorder,
                       }}
                       className={`${
-                        effectiveRows >= 4 ? 'px-1 py-0.5' :
-                        effectiveRows === 3 || columns >= 3 ? 'px-1.5 py-1' :
-                        'px-2 py-1.5'
+                        effectiveRows >= 4 || columns >= 4 ? 'px-1 py-0.5' :
+                        effectiveRows === 3 || columns === 3 ? 'px-1.5 py-0.5' :
+                        'px-2 py-1'
                       } flex items-center justify-between gap-1 min-w-0 shrink-0`}
                     >
                       <EtiquetaPrecoPromocional
@@ -1094,21 +1075,23 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                           priceBg: item.customStyles?.priceBoxBgColor || itemStyles.priceBoxBgColor || theme.priceBg || '#ea580c',
                           priceText: item.customStyles?.priceBoxTextColor || itemStyles.priceBoxTextColor || theme.priceText || '#ffffff',
                         }}
-                        size={effectiveRows >= 4 ? 'compact' : effectiveRows === 3 || columns >= 3 ? 'xs' : 'sm'}
+                        size={effectiveRows >= 4 || columns >= 4 ? 'compact' : effectiveRows === 3 || columns === 3 ? 'xs' : 'sm'}
                       />
 
                       {/* Economy Tag */}
                       {item.discountPercentage && item.discountPercentage > 0 && (
                         <div className="text-right shrink-0 flex flex-col items-end justify-center min-w-0 pl-0.5">
-                          <span className={`font-black text-red-400 block leading-none uppercase whitespace-nowrap ${
-                            effectiveRows >= 4 ? 'text-[5.5px]' :
-                            effectiveRows === 3 || columns >= 3 ? 'text-[6.5px]' : 'text-[7.5px]'
-                          }`}>
-                            {columns >= 3 || effectiveRows >= 3 ? 'ECON.' : 'ECONOMIZE'}
-                          </span>
+                          {columns < 4 && (
+                            <span className={`font-black text-red-400 block leading-none uppercase whitespace-nowrap ${
+                              effectiveRows >= 4 ? 'text-[5px]' :
+                              effectiveRows === 3 || columns >= 3 ? 'text-[6px]' : 'text-[7.5px]'
+                            }`}>
+                              {columns >= 3 || effectiveRows >= 3 ? 'ECON.' : 'ECONOMIZE'}
+                            </span>
+                          )}
                           <span className={`font-black text-amber-400 leading-none mt-0.5 whitespace-nowrap ${
-                            effectiveRows >= 4 ? 'text-[7px]' :
-                            effectiveRows === 3 || columns >= 3 ? 'text-[8px]' : 'text-[9.5px]'
+                            effectiveRows >= 4 || columns >= 4 ? 'text-[6.5px]' :
+                            effectiveRows === 3 || columns === 3 ? 'text-[7.5px]' : 'text-[9.5px]'
                           }`}>
                             -{item.discountPercentage}%
                           </span>
