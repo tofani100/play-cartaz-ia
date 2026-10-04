@@ -31,6 +31,7 @@ import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, buildExportFilename } from '../utils/ajudanteExportacao';
 import { toCanvas } from 'html-to-image';
 import { gerarPaletaHarmonicaTabloide } from '../utils/coloristaHarmonizadorTabloide';
+import { formatarTelefoneWhatsapp } from '../utils/mascaraTelefone';
 
 interface VisualizadorTabloideOfertasProps {
   campaign: BannerCampaign;
@@ -831,17 +832,17 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                           ? 'gap-1.5 px-2.5 py-0.5 sm:py-1'
                           : 'gap-1.5 px-3 py-1 sm:py-1.2'
                       } rounded-full bg-emerald-600 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-lg backdrop-blur-xs transition-colors shrink-0 max-w-full`}
-                      title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
+                      title={`Peça no WhatsApp: ${formatarTelefoneWhatsapp(campaign.phoneWhatsapp, '(41) 9 9999 - 9999')}`}
                     >
                       <MessageCircle className={`${effectiveRows >= 4 ? 'w-2.5 h-2.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
                       <span className={`${
                         effectiveRows >= 4
-                          ? 'text-[8px] sm:text-[8.5px]'
+                          ? 'text-[7.5px] sm:text-[8px]'
                           : targetPreset === 'whatsapp-mobile'
-                          ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[8.5px]' : 'text-[9.5px] sm:text-[10px]')
-                          : 'text-[9.5px] sm:text-[10.5px]'
+                          ? 'text-[8.5px] sm:text-[9.5px]'
+                          : 'text-[9px] sm:text-[10px]'
                       } font-medium tracking-normal antialiased whitespace-nowrap drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
-                        Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
+                        Peça no WhatsApp: {formatarTelefoneWhatsapp(campaign.phoneWhatsapp, '(41) 9 9999 - 9999')}
                       </span>
                     </div>
                   </div>
@@ -1354,7 +1355,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             {/* Direct Contact - WHATSAPP INTEGRAL EM LINHA ÚNICA SEM QUEBRA */}
             <div className={`flex items-center gap-1 ${effectiveRows >= 4 ? 'text-[8px]' : 'text-[9px] sm:text-[10px]'} font-medium text-amber-400 whitespace-nowrap shrink-0 ml-auto antialiased`}>
               <Phone className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
-              <span className="whitespace-nowrap tracking-normal">{campaign.phoneWhatsapp ? `WhatsApp: ${campaign.phoneWhatsapp}` : 'Fale Conosco'}</span>
+              <span className="whitespace-nowrap tracking-normal">{campaign.phoneWhatsapp ? `WhatsApp: ${formatarTelefoneWhatsapp(campaign.phoneWhatsapp, '(41) 9 9999 - 9999')}` : 'Fale Conosco'}</span>
             </div>
           </div>
 

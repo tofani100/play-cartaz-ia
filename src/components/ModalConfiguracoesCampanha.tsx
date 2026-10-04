@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { BannerCampaign, AnimationEffect, BannerCustomStyles } from '../tiposGeradorBanner';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
+import { aplicarMascaraTelefoneInput } from '../utils/mascaraTelefone';
 
 interface ModalConfiguracoesCampanhaProps {
   isOpen: boolean;
@@ -676,9 +677,9 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                   <input
                     type="text"
                     value={formData.phoneWhatsapp}
-                    onChange={(e) => setFormData({ ...formData, phoneWhatsapp: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, phoneWhatsapp: aplicarMascaraTelefoneInput(e.target.value) })}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                    placeholder="(31) 99999-9999"
+                    placeholder="(41) 9 9999 - 9999"
                   />
                 </div>
                 <div>

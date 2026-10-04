@@ -20,6 +20,7 @@ import {
 import { ClientProfile, ThemePresetId, BannerCampaign } from '../tiposGeradorBanner';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
+import { aplicarMascaraTelefoneInput } from '../utils/mascaraTelefone';
 
 interface ModalGestaoClientesProps {
   isOpen: boolean;
@@ -454,8 +455,8 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
                       <input
                         type="text"
                         value={formPhone}
-                        onChange={(e) => setFormPhone(e.target.value)}
-                        placeholder="(11) 99999-9999"
+                        onChange={(e) => setFormPhone(aplicarMascaraTelefoneInput(e.target.value))}
+                        placeholder="(41) 9 9999 - 9999"
                         className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>

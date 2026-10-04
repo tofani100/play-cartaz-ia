@@ -36,6 +36,7 @@ import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual, buildExportFilename } from '../utils/ajudanteExportacao';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
+import { aplicarMascaraTelefoneInput } from '../utils/mascaraTelefone';
 
 const PALETA_CORES_RAPIDAS = [
   { nome: 'Laranja', bg: '#ea580c', text: '#ffffff' },
@@ -864,9 +865,9 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 <input
                   type="text"
                   value={campaign?.phoneWhatsapp || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ phoneWhatsapp: e.target.value })}
+                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ phoneWhatsapp: aplicarMascaraTelefoneInput(e.target.value) })}
                   className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="(11) 99999-1234"
+                  placeholder="(41) 9 9999 - 9999"
                 />
               </div>
 

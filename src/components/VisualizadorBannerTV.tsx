@@ -24,6 +24,7 @@ import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
 import { handleImageError } from '../utils/imageFallback';
 import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
+import { formatarTelefoneWhatsapp } from '../utils/mascaraTelefone';
 
 interface VisualizadorBannerTVProps {
   campaign: BannerCampaign;
@@ -451,15 +452,15 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     className={`inline-flex items-center ${
                       isVertical ? 'gap-1.5 px-2.5 py-1' : 'gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.2'
                     } rounded-full bg-emerald-600 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-lg backdrop-blur-xs transition-colors shrink-0 max-w-full`}
-                    title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
+                    title={`Peça no WhatsApp: ${formatarTelefoneWhatsapp(campaign.phoneWhatsapp, '(41) 9 9999 - 9999')}`}
                   >
                     <MessageCircle className={`${isVertical ? 'w-3 h-3 sm:w-3.5 sm:h-3.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
                     <span className={`${
                       isVertical
-                        ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[8.5px]' : 'text-[9.5px] sm:text-[10px]')
-                        : 'text-[10px] sm:text-[11px]'
+                        ? 'text-[8.5px] sm:text-[9.5px]'
+                        : 'text-[9.5px] sm:text-[10.5px]'
                     } font-medium tracking-normal antialiased whitespace-nowrap drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
-                      Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
+                      Peça no WhatsApp: {formatarTelefoneWhatsapp(campaign.phoneWhatsapp, '(41) 9 9999 - 9999')}
                     </span>
                   </div>
                 </div>
