@@ -24,7 +24,7 @@ export const LogoBelissimaEmblem: React.FC<LogoBelissimaProps> = ({
       <img
         src="/logos/belissima-casa-di-frutas.png"
         alt="Belíssima Casa di Frutas - Logotipo Oficial"
-        className="w-full h-full object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.65)] select-none pointer-events-none"
+        className="w-full h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none pointer-events-none"
         referrerPolicy="no-referrer"
         onError={(e) => {
           // Fallback para o SVG incorporado caso necessário

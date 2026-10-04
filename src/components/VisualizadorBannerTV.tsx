@@ -336,7 +336,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 ? 'w-auto max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-14 sm:h-16 md:h-18'
                 : isSquare
                 ? 'w-auto max-w-[180px] sm:max-w-[220px] md:max-w-[250px] h-16 sm:h-20 md:h-24'
-                : 'w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20'
+                : 'w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24'
             }`}>
               {campaign.showClientLogo !== false && (
                 isBelissima ? (
@@ -345,7 +345,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     crossOrigin="anonymous"
                     src="/logos/belissima-casa-di-frutas.png"
                     alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] select-none shrink-0 pointer-events-none"
+                    className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -360,7 +360,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     crossOrigin="anonymous"
                     src={campaign.clientLogoUrl}
                     alt={campaign.clientName || 'Logo Oficial'}
-                    className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] select-none shrink-0 pointer-events-none"
+                    className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
@@ -429,7 +429,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
             {/* Right Symmetrical Spacer so Campaign Title is centered across the screen in Horizontal */}
             {!isVertical && !isSquare && (
-              <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[180px] sm:max-w-[210px] lg:max-w-[240px] h-12 sm:h-16 lg:h-20" />
+              <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24" />
             )}
           </div>
 
