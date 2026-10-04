@@ -16,7 +16,8 @@ import {
   SlidersHorizontal,
   Wand2,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  MessageCircle
 } from 'lucide-react';
 import { BannerCampaign, ProductItem, ThemeColors, BannerCustomStyles } from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
@@ -324,127 +325,251 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
-        <div 
-          id="tv-banner-header"
-          className={`relative z-10 px-3 sm:px-5 md:px-7 py-2 sm:py-2.5 flex flex-col shrink-0 w-full gap-1 sm:gap-1.5`}
-        >
-          {/* Linha Superior do Cabeçalho: Logo (Esquerda) e Título da Campanha (Direita) */}
-          <div className="flex items-center justify-between w-full gap-2.5 sm:gap-4">
-            {/* Left: Client Logo without any artificial container - strictly uses the official brand asset */}
-            <div className={`flex items-center shrink-0 ${
-              isVertical
-                ? 'w-auto max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-14 sm:h-16 md:h-18'
-                : isSquare
-                ? 'w-auto max-w-[180px] sm:max-w-[220px] md:max-w-[250px] h-16 sm:h-20 md:h-24'
-                : 'w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24'
-            }`}>
-              {campaign.showClientLogo !== false && (
-                isBelissima ? (
-                  <img
-                    id="tv-banner-client-logo"
-                    crossOrigin="anonymous"
-                    src="/logos/belissima-casa-di-frutas.png"
-                    alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (target.src.endsWith('.png')) {
-                        target.src = '/logos/belissima-casa-di-frutas.svg';
-                      }
-                    }}
-                  />
-                ) : campaign.clientLogoUrl ? (
-                  <img
-                    id="tv-banner-client-logo"
-                    crossOrigin="anonymous"
-                    src={campaign.clientLogoUrl}
-                    alt={campaign.clientName || 'Logo Oficial'}
-                    className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-black/40 border border-white/20 backdrop-blur-sm">
-                    <div className="w-1 h-5 sm:h-6 rounded-full bg-amber-400" />
-                    <div className="flex flex-col text-left">
-                      <span className="font-serif font-black text-white text-xs sm:text-sm lg:text-base leading-none">
-                        {campaign.clientName || 'Belíssima Casa di Frutas'}
-                      </span>
-                      <span className="text-[7px] sm:text-[8px] font-bold text-amber-300 uppercase tracking-wider mt-0.5">
-                        {campaign.segment || 'Hortifrúti Selecionado • Desde 2004'}
-                      </span>
+        {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
+        {isSquare ? (
+          <div 
+            id="tv-banner-header"
+            className="relative z-10 px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5 flex flex-col shrink-0 w-full justify-between border-b-2 sm:border-b-4 overflow-hidden"
+            style={{
+              borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
+              fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
+            }}
+          >
+            {/* Ondas Finas e Elegantes no Fundo (Linhas Douradas Sinuosas de Alta Sofisticação) */}
+            <svg 
+              className="absolute inset-0 w-full h-full pointer-events-none opacity-45 overflow-hidden" 
+              preserveAspectRatio="none" 
+              viewBox="0 0 1000 240"
+            >
+              <defs>
+                <linearGradient id="feedSquareGoldWave1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
+                  <stop offset="35%" stopColor="#fde047" stopOpacity="0.8" />
+                  <stop offset="70%" stopColor="#d97706" stopOpacity="0.65" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.15" />
+                </linearGradient>
+                <linearGradient id="feedSquareGoldWave2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#fde047" stopOpacity="0.08" />
+                  <stop offset="50%" stopColor="#ffffff" stopOpacity="0.7" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.18" />
+                </linearGradient>
+                <linearGradient id="feedSquareGoldWave3" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.12" />
+                  <stop offset="45%" stopColor="#fef08a" stopOpacity="0.75" />
+                  <stop offset="85%" stopColor="#b45309" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+
+              <path d="M -60,35 Q 220,185 500,65 T 1060,105" fill="none" stroke="url(#feedSquareGoldWave1)" strokeWidth="1.6" />
+              <path d="M -60,60 Q 240,210 520,90 T 1060,130" fill="none" stroke="url(#feedSquareGoldWave2)" strokeWidth="1.0" />
+              <path d="M -60,105 Q 200,245 560,115 T 1060,170" fill="none" stroke="url(#feedSquareGoldWave1)" strokeWidth="1.4" />
+              
+              <path d="M -60,165 Q 320,35 680,175 T 1060,85" fill="none" stroke="url(#feedSquareGoldWave3)" strokeWidth="1.2" />
+              <path d="M -60,190 Q 340,60 700,200 T 1060,110" fill="none" stroke="url(#feedSquareGoldWave2)" strokeWidth="1.0" />
+              <path d="M -60,225 Q 380,95 740,230 T 1060,145" fill="none" stroke="url(#feedSquareGoldWave1)" strokeWidth="1.8" />
+            </svg>
+
+            {/* Sutil iluminação ambiente */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/2 left-10 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Linha Superior do Cabeçalho: Logo à Esquerda e Título + WhatsApp à Direita */}
+            <div className="relative z-10 flex flex-row items-center justify-between w-full gap-2 sm:gap-4 pb-1 sm:pb-1.5">
+              {/* Esquerda: Logo Oficial */}
+              <div className="flex items-center justify-start shrink-0 max-w-[44%] sm:max-w-[46%] py-0.5">
+                {campaign.showClientLogo !== false && (
+                  isBelissima ? (
+                    <img
+                      id="tv-banner-client-logo"
+                      crossOrigin="anonymous"
+                      src="/logos/belissima-casa-di-frutas.png"
+                      alt={campaign.clientName || 'Belíssima Casa di Frutas'}
+                      className="max-h-20 sm:max-h-24 md:max-h-28 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src.endsWith('.png')) {
+                          target.src = '/logos/belissima-casa-di-frutas.svg';
+                        }
+                      }}
+                    />
+                  ) : campaign.clientLogoUrl ? (
+                    <img
+                      id="tv-banner-client-logo"
+                      crossOrigin="anonymous"
+                      src={campaign.clientLogoUrl}
+                      alt={campaign.clientName || 'Logo Oficial'}
+                      className="max-h-20 sm:max-h-24 md:max-h-28 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="bg-amber-400 text-black font-black text-sm sm:text-base px-3 py-1.5 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
+                      {campaign.clientName || 'SUPERMERCADO'}
                     </div>
-                  </div>
-                )
-              )}
-            </div>
+                  )
+                )}
+              </div>
 
-            {/* Campaign Title */}
-            <div className={`flex-1 flex flex-col ${
-              isVertical 
-                ? 'items-end text-right pl-1 sm:pl-2' 
-                : isSquare
-                ? 'items-center text-center px-1 sm:px-3'
-                : 'items-center text-center px-2 sm:px-4'
-            } justify-center min-w-0`}>
-              <h1 
-                style={{
-                  color: effectiveStyles.campaignTitleColor || '#fbbf24',
-                  fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
-                }}
-                className={`${
-                  isVertical
-                    ? (campaign.campaignTitle && campaign.campaignTitle.length > 30
-                        ? 'text-[13px] sm:text-[15px] md:text-[17px]'
-                        : 'text-[15px] sm:text-[17px] md:text-[19px]')
-                    : isSquare
-                    ? (campaign.campaignTitle && campaign.campaignTitle.length > 30
-                        ? 'text-lg sm:text-xl md:text-2xl'
-                        : 'text-xl sm:text-2xl md:text-[28px]')
-                    : (campaign.campaignTitle && campaign.campaignTitle.length > 35
-                        ? 'text-xs sm:text-sm md:text-base lg:text-xl'
-                        : campaign.campaignTitle && campaign.campaignTitle.length > 25
-                        ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
-                        : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
-                } font-black uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] w-full leading-tight tracking-tight break-words`}
-              >
-                {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
-              </h1>
+              {/* Direita: Título da Campanha e WhatsApp CTA */}
+              <div className="flex-1 min-w-0 max-w-[56%] flex flex-col items-end text-right justify-center gap-1 sm:gap-1.5">
+                {/* Título Superior */}
+                <div className="w-full flex flex-col items-end text-right">
+                  <h1 
+                    className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.15] block break-words"
+                    style={{
+                      fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
+                      color: effectiveStyles.campaignTitleColor || '#fde047',
+                    }}
+                  >
+                    {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
+                  </h1>
 
-              {/* No Feed 1:1, a Validade fica acoplada elegantemente ao título sem criar faixas escuras vazias */}
-              {isSquare && (
-                <div className="inline-flex items-center justify-center gap-1.5 mt-1.5 px-3.5 py-1 rounded-full bg-black/70 border border-amber-400/40 text-amber-200 font-extrabold text-[11px] sm:text-xs tracking-wide shadow-md max-w-full">
-                  <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="text-center leading-tight break-words">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
+                  {campaign.campaignSubtitle && (
+                    <span 
+                      className="text-[9px] sm:text-[10px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                    >
+                      {campaign.campaignSubtitle}
+                    </span>
+                  )}
                 </div>
-              )}
 
-              {!isVertical && !isSquare && (
-                <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
-                  <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
-                  <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Right Symmetrical Spacer so Campaign Title is centered across the screen in Horizontal */}
-            {!isVertical && !isSquare && (
-              <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24" />
-            )}
-          </div>
-
-          {/* Faixa de Validade em Destaque no Formato Vertical: 100% de largura, NUNCA CORTA! */}
-          {isVertical && (
-            <div className="w-full flex items-center justify-center pt-0.5">
-              <div className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-black/60 border border-white/20 backdrop-blur-md shadow-sm">
-                <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-[10px] sm:text-[11px] md:text-[12px] text-amber-200 font-extrabold tracking-wide text-center leading-tight whitespace-normal break-words">
-                  {campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}
-                </span>
+                {/* WhatsApp CTA */}
+                <div className="w-full flex items-center justify-end">
+                  <div 
+                    className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.2 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-[10px] sm:text-[11px] font-black shadow-md backdrop-blur-xs transition-colors max-w-full"
+                    title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
+                  >
+                    <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-200 shrink-0" />
+                    <span className="tracking-tight whitespace-nowrap truncate">
+                      Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Uma Linha */}
+            <div className="relative z-10 w-full flex items-center justify-center gap-1.5 pt-1 border-t border-white/10 text-center">
+              <Calendar className="w-3 h-3 text-amber-400 shrink-0 drop-shadow" />
+              <span 
+                className="text-[8.5px] sm:text-[9.5px] md:text-[10px] font-bold text-amber-200 tracking-wider uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] truncate max-w-full"
+                style={{ fontFamily: "'Montserrat', sans-serif" }}
+                title={campaign.validityText || 'Ofertas válidas até domingo ou enquanto durarem os estoques'}
+              >
+                {campaign.validityText || 'Ofertas válidas até domingo ou enquanto durarem os estoques'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          /* Cabeçalho Normal para TV 16:9 e Vertical */
+          <div 
+            id="tv-banner-header"
+            className={`relative z-10 px-3 sm:px-5 md:px-7 py-2 sm:py-2.5 flex flex-col shrink-0 w-full gap-1 sm:gap-1.5`}
+          >
+            {/* Linha Superior do Cabeçalho: Logo (Esquerda) e Título da Campanha (Direita) */}
+            <div className="flex items-center justify-between w-full gap-2.5 sm:gap-4">
+              {/* Left: Client Logo without any artificial container */}
+              <div className={`flex items-center shrink-0 ${
+                isVertical
+                  ? 'w-auto max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-14 sm:h-16 md:h-18'
+                  : 'w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24'
+              }`}>
+                {campaign.showClientLogo !== false && (
+                  isBelissima ? (
+                    <img
+                      id="tv-banner-client-logo"
+                      crossOrigin="anonymous"
+                      src="/logos/belissima-casa-di-frutas.png"
+                      alt={campaign.clientName || 'Belíssima Casa di Frutas'}
+                      className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src.endsWith('.png')) {
+                          target.src = '/logos/belissima-casa-di-frutas.svg';
+                        }
+                      }}
+                    />
+                  ) : campaign.clientLogoUrl ? (
+                    <img
+                      id="tv-banner-client-logo"
+                      crossOrigin="anonymous"
+                      src={campaign.clientLogoUrl}
+                      alt={campaign.clientName || 'Logo Oficial'}
+                      className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-black/40 border border-white/20 backdrop-blur-sm">
+                      <div className="w-1 h-5 sm:h-6 rounded-full bg-amber-400" />
+                      <div className="flex flex-col text-left">
+                        <span className="font-serif font-black text-white text-xs sm:text-sm lg:text-base leading-none">
+                          {campaign.clientName || 'Belíssima Casa di Frutas'}
+                        </span>
+                        <span className="text-[7px] sm:text-[8px] font-bold text-amber-300 uppercase tracking-wider mt-0.5">
+                          {campaign.segment || 'Hortifrúti Selecionado • Desde 2004'}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+
+              {/* Campaign Title */}
+              <div className={`flex-1 flex flex-col ${
+                isVertical 
+                  ? 'items-end text-right pl-1 sm:pl-2' 
+                  : 'items-center text-center px-2 sm:px-4'
+              } justify-center min-w-0`}>
+                <h1 
+                  style={{
+                    color: effectiveStyles.campaignTitleColor || '#fbbf24',
+                    fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
+                  }}
+                  className={`${
+                    isVertical
+                      ? (campaign.campaignTitle && campaign.campaignTitle.length > 30
+                          ? 'text-[13px] sm:text-[15px] md:text-[17px]'
+                          : 'text-[15px] sm:text-[17px] md:text-[19px]')
+                      : (campaign.campaignTitle && campaign.campaignTitle.length > 35
+                          ? 'text-xs sm:text-sm md:text-base lg:text-xl'
+                          : campaign.campaignTitle && campaign.campaignTitle.length > 25
+                          ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
+                          : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
+                  } font-black uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] w-full leading-tight tracking-tight break-words`}
+                >
+                  {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
+                </h1>
+
+                {!isVertical && (
+                  <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
+                    <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
+                    <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Right Symmetrical Spacer so Campaign Title is centered across the screen in Horizontal */}
+              {!isVertical && (
+                <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24" />
+              )}
+            </div>
+
+            {/* Faixa de Validade em Destaque no Formato Vertical: 100% de largura, NUNCA CORTA! */}
+            {isVertical && (
+              <div className="w-full flex items-center justify-center pt-0.5">
+                <div className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-black/60 border border-white/20 backdrop-blur-md shadow-sm">
+                  <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-[10px] sm:text-[11px] md:text-[12px] text-amber-200 font-extrabold tracking-wide text-center leading-tight whitespace-normal break-words">
+                    {campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* CENTER CONTENT: Perfectly Proportioned - Em Vertical, imagem no topo e dados/preço abaixo (conforme solicitado) */}
         <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 ${isSquare ? 'px-3 sm:px-5 py-2' : 'px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5'} gap-2 sm:gap-4 flex ${isVertical ? 'flex-col-reverse justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-visible`}>
