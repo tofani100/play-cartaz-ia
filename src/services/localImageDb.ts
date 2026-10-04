@@ -122,3 +122,42 @@ export async function getLocalCampaign(): Promise<any | null> {
     return null;
   }
 }
+
+/**
+ * Salva a lista completa de clientes no IndexedDB como redundância de alta capacidade
+ */
+export async function saveLocalClients(clients: any[]): Promise<void> {
+  if (!clients || !Array.isArray(clients)) return;
+  try {
+    const db = await getDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_CAMPAIGN, 'readwrite');
+      const store = tx.objectStore(STORE_CAMPAIGN);
+      store.put({ id: 'all_clients', data: clients, updatedAt: Date.now() });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('[IndexedDB] Erro ao gravar clientes locais:', err);
+  }
+}
+
+/**
+ * Recupera a lista completa de clientes do IndexedDB
+ */
+export async function getLocalClients(): Promise<any[] | null> {
+  try {
+    const db = await getDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_CAMPAIGN, 'readonly');
+      const store = tx.objectStore(STORE_CAMPAIGN);
+      const req = store.get('all_clients');
+      req.onsuccess = () => {
+        resolve(req.result ? req.result.data : null);
+      };
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}

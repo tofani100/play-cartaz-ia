@@ -14,10 +14,12 @@ import {
   Phone,
   Sparkles,
   ArrowRight,
-  Play
+  Play,
+  Loader2
 } from 'lucide-react';
 import { ClientProfile, ThemePresetId, BannerCampaign } from '../tiposGeradorBanner';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
+import { compressImageToDataUrl } from '../utils/imageCompressor';
 
 interface ModalGestaoClientesProps {
   isOpen: boolean;
@@ -63,6 +65,7 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
   const [formPhone, setFormPhone] = useState('');
   const [formAddress, setFormAddress] = useState('');
   const [logoPreviewError, setLogoPreviewError] = useState(false);
+  const [isCompressingLogo, setIsCompressingLogo] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,8 +101,8 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
     setIsFormOpen(true);
   };
 
-  // File upload handler (converts image file to Base64 data URL)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // File upload handler com compressão imediata para WebP/PNG (~25KB)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -108,23 +111,48 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const result = uploadEvent.target?.result as string;
-      if (result) {
-        setFormLogoUrl(result);
+    try {
+      setIsCompressingLogo(true);
+      // Comprime mantendo transparência, resolução de 600px e tamanho levíssimo (~20KB-35KB)
+      // para não estourar a cota de 5MB do LocalStorage nem o limite de 1MB do Firestore.
+      const optimized = await compressImageToDataUrl(file, 600, 600, 0.88);
+      if (optimized) {
+        setFormLogoUrl(optimized);
         setLogoPreviewError(false);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Erro ao otimizar logo, aplicando leitura direta:', err);
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const result = uploadEvent.target?.result as string;
+        if (result) {
+          setFormLogoUrl(result);
+          setLogoPreviewError(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingLogo(false);
+      // Reseta o input para permitir selecionar o mesmo arquivo novamente se desejar
+      if (e.target) {
+        e.target.value = '';
+      }
+    }
   };
 
   // Submit client form
-  const handleSaveForm = (e: React.FormEvent) => {
+  const handleSaveForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
       alert('Por favor, informe o nome do cliente.');
       return;
+    }
+
+    let finalLogo = formLogoUrl.trim();
+    if (finalLogo && finalLogo.startsWith('data:image') && finalLogo.length > 40000) {
+      try {
+        finalLogo = await compressImageToDataUrl(finalLogo, 600, 600, 0.88);
+      } catch (_) {}
     }
 
     const clientToSave: ClientProfile = {
@@ -132,7 +160,7 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
       name: formName.trim(),
       tradeName: formTradeName.trim() || formName.trim(),
       segment: formSegment,
-      logoUrl: formLogoUrl.trim(),
+      logoUrl: finalLogo,
       themeId: formThemeId,
       defaultTickerText: formTicker.trim(),
       phoneWhatsapp: formPhone.trim(),
@@ -328,11 +356,23 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
                         />
                         <button
                           type="button"
+                          disabled={isCompressingLogo}
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full py-2.5 px-3 bg-neutral-800 hover:bg-neutral-700 border border-dashed border-amber-400/50 rounded-lg text-xs font-bold text-amber-300 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                          className={`w-full py-2.5 px-3 bg-neutral-800 hover:bg-neutral-700 border border-dashed border-amber-400/50 rounded-lg text-xs font-bold text-amber-300 flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                            isCompressingLogo ? 'opacity-70 cursor-wait' : ''
+                          }`}
                         >
-                          <Upload className="w-4 h-4" />
-                          <span>Fazer Upload do Logo (PNG / SVG do seu PC)</span>
+                          {isCompressingLogo ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                              <span>Otimizando e salvando logotipo...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4" />
+                              <span>Fazer Upload do Logo (PNG / SVG do seu PC)</span>
+                            </>
+                          )}
                         </button>
 
                         <div className="text-[11px] text-neutral-400 flex items-center gap-2">

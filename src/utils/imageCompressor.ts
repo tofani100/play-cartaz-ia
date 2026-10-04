@@ -31,8 +31,22 @@ export async function compressImageToDataUrl(
     return input;
   }
 
+  // SVG vetorial não deve ser rasterizado se for razoável (< 100KB)
+  if (typeof input === 'string' && input.startsWith('data:image/svg+xml') && input.length < 100000) {
+    return input;
+  }
+
   let sourceDataUrl = '';
   if (input instanceof File || input instanceof Blob) {
+    if (input.type === 'image/svg+xml' && input.size < 100000) {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string) || '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(input);
+      });
+    }
+
     sourceDataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve((reader.result as string) || '');
@@ -90,7 +104,15 @@ export async function compressImageToDataUrl(
           }
         } catch (_) {}
 
-        // 2. Fallback: JPEG com preenchimento branco de fundo (para evitar fundo preto em PNGs transparentes)
+        // 2. Tenta PNG se for pequeno (< 50KB) para manter transparência
+        try {
+          const pngData = canvas.toDataURL('image/png');
+          if (pngData && pngData.startsWith('data:image/png') && pngData.length < 52000) {
+            return resolve(pngData);
+          }
+        } catch (_) {}
+
+        // 3. Fallback: JPEG com preenchimento branco de fundo (para evitar fundo preto em PNGs transparentes)
         try {
           const fallbackCanvas = document.createElement('canvas');
           fallbackCanvas.width = width;

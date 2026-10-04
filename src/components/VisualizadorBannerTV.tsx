@@ -381,7 +381,18 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               {/* Esquerda: Logo Oficial */}
               <div className={`flex items-center justify-start shrink-0 ${isVertical ? 'max-w-[38%]' : 'max-w-[44%] sm:max-w-[46%]'} py-0.5`}>
                 {campaign.showClientLogo !== false && (
-                  isBelissima ? (
+                  (campaign.clientLogoUrl && !campaign.clientLogoUrl.startsWith('/logos/belissima')) ? (
+                    <img
+                      id="tv-banner-client-logo"
+                      crossOrigin="anonymous"
+                      src={campaign.clientLogoUrl}
+                      alt={campaign.clientName || 'Logo Oficial'}
+                      className={`${
+                        isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
+                      } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none`}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : isBelissima ? (
                     <img
                       id="tv-banner-client-logo"
                       crossOrigin="anonymous"
@@ -525,7 +536,16 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               {/* Left: Client Logo without any artificial container */}
               <div className="flex items-center shrink-0 w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24">
                 {campaign.showClientLogo !== false && (
-                  isBelissima ? (
+                  (campaign.clientLogoUrl && !campaign.clientLogoUrl.startsWith('/logos/belissima')) ? (
+                    <img
+                      id="tv-banner-client-logo"
+                      crossOrigin="anonymous"
+                      src={campaign.clientLogoUrl}
+                      alt={campaign.clientName || 'Logo Oficial'}
+                      className="w-auto h-full max-h-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : isBelissima ? (
                     <img
                       id="tv-banner-client-logo"
                       crossOrigin="anonymous"

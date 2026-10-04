@@ -630,7 +630,15 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 {/* Esquerda: Logo Oficial em Escala Maior e Imponente */}
                 <div className="flex items-center justify-center sm:justify-start shrink-0 max-w-[44%] sm:max-w-[46%] py-0.5">
                   {campaign.showClientLogo !== false && (
-                    isBelissima ? (
+                    (campaign.clientLogoUrl && !campaign.clientLogoUrl.startsWith('/logos/belissima')) ? (
+                      <img 
+                        crossOrigin="anonymous"
+                        src={campaign.clientLogoUrl}
+                        alt={campaign.clientName || 'Logo Oficial'}
+                        className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : isBelissima ? (
                       <img 
                         crossOrigin="anonymous"
                         src="/logos/belissima-casa-di-frutas.png"

@@ -13,6 +13,8 @@ import {
   getLocalImage,
   saveLocalCampaign,
   getLocalCampaign,
+  saveLocalClients,
+  getLocalClients,
 } from './localImageDb';
 
 const CAMPAIGN_DOC_PATH = 'campaigns';
@@ -113,7 +115,17 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
   try {
     if (!campaign || !campaign.products) return false;
 
-    // 1. Otimiza e salva cada imagem individualmente no IndexedDB e Firestore
+    // 1. Trata e otimiza o logotipo da campanha
+    let processedLogoUrl = campaign.clientLogoUrl || '';
+    if (processedLogoUrl && processedLogoUrl.startsWith('data:image')) {
+      processedLogoUrl = await compressImageToDataUrl(processedLogoUrl, 600, 600, 0.88);
+      if (campaign.clientId) {
+        saveLocalImage(`logo_${campaign.clientId}`, processedLogoUrl).catch(() => {});
+        saveProductImageToCloud(`logo_${campaign.clientId}`, processedLogoUrl).catch(() => {});
+      }
+    }
+
+    // 2. Otimiza e salva cada imagem individualmente no IndexedDB e Firestore
     const processedProducts: ProductItem[] = await Promise.all(
       campaign.products.map(async (p) => {
         if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
@@ -131,13 +143,14 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
 
     const payloadToSave: BannerCampaign = {
       ...campaign,
+      clientLogoUrl: processedLogoUrl || campaign.clientLogoUrl,
       products: processedProducts,
     };
 
     // Salva cópia local integral no IndexedDB (gigabytes de capacidade)
     saveLocalCampaign(payloadToSave).catch(() => {});
 
-    // 2. Grava no documento central da campanha no Firestore
+    // 3. Grava no documento central da campanha no Firestore
     const campaignDocRef = doc(db, CAMPAIGN_DOC_PATH, ACTIVE_CAMPAIGN_ID);
     await setDoc(campaignDocRef, {
       ...payloadToSave,
@@ -145,7 +158,7 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
       _version: '2.6.0',
     });
 
-    // 3. Backup no servidor Express local (se estiver rodando)
+    // 4. Backup no servidor Express local (se estiver rodando)
     try {
       fetch('/api/campaign', {
         method: 'POST',
@@ -191,9 +204,24 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
         })
       );
 
+      // Restaura logotipo da campanha se necessário
+      let restoredLogoUrl = data.clientLogoUrl || '';
+      if (data.clientId) {
+        const cachedLogo = await getLocalImage(`logo_${data.clientId}`);
+        if (cachedLogo) {
+          restoredLogoUrl = cachedLogo;
+        } else if (restoredLogoUrl.startsWith('cloud-img:')) {
+          const cloud = await loadProductImageFromCloud(restoredLogoUrl.replace('cloud-img:', ''));
+          if (cloud) {
+            restoredLogoUrl = cloud;
+          }
+        }
+      }
+
       console.log('[CloudSync] Campanha carregada com sucesso do Firebase Firestore na Nuvem! ✨');
       return {
         ...data,
+        clientLogoUrl: restoredLogoUrl || data.clientLogoUrl,
         products: restoredProducts,
       };
     }
@@ -264,8 +292,17 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
             })
           );
 
+          let restoredLogoUrl = data.clientLogoUrl || '';
+          if (data.clientId) {
+            const cachedLogo = await getLocalImage(`logo_${data.clientId}`);
+            if (cachedLogo) {
+              restoredLogoUrl = cachedLogo;
+            }
+          }
+
           onUpdate({
             ...data,
+            clientLogoUrl: restoredLogoUrl || data.clientLogoUrl,
             products: restoredProducts,
           });
         }
@@ -287,8 +324,20 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
   try {
     if (!clients || clients.length === 0) return true;
 
+    // 1. Salva imediatamente cópia local integral no IndexedDB (gigabytes de capacidade)
+    saveLocalClients(clients).catch(() => {});
+
+    // 2. Otimiza logos e imagens dos produtos antes de salvar no Firestore
     const sanitizedClients = await Promise.all(
       clients.map(async (c) => {
+        let clientLogo = c.logoUrl || '';
+        if (clientLogo && clientLogo.startsWith('data:image')) {
+          const compressedLogo = await compressImageToDataUrl(clientLogo, 600, 600, 0.88);
+          saveLocalImage(`logo_${c.id}`, compressedLogo).catch(() => {});
+          await saveProductImageToCloud(`logo_${c.id}`, compressedLogo).catch(() => {});
+          clientLogo = compressedLogo;
+        }
+
         const sanitizedProducts = await Promise.all(
           (c.products || []).map(async (p) => {
             if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
@@ -306,6 +355,7 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
 
         return {
           ...c,
+          logoUrl: clientLogo,
           products: sanitizedProducts,
         };
       })
@@ -324,7 +374,7 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
 }
 
 /**
- * Carrega lista de clientes do Firestore com restauração automática de imagens
+ * Carrega lista de clientes do Firestore com restauração automática de imagens e logos
  */
 export async function loadClientsFromCloud(): Promise<ClientProfile[] | null> {
   try {
@@ -334,9 +384,29 @@ export async function loadClientsFromCloud(): Promise<ClientProfile[] | null> {
       const data = snap.data();
       const rawClients = (data?.clients || []) as ClientProfile[];
 
-      // Restaura imagens dos produtos dos clientes
+      // Restaura logos e imagens dos produtos dos clientes
       const restoredClients = await Promise.all(
         rawClients.map(async (c) => {
+          let restoredLogo = c.logoUrl || '';
+          if (restoredLogo.startsWith('cloud-img:')) {
+            const logoId = restoredLogo.replace('cloud-img:', '');
+            const local = await getLocalImage(logoId);
+            if (local) {
+              restoredLogo = local;
+            } else {
+              const cloud = await loadProductImageFromCloud(logoId);
+              if (cloud) {
+                saveLocalImage(logoId, cloud).catch(() => {});
+                restoredLogo = cloud;
+              }
+            }
+          } else if (!restoredLogo || restoredLogo.startsWith('/logos/belissima')) {
+            const cachedLogo = await getLocalImage(`logo_${c.id}`);
+            if (cachedLogo) {
+              restoredLogo = cachedLogo;
+            }
+          }
+
           const restoredProducts = await Promise.all(
             (c.products || []).map(async (p) => {
               if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
@@ -354,17 +424,30 @@ export async function loadClientsFromCloud(): Promise<ClientProfile[] | null> {
               return p;
             })
           );
+
           return {
             ...c,
+            logoUrl: restoredLogo,
             products: restoredProducts,
           };
         })
       );
 
+      saveLocalClients(restoredClients).catch(() => {});
       return restoredClients;
     }
   } catch (err) {
     console.warn('[CloudSync] Erro ao carregar clientes do Firestore:', err);
   }
+
+  // Fallback para IndexedDB local
+  try {
+    const localClients = await getLocalClients();
+    if (localClients && localClients.length > 0) {
+      console.log('[CloudSync] Clientes restaurados do IndexedDB local.');
+      return localClients;
+    }
+  } catch (_) {}
+
   return null;
 }

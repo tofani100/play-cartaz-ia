@@ -25,7 +25,16 @@ import {
   subscribeToCloudCampaign,
   loadClientsFromCloud,
   saveClientsToCloud,
+  saveProductImageToCloud,
 } from './services/cloudCampaignSync';
+import {
+  saveLocalImage,
+  getLocalImage,
+  saveLocalCampaign,
+  getLocalCampaign,
+  saveLocalClients,
+  getLocalClients,
+} from './services/localImageDb';
 
 const BELISSIMA_CLIENT = CLIENTES_PREDEFINIDOS.find((c) => c.id === 'cli-belissima') || CLIENTES_PREDEFINIDOS[0];
 const INITIAL_PRODUCTS: ProductItem[] = BELISSIMA_CLIENT?.products || [];
@@ -78,9 +87,10 @@ export default function App() {
           ...parsed,
           products,
           clientLogoUrl:
-            parsed.clientName === 'Belíssima Casa di Frutas' || parsed.id === 'camp-1'
-              ? (parsed.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
-              : parsed.clientLogoUrl,
+            parsed.clientLogoUrl ||
+            (parsed.clientName === 'Belíssima Casa di Frutas' || parsed.id === 'camp-1'
+              ? '/logos/belissima-casa-di-frutas.png'
+              : ''),
         };
       }
     } catch (e) {
@@ -120,14 +130,26 @@ export default function App() {
             lastSavedTimestampRef.current = (cloudCampaign as any)._syncTimestamp;
           }
 
+          // Prioriza logo customizado já presente localmente se a nuvem estiver sem ou com o default
+          let finalLogo = cloudCampaign.clientLogoUrl || prev.clientLogoUrl || '';
+          if (
+            prev.clientLogoUrl &&
+            !prev.clientLogoUrl.startsWith('/logos/belissima') &&
+            (!cloudCampaign.clientLogoUrl || cloudCampaign.clientLogoUrl.startsWith('/logos/belissima'))
+          ) {
+            finalLogo = prev.clientLogoUrl;
+          } else if (
+            !finalLogo &&
+            (cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1')
+          ) {
+            finalLogo = '/logos/belissima-casa-di-frutas.png';
+          }
+
           return {
             ...prev,
             ...cloudCampaign,
             products: finalProducts,
-            clientLogoUrl:
-              cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1'
-                ? (cloudCampaign.clientLogoUrl || '/logos/belissima-casa-di-frutas.png')
-                : cloudCampaign.clientLogoUrl,
+            clientLogoUrl: finalLogo,
           };
         });
       }
@@ -135,21 +157,65 @@ export default function App() {
       setCloudSyncStatus('saved');
     })();
 
-    // Carrega clientes da nuvem com merge seguro de produtos
+    // Carrega clientes da nuvem com merge seguro de produtos e logos
     loadClientsFromCloud().then((cloudClients) => {
       if (cloudClients && cloudClients.length > 0 && isMounted) {
         setClients((prev) => {
-          const merged = cloudClients.map((cc) => {
+          const mergedCloud = cloudClients.map((cc) => {
             const lc = prev.find((p) => p.id === cc.id || p.name.toLowerCase() === cc.name.toLowerCase());
-            if (lc && lc.products && lc.products.length > (cc.products?.length || 0)) {
-              return { ...cc, products: lc.products };
+            if (!lc) return cc;
+
+            // Preserva logo local customizado se a nuvem tiver logo padrão ou vazio
+            let finalLogo = cc.logoUrl || lc.logoUrl || '';
+            if (
+              lc.logoUrl &&
+              !lc.logoUrl.startsWith('/logos/belissima') &&
+              (!cc.logoUrl || cc.logoUrl.startsWith('/logos/belissima'))
+            ) {
+              finalLogo = lc.logoUrl;
             }
-            return cc;
+
+            // Preserva produtos locais se tiver mais
+            let finalProducts = cc.products || [];
+            if (lc.products && lc.products.length > finalProducts.length) {
+              finalProducts = lc.products;
+            }
+
+            return {
+              ...cc,
+              ...lc,
+              products: finalProducts,
+              logoUrl: finalLogo,
+            };
           });
+
+          // Preserva clientes criados localmente que ainda não subiram para a nuvem
+          const localOnlyClients = prev.filter(
+            (lc) => !cloudClients.some((cc) => cc.id === lc.id || cc.name.toLowerCase() === lc.name.toLowerCase())
+          );
+
+          const finalClients = [...mergedCloud, ...localOnlyClients];
+
           try {
-            localStorage.setItem('playcomunique_clientes', JSON.stringify(merged));
+            localStorage.setItem('playcomunique_clientes', JSON.stringify(finalClients));
           } catch (e) {}
-          return merged;
+          saveLocalClients(finalClients).catch(() => {});
+          return finalClients;
+        });
+      }
+    });
+
+    // 2. Restaura logotipos e clientes do IndexedDB local (redundância instantânea)
+    getLocalClients().then((cachedClients) => {
+      if (cachedClients && cachedClients.length > 0 && isMounted) {
+        setClients((prev) => {
+          return prev.map((c) => {
+            const cached = cachedClients.find((ic) => ic.id === c.id || ic.name.toLowerCase() === c.name.toLowerCase());
+            if (cached && cached.logoUrl && (!c.logoUrl || c.logoUrl.startsWith('/logos/belissima'))) {
+              return { ...c, logoUrl: cached.logoUrl };
+            }
+            return c;
+          });
         });
       }
     });
@@ -279,6 +345,12 @@ export default function App() {
   }, [clients]);
 
   const handleSaveClient = (newOrUpdatedClient: ClientProfile) => {
+    // 1. Salva imediatamente o logotipo no IndexedDB e em documento dedicado do Firestore
+    if (newOrUpdatedClient.logoUrl) {
+      saveLocalImage(`logo_${newOrUpdatedClient.id}`, newOrUpdatedClient.logoUrl).catch(() => {});
+      saveProductImageToCloud(`logo_${newOrUpdatedClient.id}`, newOrUpdatedClient.logoUrl).catch(() => {});
+    }
+
     setClients((prev) => {
       const exists = prev.some((c) => c.id === newOrUpdatedClient.id);
       let updated: ClientProfile[];
@@ -308,24 +380,36 @@ export default function App() {
       }
       try {
         localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Aviso: localStorage cheio, backup mantido no IndexedDB e Nuvem:', e);
+      }
+      saveLocalClients(updated).catch(() => {});
       saveClientsToCloud(updated).catch(() => {});
       return updated;
     });
 
-    // If edited client is currently active on banner, sync it
+    // Se o cliente editado for o ativo no banner, sincroniza imediatamente
     if (campaign.clientName.toLowerCase() === newOrUpdatedClient.name.toLowerCase() || campaign.clientId === newOrUpdatedClient.id) {
-      setCampaign((prev) => ({
-        ...prev,
-        clientId: newOrUpdatedClient.id,
-        clientName: newOrUpdatedClient.name,
-        clientLogoUrl: newOrUpdatedClient.logoUrl,
-        themeId: newOrUpdatedClient.themeId,
-        segment: newOrUpdatedClient.segment,
-        tickerText: newOrUpdatedClient.defaultTickerText || prev.tickerText,
-        phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || prev.phoneWhatsapp,
-        storeAddress: newOrUpdatedClient.storeAddress || prev.storeAddress,
-      }));
+      setCampaign((prev) => {
+        const nextCamp: BannerCampaign = {
+          ...prev,
+          clientId: newOrUpdatedClient.id,
+          clientName: newOrUpdatedClient.name,
+          clientLogoUrl: newOrUpdatedClient.logoUrl,
+          showClientLogo: Boolean(newOrUpdatedClient.logoUrl),
+          themeId: newOrUpdatedClient.themeId,
+          segment: newOrUpdatedClient.segment,
+          tickerText: newOrUpdatedClient.defaultTickerText || prev.tickerText,
+          phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || prev.phoneWhatsapp,
+          storeAddress: newOrUpdatedClient.storeAddress || prev.storeAddress,
+        };
+        try {
+          localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCamp));
+        } catch (_) {}
+        saveLocalCampaign(nextCamp).catch(() => {});
+        saveCampaignToCloud(nextCamp).catch(() => {});
+        return nextCamp;
+      });
     }
   };
 
@@ -335,6 +419,7 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
       } catch (e) {}
+      saveLocalClients(updated).catch(() => {});
       saveClientsToCloud(updated).catch(() => {});
 
       // Se o cliente deletado era o ativo, muda para o primeiro da lista
@@ -364,6 +449,7 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
       } catch (e) {}
+      saveLocalClients(updated).catch(() => {});
       saveClientsToCloud(updated).catch(() => {});
       return updated;
     });
@@ -417,6 +503,7 @@ export default function App() {
         localStorage.setItem('playcomunique_active_client_id', client.id);
       } catch (e) {}
 
+      saveLocalCampaign(nextCampaign).catch(() => {});
       saveCampaignToCloud(nextCampaign).catch(() => {});
       return nextCampaign;
     });
