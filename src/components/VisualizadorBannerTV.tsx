@@ -326,7 +326,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes (1:1 with Mini Player) */}
         {/* TOP HEADER: Perfectly Proportioned Across All Screen Sizes */}
-        {isSquare ? (
+        {(isSquare || isVertical) ? (
           <div 
             id="tv-banner-header"
             className="relative z-10 px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5 flex flex-col shrink-0 w-full justify-between border-b-2 sm:border-b-4 overflow-hidden"
@@ -454,19 +454,15 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             </div>
           </div>
         ) : (
-          /* Cabeçalho Normal para TV 16:9 e Vertical */
+          /* Cabeçalho Normal para TV 16:9 Horizontal */
           <div 
             id="tv-banner-header"
-            className={`relative z-10 px-3 sm:px-5 md:px-7 py-2 sm:py-2.5 flex flex-col shrink-0 w-full gap-1 sm:gap-1.5`}
+            className="relative z-10 px-3 sm:px-5 md:px-7 py-2 sm:py-2.5 flex flex-col shrink-0 w-full gap-1 sm:gap-1.5"
           >
             {/* Linha Superior do Cabeçalho: Logo (Esquerda) e Título da Campanha (Direita) */}
             <div className="flex items-center justify-between w-full gap-2.5 sm:gap-4">
               {/* Left: Client Logo without any artificial container */}
-              <div className={`flex items-center shrink-0 ${
-                isVertical
-                  ? 'w-auto max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-14 sm:h-16 md:h-18'
-                  : 'w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24'
-              }`}>
+              <div className="flex items-center shrink-0 w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24">
                 {campaign.showClientLogo !== false && (
                   isBelissima ? (
                     <img
@@ -509,56 +505,32 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               </div>
 
               {/* Campaign Title */}
-              <div className={`flex-1 flex flex-col ${
-                isVertical 
-                  ? 'items-end text-right pl-1 sm:pl-2' 
-                  : 'items-center text-center px-2 sm:px-4'
-              } justify-center min-w-0`}>
+              <div className="flex-1 flex flex-col items-center text-center px-2 sm:px-4 justify-center min-w-0">
                 <h1 
                   style={{
                     color: effectiveStyles.campaignTitleColor || '#fbbf24',
                     fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
                   }}
                   className={`${
-                    isVertical
-                      ? (campaign.campaignTitle && campaign.campaignTitle.length > 30
-                          ? 'text-[13px] sm:text-[15px] md:text-[17px]'
-                          : 'text-[15px] sm:text-[17px] md:text-[19px]')
-                      : (campaign.campaignTitle && campaign.campaignTitle.length > 35
-                          ? 'text-xs sm:text-sm md:text-base lg:text-xl'
-                          : campaign.campaignTitle && campaign.campaignTitle.length > 25
-                          ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
-                          : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
+                    campaign.campaignTitle && campaign.campaignTitle.length > 35
+                      ? 'text-xs sm:text-sm md:text-base lg:text-xl'
+                      : campaign.campaignTitle && campaign.campaignTitle.length > 25
+                      ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
+                      : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]'
                   } font-black uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] w-full leading-tight tracking-tight break-words`}
                 >
                   {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
                 </h1>
 
-                {!isVertical && (
-                  <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
-                    <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
-                    <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
-                  </p>
-                )}
+                <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
+                  <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
+                </p>
               </div>
 
               {/* Right Symmetrical Spacer so Campaign Title is centered across the screen in Horizontal */}
-              {!isVertical && (
-                <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24" />
-              )}
+              <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24" />
             </div>
-
-            {/* Faixa de Validade em Destaque no Formato Vertical: 100% de largura, NUNCA CORTA! */}
-            {isVertical && (
-              <div className="w-full flex items-center justify-center pt-0.5">
-                <div className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-black/60 border border-white/20 backdrop-blur-md shadow-sm">
-                  <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="text-[10px] sm:text-[11px] md:text-[12px] text-amber-200 font-extrabold tracking-wide text-center leading-tight whitespace-normal break-words">
-                    {campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
