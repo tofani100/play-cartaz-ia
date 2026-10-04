@@ -9,9 +9,7 @@ import {
   Tag,
   Star,
   Upload,
-  RefreshCw,
   Copy,
-  SlidersHorizontal,
   Eye,
   EyeOff,
   Download,
@@ -37,7 +35,6 @@ import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual } from '../utils/ajudanteExportacao';
-import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
 
 const PALETA_CORES_RAPIDAS = [
@@ -102,9 +99,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   };
   const [catalogSearch, setCatalogSearch] = useState<string>('');
   const [catalogCategory, setCatalogCategory] = useState<string>('all');
-  const [isSearchingRealImage, setIsSearchingRealImage] = useState<boolean>(false);
-  const [isGeneratingAiImage, setIsGeneratingAiImage] = useState<boolean>(false);
-  const [isPromptCopied, setIsPromptCopied] = useState<boolean>(false);
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
   const [recordingVideoIndex, setRecordingVideoIndex] = useState<number | null>(null);
   const [recordingVideoProgress, setRecordingVideoProgress] = useState<number>(0);
@@ -124,7 +118,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
     setOpenSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const productBgInputRef = useRef<HTMLInputElement>(null);
   const clientLogoInputRef = useRef<HTMLInputElement>(null);
 
@@ -265,80 +258,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
     } finally {
       setRecordingVideoIndex(null);
       setRecordingVideoProgress(0);
-    }
-  };
-
-  const handleSearchRealImage = async () => {
-    if (!activeProduct || isSearchingRealImage) return;
-    setIsSearchingRealImage(true);
-    try {
-      const res = await fetch('/api/products/search-real-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `${activeProduct.title} ${activeProduct.brand || ''}`.trim(),
-          brand: activeProduct.brand,
-          category: activeProduct.category,
-        }),
-      });
-      const data = await res.json();
-      if (data && data.success && data.imageUrl) {
-        onUpdateProduct(currentProductIndex, { imageUrl: data.imageUrl });
-      }
-    } catch (err) {
-      console.warn('Erro ao buscar foto real:', err);
-    } finally {
-      setIsSearchingRealImage(false);
-    }
-  };
-
-  const handleGenerateAiCommercialImage = async () => {
-    if (!activeProduct || isGeneratingAiImage) return;
-    setIsGeneratingAiImage(true);
-    try {
-      const res = await fetch('/api/gemini/generate-commercial-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: activeProduct.title,
-          brand: activeProduct.brand,
-          category: activeProduct.category,
-          unit: activeProduct.unit,
-          aspectRatio: '4:3',
-        }),
-      });
-      const data = await res.json();
-      if (data && data.success && data.imageUrl) {
-        onUpdateProduct(currentProductIndex, {
-          imageUrl: data.imageUrl,
-          imageDisplayMode: 'ambient',
-          aiPromptUsed: data.promptUsed,
-        });
-      }
-    } catch (err) {
-      console.error('Erro ao gerar banner comercial com IA:', err);
-    } finally {
-      setIsGeneratingAiImage(false);
-    }
-  };
-
-  const handleCopyGeminiPrompt = async () => {
-    if (!activeProduct) return;
-    try {
-      const prompts = buildCommercialProductPrompts({
-        title: activeProduct.title,
-        brand: activeProduct.brand,
-        category: activeProduct.category,
-        unit: activeProduct.unit,
-        businessSegment: campaign?.segment,
-      });
-      const ok = await copyTextToClipboard(prompts.geminiWebPrompt);
-      if (ok) {
-        setIsPromptCopied(true);
-        setTimeout(() => setIsPromptCopied(false), 3000);
-      }
-    } catch (err) {
-      console.error('Erro ao copiar prompt:', err);
     }
   };
 
@@ -1315,180 +1234,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
                   placeholder="Bebidas, Hortifrúti, Carnes, Limpeza..."
                 />
-              </div>
-
-              {/* 6. Imagem / Packshot & Ferramentas IA */}
-              <div className="p-3 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[10px] font-bold text-neutral-300 uppercase">
-                    Foto da Embalagem / Packshot
-                  </label>
-                  <span className="text-[9px] text-amber-400">Upload ou IA</span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={activeProduct.imageUrl}
-                    onChange={(e) => onUpdateProduct(currentProductIndex, { imageUrl: e.target.value })}
-                    className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono truncate"
-                    placeholder="Link da imagem..."
-                  />
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        compressImageToDataUrl(file, 800, 800, 0.76).then((compressed) => {
-                          if (compressed) {
-                            onUpdateProduct(currentProductIndex, { imageUrl: compressed });
-                          }
-                        });
-                      }
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    disabled={isSearchingRealImage}
-                    onClick={handleSearchRealImage}
-                    className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-50 cursor-pointer"
-                    title="Buscar foto real da embalagem oficial no Google / Varejo"
-                  >
-                    {isSearchingRealImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = (ev: Event) => {
-                        const file = (ev.target as HTMLInputElement)?.files?.[0];
-                        if (file) {
-                          compressImageToDataUrl(file, 800, 800, 0.76).then((compressed) => {
-                            if (compressed) {
-                              onUpdateProduct(currentProductIndex, { imageUrl: compressed });
-                            }
-                          });
-                        }
-                      };
-                      input.click();
-                    }}
-                    className="p-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold cursor-pointer"
-                    title="Carregar foto real do seu dispositivo"
-                  >
-                    <Upload className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCatalogModal(true)}
-                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 cursor-pointer"
-                    title="Catálogo Comercial Brasil"
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Toolbar IA e Prompts */}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    disabled={isGeneratingAiImage}
-                    onClick={handleGenerateAiCommercialImage}
-                    className="py-1.5 px-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-[10px] rounded-lg shadow flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                    title="Gerar banner comercial ambientado com IA"
-                  >
-                    {isGeneratingAiImage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 fill-black" />}
-                    <span>{isGeneratingAiImage ? 'Gerando...' : 'Arte IA ✨'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyGeminiPrompt}
-                    className="py-1.5 px-2 bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-[10px] rounded-lg border border-neutral-700 flex items-center justify-center gap-1 cursor-pointer"
-                    title="Copiar prompt profissional pronto para o Gemini"
-                  >
-                    {isPromptCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{isPromptCopied ? 'Copiado!' : 'Prompt Gemini'}</span>
-                  </button>
-                </div>
-
-                {/* Estilo do Card: Ambientado vs Recortado & Borda */}
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-neutral-800 items-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextMode = activeProduct.imageDisplayMode === 'contain' ? 'ambient' : 'contain';
-                      onUpdateProduct(currentProductIndex, { imageDisplayMode: nextMode });
-                    }}
-                    className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-neutral-950 p-1.5 rounded-lg border border-neutral-800"
-                  >
-                    <SlidersHorizontal className="w-3 h-3 text-neutral-400 shrink-0" />
-                    <span className="truncate">
-                      {activeProduct.imageDisplayMode === 'contain' ? 'Recortado (Estúdio)' : 'Ambientado (TV) ✨'}
-                    </span>
-                  </button>
-
-                  <div className="flex items-center gap-1 bg-neutral-950 p-1 rounded-lg border border-neutral-800">
-                    <span className="text-[9px] text-neutral-400 shrink-0">Borda Card:</span>
-                    <input
-                      type="color"
-                      value={currentEffectiveStyles.cardBorderColor || '#ffffff'}
-                      onChange={(e) => handleApplyCustomStyle({ cardBorderColor: e.target.value })}
-                      className="w-5 h-5 rounded border border-neutral-700 bg-neutral-900 cursor-pointer shrink-0"
-                    />
-                    <input
-                      type="text"
-                      value={currentEffectiveStyles.cardBorderColor || '#ffffff'}
-                      onChange={(e) => handleApplyCustomStyle({ cardBorderColor: e.target.value })}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded px-1 py-0.5 text-[9px] text-white font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Botões de Ação do Item (PNG, MP4, Ocultar) */}
-              <div className="pt-2 border-t border-neutral-800 flex items-center justify-between gap-1.5">
-                <button
-                  type="button"
-                  disabled={downloadingIndex === currentProductIndex}
-                  onClick={() => handleDownloadIndividualBanner(currentProductIndex)}
-                  className="flex-1 py-1.5 px-2 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-extrabold text-[10px] rounded-lg border border-neutral-700 flex items-center justify-center gap-1 transition-all cursor-pointer"
-                >
-                  {downloadingIndex === currentProductIndex ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                  <span>{downloadingIndex === currentProductIndex ? 'Baixando...' : 'Baixar PNG'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={recordingVideoIndex === currentProductIndex}
-                  onClick={() => handleDownloadIndividualVideo(currentProductIndex)}
-                  className="flex-1 py-1.5 px-2 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 hover:from-purple-900/60 text-purple-300 font-extrabold text-[10px] rounded-lg border border-purple-500/40 flex items-center justify-center gap-1 transition-all cursor-pointer"
-                >
-                  {recordingVideoIndex === currentProductIndex ? <Loader2 className="w-3 h-3 animate-spin" /> : <Film className="w-3 h-3" />}
-                  <span>{recordingVideoIndex === currentProductIndex ? `${recordingVideoProgress}%` : 'Baixar MP4'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onUpdateProduct(currentProductIndex, { hidden: !activeProduct.hidden })}
-                  className={`py-1.5 px-2 rounded-lg border font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${
-                    activeProduct.hidden
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-neutral-800 text-neutral-300 border-neutral-700'
-                  }`}
-                  title="Ocultar da rotação da TV"
-                >
-                  {activeProduct.hidden ? <Eye className="w-3 h-3 text-amber-400" /> : <EyeOff className="w-3 h-3 text-neutral-400" />}
-                  <span className="hidden sm:inline">{activeProduct.hidden ? 'Reativar' : 'Ocultar'}</span>
-                </button>
               </div>
             </div>
           )}
