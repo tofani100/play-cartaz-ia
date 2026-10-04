@@ -66,12 +66,25 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     return gerarPaletaHarmonicaTabloide(baseBannerColor);
   }, [baseBannerColor]);
 
-  // Grid Columns: 1, 2, 3 or 4 (default: 2 for mobile/whatsapp screens)
-  const columns = campaign.tabloidColumns || 2;
-  // Grid Rows: 2, 3, 4, 5, 6 or 0 for all (default: 3 rows = 6 items)
-  const rows = campaign.tabloidRows !== undefined ? campaign.tabloidRows : 3;
   // Target format preset: 'whatsapp-mobile' | 'instagram-feed' | 'classic-a4'
   const targetPreset = campaign.tabloidTarget || 'whatsapp-mobile';
+
+  // Grid Columns: 1, 2, 3 or 4
+  // Padrão solicitado: instagram retrato (4:5) e Feed Quadrado (1:1) são sempre montados com 3 cols e 3 linhas!
+  const defaultColsForPreset = 
+    (targetPreset === 'instagram-feed' || targetPreset === 'instagram-square' || targetPreset === 'classic-a4') ? 3 : 2;
+  const columns = useMemo(() => {
+    if (campaign.tabloidColumns) {
+      if ((targetPreset === 'instagram-feed' || targetPreset === 'instagram-square') && campaign.tabloidColumns === 2) {
+        return 3;
+      }
+      return campaign.tabloidColumns;
+    }
+    return defaultColsForPreset;
+  }, [campaign.tabloidColumns, targetPreset, defaultColsForPreset]);
+
+  // Grid Rows: 2, 3, 4, 5, 6 or 0 for all (padrão: 3 linhas)
+  const rows = campaign.tabloidRows !== undefined ? campaign.tabloidRows : 3;
 
   // Product Selection & Drag State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -230,11 +243,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
       newCols = 2;
       newRows = 3; // 2x3 = 6 produtos, formato vertical perfeito para WhatsApp/Stories (9:16)
     } else if (preset === 'instagram-feed') {
-      newCols = 2;
-      newRows = 3; // 2x3 = 6 produtos, formato vertical retrato do Instagram Feed (4:5)
+      newCols = 3;
+      newRows = 3; // 3x3 = 9 produtos, Instagram Retrato (4:5) padrão solicitado!
     } else if (preset === 'instagram-square') {
-      newCols = 2;
-      newRows = 2; // 2x2 = 4 produtos, formato quadrado balanceado (1:1)
+      newCols = 3;
+      newRows = 3; // 3x3 = 9 produtos, Feed Quadrado (1:1) padrão solicitado!
     } else if (preset === 'classic-a4') {
       newCols = 3;
       newRows = 3; // 3x3 = 9 produtos, encarte padrão de supermercado A4
@@ -896,6 +909,212 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 const isDragging = draggedCardId === item.id;
                 const isDragOver = dragOverCardId === item.id && draggedCardId !== item.id;
 
+                // Destaque DUPLO: Layout Horizontal inspirado no Banner de TV (Foto à direita, Título e Preço à esquerda)
+                if (isHero && columns > 1) {
+                  return (
+                    <div
+                      key={item.id || idx}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedCardId(item.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', item.id);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (dragOverCardId !== item.id) {
+                          setDragOverCardId(item.id);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverCardId === item.id) {
+                          setDragOverCardId(null);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedCardId && draggedCardId !== item.id) {
+                          handleReorder(draggedCardId, item.id);
+                        }
+                        setDraggedCardId(null);
+                        setDragOverCardId(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedCardId(null);
+                        setDragOverCardId(null);
+                      }}
+                      onClick={() => {
+                        if (onSelectProductIndex) {
+                          const originalIdx = campaign.products.findIndex(p => p.id === item.id);
+                          if (originalIdx !== -1) onSelectProductIndex(originalIdx);
+                        }
+                      }}
+                      style={{
+                        background: paletaHarmonica.cardHeroBackground,
+                        border: paletaHarmonica.cardHeroBorder,
+                        boxShadow: paletaHarmonica.cardHeroShadow,
+                      }}
+                      className={`group relative rounded-xl sm:rounded-2xl overflow-hidden transition-all flex flex-row items-stretch justify-between cursor-grab active:cursor-grabbing select-none h-full min-h-0 col-span-2 ${
+                        isDragging ? 'opacity-35 scale-95 border-dashed border-amber-400' : ''
+                      } ${
+                        isDragOver ? 'ring-2 ring-amber-400 scale-[1.02]' : ''
+                      }`}
+                      title="Banner Duplo (Destaque TV). Arraste para reposicionar ou clique para editar este produto"
+                    >
+                      {/* Botão Duplo rápido no topo direito (Não visível no PNG de exportação) */}
+                      {!isExporting && (
+                        <div className="absolute top-1.5 right-1.5 z-30 flex items-center gap-1 no-export pointer-events-auto">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleHero(item.id, e)}
+                            className="px-1.5 py-0.5 rounded text-[7.5px] sm:text-[8px] font-black uppercase flex items-center gap-0.5 shadow-md transition-all cursor-pointer bg-amber-400 hover:bg-amber-300 text-black ring-1 ring-amber-300"
+                            title="Clique para voltar ao tamanho normal (1 vaga)"
+                          >
+                            <Star className="w-2 h-2 fill-black text-black" />
+                            <span>Duplo</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Lado Esquerdo: Selos, Título Comercial e Bloco de Preços (Estilo TV Banner) */}
+                      <div className="w-[52%] sm:w-[54%] flex flex-col justify-between p-2 sm:p-2.5 min-w-0 z-10 select-none">
+                        {/* Topo do Lado Esquerdo: Selos e Nome do Produto */}
+                        <div className="flex flex-col items-start gap-1 min-w-0">
+                          {/* Selo Promocional + Pílula de Unidade */}
+                          <div className="flex flex-wrap items-center gap-1 max-w-full">
+                            {item.badge && (
+                              <span 
+                                className={`${
+                                  effectiveRows >= 4 ? 'text-[7px] px-1 py-0.2' :
+                                  effectiveRows === 3 ? 'text-[7.5px] sm:text-[8px] px-1.5 py-0.5' :
+                                  'text-[8.5px] sm:text-[9px] px-2 py-0.5'
+                                } uppercase font-black rounded-md shadow-md text-center tracking-wider truncate inline-block max-w-full`}
+                                style={{
+                                  backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
+                                  color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
+                                }}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+
+                            <span 
+                              style={{
+                                background: paletaHarmonica.unitPillBackground,
+                                color: paletaHarmonica.unitPillTextColor,
+                                border: paletaHarmonica.unitPillBorder,
+                              }}
+                              className={`${
+                                effectiveRows >= 4 ? 'text-[6px] px-1 py-0.2' :
+                                effectiveRows === 3 ? 'text-[7px] px-1.5 py-0.5' :
+                                'text-[8px] px-1.5 py-0.5'
+                              } font-black uppercase rounded shadow-sm whitespace-nowrap inline-block`}
+                            >
+                              {item.unit || 'UN'}
+                            </span>
+                          </div>
+
+                          {/* Título Comercial do Produto em Destaque */}
+                          <h4 
+                            className={`font-black ${
+                              effectiveRows >= 4
+                                ? 'text-[9px] sm:text-[10px] line-clamp-2 leading-tight'
+                                : effectiveRows === 3
+                                ? 'text-[11px] sm:text-[13px] md:text-[14px] line-clamp-2 leading-tight'
+                                : 'text-sm sm:text-base md:text-lg line-clamp-2 leading-snug'
+                            } break-words mt-0.5 text-left`}
+                            style={{
+                              color: paletaHarmonica.titleColor,
+                              textShadow: paletaHarmonica.titleShadow,
+                            }}
+                            title={item.title}
+                          >
+                            {item.title}
+                          </h4>
+                        </div>
+
+                        {/* Base do Lado Esquerdo: De R$ ... e Etiqueta de Preço de Supermercado */}
+                        <div className="flex flex-col items-start w-full mt-auto pt-1 shrink-0">
+                          {item.originalPrice && (
+                            <div 
+                              className={`${
+                                effectiveRows >= 4 ? 'text-[7.5px]' :
+                                effectiveRows === 3 ? 'text-[8.5px] sm:text-[9.5px]' :
+                                'text-[10px] sm:text-[11px]'
+                              } font-bold text-white/75 line-through tracking-tight mb-0.5 whitespace-nowrap`}
+                            >
+                              De: R$ {item.originalPrice.replace('R$', '').trim()}
+                            </div>
+                          )}
+
+                          <div className="flex items-end justify-between gap-1 w-full min-w-0">
+                            <EtiquetaPrecoPromocional
+                              price={item.price}
+                              originalPrice={undefined}
+                              unit={item.unit}
+                              themeStyle={{
+                                priceBg: item.customStyles?.priceBoxBgColor || itemStyles.priceBoxBgColor || theme.priceBg || '#ea580c',
+                                priceText: item.customStyles?.priceBoxTextColor || itemStyles.priceBoxTextColor || theme.priceText || '#ffffff',
+                              }}
+                              size={effectiveRows >= 4 ? 'compact' : effectiveRows === 3 ? 'xs' : 'sm'}
+                            />
+
+                            {item.discountPercentage && item.discountPercentage > 0 && (
+                              <div className="text-right shrink-0 flex flex-col items-end justify-center min-w-0 pb-0.5 pl-0.5">
+                                <span className={`font-black text-red-400 block leading-none uppercase whitespace-nowrap ${
+                                  effectiveRows >= 4 ? 'text-[5.5px]' :
+                                  effectiveRows === 3 ? 'text-[6.5px] sm:text-[7px]' :
+                                  'text-[7.5px] sm:text-[8.5px]'
+                                }`}>
+                                  {effectiveRows >= 4 ? 'ECON.' : 'ECONOMIZE'}
+                                </span>
+                                <span className={`font-black text-amber-400 leading-none mt-0.5 whitespace-nowrap ${
+                                  effectiveRows >= 4 ? 'text-[7.5px]' :
+                                  effectiveRows === 3 ? 'text-[8.5px] sm:text-[9.5px]' :
+                                  'text-[10px] sm:text-[11px]'
+                                }`}>
+                                  -{item.discountPercentage}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lado Direito: Foto Comercial em Moldura de Estúdio Estilo TV Banner */}
+                      <div className="w-[48%] sm:w-[46%] p-1 sm:p-1.5 flex items-center justify-center relative overflow-hidden select-none">
+                        <div className="relative w-full h-full rounded-lg sm:rounded-xl overflow-hidden border border-white/20 shadow-inner flex items-center justify-center bg-gradient-to-b from-white/10 via-black/20 to-black/40 p-1">
+                          {/* Halo / pedestal iluminado */}
+                          <div 
+                            className="absolute inset-0 pointer-events-none rounded-lg sm:rounded-xl"
+                            style={{ background: paletaHarmonica.imagePedestalGradient }}
+                          />
+                          <div className="absolute bottom-1 w-3/4 h-2 bg-black/40 rounded-full blur-sm" />
+
+                          <img
+                            crossOrigin="anonymous"
+                            src={item.imageUrl}
+                            alt={item.title}
+                            onError={(e) => handleImageError(e, item.title, item.category)}
+                            className="relative z-10 w-auto h-auto max-h-full max-w-[92%] object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.7)] transform group-hover:scale-105 transition-transform duration-200"
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        {/* Dica de arrasto sutil (no-export) */}
+                        {!isExporting && (
+                          <div className="absolute bottom-1 right-1 z-20 no-export opacity-0 group-hover:opacity-60 transition-opacity text-[8px] font-bold text-neutral-400 flex items-center gap-0.5 pointer-events-none">
+                            <GripVertical className="w-2 h-2" />
+                            <span>Arraste</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={item.id || idx}
@@ -912,7 +1131,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         setDragOverCardId(item.id);
                       }
                     }}
-                    onDragLeave={() => {
+                    onDragLeave={(e) => {
                       if (dragOverCardId === item.id) {
                         setDragOverCardId(null);
                       }
@@ -936,15 +1155,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       }
                     }}
                     style={{
-                      background: isHero && columns > 1 ? paletaHarmonica.cardHeroBackground : paletaHarmonica.cardBackground,
-                      border: isHero && columns > 1 
-                        ? paletaHarmonica.cardHeroBorder 
-                        : (itemStyles.cardBorderColor ? `1px solid ${itemStyles.cardBorderColor}` : paletaHarmonica.cardBorder),
-                      boxShadow: isHero && columns > 1 ? paletaHarmonica.cardHeroShadow : paletaHarmonica.cardShadow,
+                      background: paletaHarmonica.cardBackground,
+                      border: itemStyles.cardBorderColor ? `1px solid ${itemStyles.cardBorderColor}` : paletaHarmonica.cardBorder,
+                      boxShadow: paletaHarmonica.cardShadow,
                     }}
                     className={`group relative rounded-xl sm:rounded-2xl overflow-hidden transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing select-none h-full min-h-0 ${
-                      isHero && columns > 1 ? 'col-span-2' : ''
-                    } ${
                       isDragging ? 'opacity-35 scale-95 border-dashed border-amber-400' : ''
                     } ${
                       isDragOver ? 'ring-2 ring-amber-400 scale-[1.02]' : ''
