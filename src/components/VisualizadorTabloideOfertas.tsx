@@ -536,7 +536,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-header"
-          className="relative p-4 sm:p-5 text-white flex flex-col justify-center border-b-4 overflow-hidden"
+          className="relative px-3.5 sm:px-5 py-3 sm:py-4 text-white flex flex-col justify-center border-b-4 overflow-hidden"
           style={{ 
             borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
             fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
@@ -604,16 +604,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           <div className="absolute top-1/2 left-10 -translate-y-1/2 w-72 h-72 bg-white/5 rounded-full blur-2xl pointer-events-none" />
 
           {/* Conteúdo Principal do Cabeçalho: Logo Maior à Esquerda e Textos Acumulados à Direita */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-stretch justify-between w-full gap-3 sm:gap-5">
-            {/* Esquerda: Logo Oficial em Escala Maior e Imponente */}
-            <div className="flex items-center justify-center sm:justify-start shrink-0 min-w-[150px] sm:min-w-[210px] md:min-w-[240px] py-0.5">
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-2.5 sm:gap-4">
+            {/* Esquerda: Logo Oficial em Escala Maior e Imponente (intacto e protegido de sobreposições) */}
+            <div className="flex items-center justify-center sm:justify-start shrink-0 max-w-[44%] sm:max-w-[46%] py-0.5">
               {campaign.showClientLogo !== false && (
                 isBelissima ? (
                   <img 
                     crossOrigin="anonymous"
                     src="/logos/belissima-casa-di-frutas.png"
                     alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-[220px] sm:max-w-[260px] md:max-w-[280px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
+                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -625,7 +625,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src={campaign.clientLogoUrl}
                     alt={campaign.clientName || 'Logo'}
-                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-[220px] sm:max-w-[260px] md:max-w-[280px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
+                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
@@ -636,7 +636,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
               )}
             </div>
 
-            {/* Direita: Textos Acumulados (Título, Validade e WhatsApp) Alinhados à Direita */}
+            {/* Direita: Textos Acumulados Proporcionais (Título, WhatsApp e Validade) Alinhados à Direita */}
             {(() => {
               const defaultVal1 = 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques';
               const defaultVal2 = 'Ofertas válidas até domingo ou enquanto durarem os estoques';
@@ -658,19 +658,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 campaign.campaignSubtitle.trim().toLowerCase() !== validityDisplay.trim().toLowerCase() &&
                 !campaign.campaignSubtitle.toLowerCase().includes('válid');
 
-              const validityFontSize = 
-                validityDisplay.length > 52
-                  ? 'text-[7.5px] sm:text-[8.5px]'
-                  : validityDisplay.length > 38
-                  ? 'text-[8.5px] sm:text-[9.5px]'
-                  : 'text-[9.5px] sm:text-[10.5px]';
-
               return (
-                <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-2">
+                <div className="flex-1 min-w-0 max-w-full sm:max-w-[54%] flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-1.5 sm:gap-2">
                   {/* Bloco 1: Título Superior da Campanha */}
                   <div className="w-full flex flex-col items-center sm:items-end text-center sm:text-right">
                     <h1 
-                      className="w-full text-lg sm:text-xl md:text-2xl lg:text-[26px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.1] block break-words"
+                      className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.15] block break-words"
                       style={{
                         fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
                         color: effectiveStyles.campaignTitleColor || '#fde047',
@@ -682,7 +675,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     {/* Subtítulo / Slogan (se houver) */}
                     {isSubtitleValid && (
                       <span 
-                        className="text-[11px] sm:text-xs text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
+                        className="text-[10px] sm:text-[11px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
                         style={{ fontFamily: "'Montserrat', sans-serif" }}
                       >
                         {campaign.campaignSubtitle}
@@ -690,22 +683,30 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     )}
                   </div>
 
-                  {/* Bloco 2: Validade das Ofertas (Pílula Elegante à Direita) */}
+                  {/* Bloco 2: WhatsApp CTA (ITEM 1 - Invertido com a Validade, agora logo abaixo do título) */}
                   <div className="w-full flex items-center justify-center sm:justify-end">
                     <div 
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/55 border border-white/20 ${validityFontSize} text-amber-200 font-semibold whitespace-nowrap max-w-full shadow-md backdrop-blur-xs`}
-                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.2 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-[10.5px] sm:text-[11.5px] font-black shadow-md backdrop-blur-xs transition-colors max-w-full"
+                      title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
                     >
-                      <Calendar className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="uppercase whitespace-nowrap tracking-tight">{validityDisplay}</span>
+                      <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-200 shrink-0" />
+                      <span className="tracking-tight whitespace-nowrap truncate">
+                        Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Bloco 3: WhatsApp CTA (Acumulado diretamente na direita sob a validade!) */}
+                  {/* Bloco 3: Validade das Ofertas (ITEM 2 - Invertido com o WhatsApp, agora abaixo do WhatsApp na base) */}
                   <div className="w-full flex items-center justify-center sm:justify-end">
-                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-xs sm:text-[12.5px] font-black shadow-lg backdrop-blur-xs transition-colors">
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                      <span className="tracking-tight whitespace-nowrap">Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}</span>
+                    <div 
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-black/60 border border-white/20 text-amber-200 font-semibold shadow-sm backdrop-blur-xs text-[8px] sm:text-[8.5px] md:text-[9px] max-w-full"
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                      title={validityDisplay}
+                    >
+                      <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400 shrink-0" />
+                      <span className="uppercase tracking-tight leading-tight line-clamp-1 truncate text-center sm:text-right">
+                        {validityDisplay}
+                      </span>
                     </div>
                   </div>
                 </div>
