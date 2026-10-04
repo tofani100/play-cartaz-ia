@@ -979,7 +979,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       )}
 
                       {/* Lado Esquerdo: Selos, Título Comercial e Bloco de Preços (Estilo TV Banner) */}
-                      <div className="w-[52%] sm:w-[54%] flex flex-col justify-between p-2 sm:p-2.5 min-w-0 z-10 select-none">
+                      <div className="w-[46%] sm:w-[48%] flex flex-col justify-between p-2 sm:p-2.5 min-w-0 z-10 select-none">
                         {/* Topo do Lado Esquerdo: Selos e Nome do Produto */}
                         <div className="flex flex-col items-start gap-1 min-w-0">
                           {/* Selo Promocional + Pílula de Unidade */}
@@ -1020,9 +1020,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                           <h4 
                             className={`font-black ${
                               effectiveRows >= 4
-                                ? 'text-[9px] sm:text-[10px] line-clamp-2 leading-tight'
+                                ? 'text-[9.5px] sm:text-[10.5px] line-clamp-2 leading-tight'
                                 : effectiveRows === 3
-                                ? 'text-[11px] sm:text-[13px] md:text-[14px] line-clamp-2 leading-tight'
+                                ? 'text-[11.5px] sm:text-[13px] md:text-[14px] line-clamp-2 leading-tight'
                                 : 'text-sm sm:text-base md:text-lg line-clamp-2 leading-snug'
                             } break-words mt-0.5 text-left`}
                             style={{
@@ -1083,25 +1083,49 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         </div>
                       </div>
 
-                      {/* Lado Direito: Foto Comercial em Moldura de Estúdio Estilo TV Banner */}
-                      <div className="w-[48%] sm:w-[46%] p-1 sm:p-1.5 flex items-center justify-center relative overflow-hidden select-none">
-                        <div className="relative w-full h-full rounded-lg sm:rounded-xl overflow-hidden border border-white/20 shadow-inner flex items-center justify-center bg-gradient-to-b from-white/10 via-black/20 to-black/40 p-1">
-                          {/* Halo / pedestal iluminado */}
-                          <div 
-                            className="absolute inset-0 pointer-events-none rounded-lg sm:rounded-xl"
-                            style={{ background: paletaHarmonica.imagePedestalGradient }}
-                          />
-                          <div className="absolute bottom-1 w-3/4 h-2 bg-black/40 rounded-full blur-sm" />
-
-                          <img
-                            crossOrigin="anonymous"
-                            src={item.imageUrl}
-                            alt={item.title}
-                            onError={(e) => handleImageError(e, item.title, item.category)}
-                            className="relative z-10 w-auto h-auto max-h-full max-w-[92%] object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.7)] transform group-hover:scale-105 transition-transform duration-200"
-                            referrerPolicy="no-referrer"
-                            loading="lazy"
-                          />
+                      {/* Lado Direito: Foto Comercial em Super Destaque Estilo TV 16:9 */}
+                      <div className="w-[54%] sm:w-[52%] p-1 sm:p-1.5 flex items-center justify-center relative overflow-hidden select-none">
+                        <div 
+                          className={`relative w-full h-full rounded-xl sm:rounded-2xl overflow-hidden border-[2.5px] sm:border-[3px] shadow-[0_14px_32px_rgba(0,0,0,0.8)] flex items-center justify-center transition-transform group-hover:scale-[1.01] ${
+                            item.imageDisplayMode !== 'contain'
+                              ? 'bg-neutral-950'
+                              : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6]'
+                          }`}
+                          style={{
+                            borderColor: itemStyles.cardBorderColor || effectiveStyles.cardBorderColor || '#fbbf24',
+                          }}
+                        >
+                          {item.imageDisplayMode !== 'contain' ? (
+                            /* MODO 1: FOTOGRAFIA COMERCIAL AMBIENTADA (Full-Bleed, Preenche Todo o Card Sem Bordas Pretas) */
+                            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                              <img
+                                crossOrigin="anonymous"
+                                src={item.imageUrl}
+                                alt={item.title}
+                                onError={(e) => handleImageError(e, item.title, item.category)}
+                                className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                              />
+                              {/* Ambient Vignette & Inner Glow */}
+                              <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.35)] pointer-events-none" />
+                            </div>
+                          ) : (
+                            /* MODO 2: PACKSHOT RECORTADO STUDIO WHITE COM PEDESTAL */
+                            <div className="absolute inset-0 flex items-center justify-center p-1.5 overflow-hidden pointer-events-none">
+                              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white/80 to-slate-100/60 pointer-events-none" />
+                              <div className="absolute bottom-1 w-3/4 h-2 bg-black/30 rounded-full blur-sm pointer-events-none" />
+                              <img
+                                crossOrigin="anonymous"
+                                src={item.imageUrl}
+                                alt={item.title}
+                                onError={(e) => handleImageError(e, item.title, item.category)}
+                                className="relative z-10 w-auto h-auto max-h-full max-w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)] transform group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Dica de arrasto sutil (no-export) */}
