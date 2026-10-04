@@ -694,9 +694,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       <MessageCircle className={`${targetPreset === 'whatsapp-mobile' ? 'w-3 h-3 sm:w-3.5 sm:h-3.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
                       <span className={`${
                         targetPreset === 'whatsapp-mobile'
-                          ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[8px] sm:text-[8.5px]' : 'text-[9px] sm:text-[9.5px]')
-                          : 'text-[10px] sm:text-[11px]'
-                      } font-black tracking-tight whitespace-nowrap`}>
+                          ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[8.5px]' : 'text-[9.5px] sm:text-[10px]')
+                          : 'text-[10.5px] sm:text-[11.5px]'
+                      } font-medium tracking-normal antialiased whitespace-nowrap drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
                         Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
                       </span>
                     </div>
@@ -1009,9 +1009,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             </div>
 
             {/* Direct Contact - WHATSAPP INTEGRAL EM LINHA ÚNICA SEM QUEBRA */}
-            <div className="flex items-center gap-1 text-[10.5px] sm:text-[11.5px] font-black text-amber-400 whitespace-nowrap shrink-0 ml-auto">
+            <div className="flex items-center gap-1 text-[10.5px] sm:text-[11.5px] font-medium text-amber-400 whitespace-nowrap shrink-0 ml-auto antialiased">
               <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="whitespace-nowrap tracking-tight">{campaign.phoneWhatsapp ? `WhatsApp: ${campaign.phoneWhatsapp}` : 'Fale Conosco'}</span>
+              <span className="whitespace-nowrap tracking-normal">{campaign.phoneWhatsapp ? `WhatsApp: ${campaign.phoneWhatsapp}` : 'Fale Conosco'}</span>
             </div>
           </div>
 
