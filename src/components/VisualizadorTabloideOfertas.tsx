@@ -534,196 +534,184 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         {/* CABEÇALHO OFICIAL DO TABLÓIDE: VISÍVEL, IMPONENTE E INTEGRAL */}
         {/* ============================================================ */}
-        <div 
-          id="tabloid-header"
-          className="relative px-3.5 sm:px-5 py-3 sm:py-4 text-white flex flex-col justify-center border-b-4 overflow-hidden"
-          style={{ 
-            borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
-            fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
-          }}
-        >
-          {/* Background Layer: Custom Image, Gradient or Base Color */}
-          {effectiveStyles.bannerBgImageUrl ? (
+        {(() => {
+          const defaultVal1 = 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques';
+          const defaultVal2 = 'Ofertas válidas até domingo ou enquanto durarem os estoques';
+          
+          let validityDisplay = campaign.validityText;
+          if (
+            (!validityDisplay || validityDisplay === defaultVal1 || validityDisplay === defaultVal2) &&
+            campaign.campaignSubtitle &&
+            campaign.campaignSubtitle.toLowerCase().includes('válid')
+          ) {
+            validityDisplay = campaign.campaignSubtitle;
+          }
+          if (!validityDisplay) {
+            validityDisplay = defaultVal2;
+          }
+
+          const isSubtitleValid = 
+            campaign.campaignSubtitle &&
+            campaign.campaignSubtitle.trim().toLowerCase() !== validityDisplay.trim().toLowerCase() &&
+            !campaign.campaignSubtitle.toLowerCase().includes('válid');
+
+          return (
             <div 
-              style={{
-                backgroundImage: `url(${effectiveStyles.bannerBgImageUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
+              id="tabloid-header"
+              className="relative px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5 text-white flex flex-col justify-between border-b-4 overflow-hidden"
+              style={{ 
+                borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
+                fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
               }}
-              className="absolute inset-0"
-            />
-          ) : (
-            <div 
-              style={{
-                background: effectiveStyles.bannerBgGradient || (effectiveStyles.bannerBgColor 
-                  ? `radial-gradient(circle at 60% 50%, ${effectiveStyles.bannerBgColor}ee, ${effectiveStyles.bannerBgColor} 70%, #000000 100%)` 
-                  : `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)`)
-              }}
-              className="absolute inset-0" 
-            />
-          )}
-
-          {/* Ondas Finas e Elegantes no Fundo (Linhas Douradas Sinuosas de Alta Sofisticação) */}
-          <svg 
-            className="absolute inset-0 w-full h-full pointer-events-none opacity-45 overflow-hidden" 
-            preserveAspectRatio="none" 
-            viewBox="0 0 1000 240"
-          >
-            <defs>
-              <linearGradient id="tabloidGoldWave1" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
-                <stop offset="35%" stopColor="#fde047" stopOpacity="0.8" />
-                <stop offset="70%" stopColor="#d97706" stopOpacity="0.65" />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.15" />
-              </linearGradient>
-              <linearGradient id="tabloidGoldWave2" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#fde047" stopOpacity="0.08" />
-                <stop offset="50%" stopColor="#ffffff" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.18" />
-              </linearGradient>
-              <linearGradient id="tabloidGoldWave3" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.12" />
-                <stop offset="45%" stopColor="#fef08a" stopOpacity="0.75" />
-                <stop offset="85%" stopColor="#b45309" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
-              </linearGradient>
-            </defs>
-
-            {/* Conjunto de ondas sinuosas finas e paralelas que cruzam o cabeçalho */}
-            <path d="M -60,35 Q 220,185 500,65 T 1060,105" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.6" />
-            <path d="M -60,60 Q 240,210 520,90 T 1060,130" fill="none" stroke="url(#tabloidGoldWave2)" strokeWidth="1.0" />
-            <path d="M -60,105 Q 200,245 560,115 T 1060,170" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.4" />
-            
-            <path d="M -60,165 Q 320,35 680,175 T 1060,85" fill="none" stroke="url(#tabloidGoldWave3)" strokeWidth="1.2" />
-            <path d="M -60,190 Q 340,60 700,200 T 1060,110" fill="none" stroke="url(#tabloidGoldWave2)" strokeWidth="1.0" />
-            <path d="M -60,225 Q 380,95 740,230 T 1060,145" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.8" />
-          </svg>
-
-          {/* Sutil iluminação ambiente */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute top-1/2 left-10 -translate-y-1/2 w-72 h-72 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-
-          {/* Conteúdo Principal do Cabeçalho: Logo Maior à Esquerda e Textos Acumulados à Direita */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-stretch justify-between w-full gap-2.5 sm:gap-4">
-            {/* Esquerda: Logo Oficial em Escala Maior e Imponente (intacto e protegido de sobreposições) */}
-            <div className="flex items-center justify-center sm:justify-start shrink-0 max-w-[44%] sm:max-w-[46%] py-0.5">
-              {campaign.showClientLogo !== false && (
-                isBelissima ? (
-                  <img 
-                    crossOrigin="anonymous"
-                    src="/logos/belissima-casa-di-frutas.png"
-                    alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (target.src.endsWith('.png')) target.src = '/logos/belissima-casa-di-frutas.svg';
-                    }}
-                  />
-                ) : campaign.clientLogoUrl ? (
-                  <img 
-                    crossOrigin="anonymous"
-                    src={campaign.clientLogoUrl}
-                    alt={campaign.clientName || 'Logo'}
-                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="bg-amber-400 text-black font-black text-xl sm:text-2xl px-5 py-3 rounded-2xl shadow-xl font-['Montserrat'] tracking-tight">
-                    {campaign.clientName || 'SUPERMERCADO'}
-                  </div>
-                )
+            >
+              {/* Background Layer: Custom Image, Gradient or Base Color */}
+              {effectiveStyles.bannerBgImageUrl ? (
+                <div 
+                  style={{
+                    backgroundImage: `url(${effectiveStyles.bannerBgImageUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                  className="absolute inset-0"
+                />
+              ) : (
+                <div 
+                  style={{
+                    background: effectiveStyles.bannerBgGradient || (effectiveStyles.bannerBgColor 
+                      ? `radial-gradient(circle at 60% 50%, ${effectiveStyles.bannerBgColor}ee, ${effectiveStyles.bannerBgColor} 70%, #000000 100%)` 
+                      : `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)`)
+                  }}
+                  className="absolute inset-0" 
+                />
               )}
-            </div>
 
-            {/* Direita: Textos Acumulados Proporcionais (Título e WhatsApp no Topo, Validade na Base) */}
-            {(() => {
-              const defaultVal1 = 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques';
-              const defaultVal2 = 'Ofertas válidas até domingo ou enquanto durarem os estoques';
-              
-              let validityDisplay = campaign.validityText;
-              if (
-                (!validityDisplay || validityDisplay === defaultVal1 || validityDisplay === defaultVal2) &&
-                campaign.campaignSubtitle &&
-                campaign.campaignSubtitle.toLowerCase().includes('válid')
-              ) {
-                validityDisplay = campaign.campaignSubtitle;
-              }
-              if (!validityDisplay) {
-                validityDisplay = defaultVal2;
-              }
+              {/* Ondas Finas e Elegantes no Fundo (Linhas Douradas Sinuosas de Alta Sofisticação) */}
+              <svg 
+                className="absolute inset-0 w-full h-full pointer-events-none opacity-45 overflow-hidden" 
+                preserveAspectRatio="none" 
+                viewBox="0 0 1000 240"
+              >
+                <defs>
+                  <linearGradient id="tabloidGoldWave1" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
+                    <stop offset="35%" stopColor="#fde047" stopOpacity="0.8" />
+                    <stop offset="70%" stopColor="#d97706" stopOpacity="0.65" />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.15" />
+                  </linearGradient>
+                  <linearGradient id="tabloidGoldWave2" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#fde047" stopOpacity="0.08" />
+                    <stop offset="50%" stopColor="#ffffff" stopOpacity="0.7" />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.18" />
+                  </linearGradient>
+                  <linearGradient id="tabloidGoldWave3" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.12" />
+                    <stop offset="45%" stopColor="#fef08a" stopOpacity="0.75" />
+                    <stop offset="85%" stopColor="#b45309" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
+                  </linearGradient>
+                </defs>
 
-              const isSubtitleValid = 
-                campaign.campaignSubtitle &&
-                campaign.campaignSubtitle.trim().toLowerCase() !== validityDisplay.trim().toLowerCase() &&
-                !campaign.campaignSubtitle.toLowerCase().includes('válid');
+                {/* Conjunto de ondas sinuosas finas e paralelas que cruzam o cabeçalho */}
+                <path d="M -60,35 Q 220,185 500,65 T 1060,105" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.6" />
+                <path d="M -60,60 Q 240,210 520,90 T 1060,130" fill="none" stroke="url(#tabloidGoldWave2)" strokeWidth="1.0" />
+                <path d="M -60,105 Q 200,245 560,115 T 1060,170" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.4" />
+                
+                <path d="M -60,165 Q 320,35 680,175 T 1060,85" fill="none" stroke="url(#tabloidGoldWave3)" strokeWidth="1.2" />
+                <path d="M -60,190 Q 340,60 700,200 T 1060,110" fill="none" stroke="url(#tabloidGoldWave2)" strokeWidth="1.0" />
+                <path d="M -60,225 Q 380,95 740,230 T 1060,145" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.8" />
+              </svg>
 
-              const validityFontSize = 
-                validityDisplay.length > 55
-                  ? 'text-[7px] sm:text-[7.5px] md:text-[8px]'
-                  : validityDisplay.length > 40
-                  ? 'text-[7.5px] sm:text-[8px] md:text-[8.5px]'
-                  : 'text-[8px] sm:text-[8.5px] md:text-[9.5px]';
+              {/* Sutil iluminação ambiente */}
+              <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute top-1/2 left-10 -translate-y-1/2 w-72 h-72 bg-white/5 rounded-full blur-2xl pointer-events-none" />
 
-              return (
-                <div className="flex-1 min-w-0 max-w-full sm:max-w-[56%] self-stretch flex flex-col justify-between items-center sm:items-end text-center sm:text-right py-0.5">
-                  {/* Bloco Superior e Médio: Título + WhatsApp */}
-                  <div className="w-full flex flex-col items-center sm:items-end text-center sm:text-right gap-1.5 sm:gap-2">
-                    {/* Bloco 1: Título Superior da Campanha */}
-                    <div className="w-full flex flex-col items-center sm:items-end text-center sm:text-right">
-                      <h1 
-                        className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.15] block break-words"
-                        style={{
-                          fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
-                          color: effectiveStyles.campaignTitleColor || '#fde047',
+              {/* Linha Superior do Cabeçalho: Logo à Esquerda e Título + WhatsApp à Direita (sutilmente elevados alguns mm) */}
+              <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-2 sm:gap-4 pb-1 sm:pb-1.5">
+                {/* Esquerda: Logo Oficial em Escala Maior e Imponente */}
+                <div className="flex items-center justify-center sm:justify-start shrink-0 max-w-[44%] sm:max-w-[46%] py-0.5">
+                  {campaign.showClientLogo !== false && (
+                    isBelissima ? (
+                      <img 
+                        crossOrigin="anonymous"
+                        src="/logos/belissima-casa-di-frutas.png"
+                        alt={campaign.clientName || 'Belíssima Casa di Frutas'}
+                        className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src.endsWith('.png')) target.src = '/logos/belissima-casa-di-frutas.svg';
                         }}
-                      >
-                        {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
-                      </h1>
-
-                      {/* Subtítulo / Slogan (se houver) */}
-                      {isSubtitleValid && (
-                        <span 
-                          className="text-[10px] sm:text-[11px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
-                          style={{ fontFamily: "'Montserrat', sans-serif" }}
-                        >
-                          {campaign.campaignSubtitle}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Bloco 2: WhatsApp CTA */}
-                    <div className="w-full flex items-center justify-center sm:justify-end">
-                      <div 
-                        className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.2 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-[10.5px] sm:text-[11.5px] font-black shadow-md backdrop-blur-xs transition-colors max-w-full"
-                        title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
-                      >
-                        <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-200 shrink-0" />
-                        <span className="tracking-tight whitespace-nowrap truncate">
-                          Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
-                        </span>
+                      />
+                    ) : campaign.clientLogoUrl ? (
+                      <img 
+                        crossOrigin="anonymous"
+                        src={campaign.clientLogoUrl}
+                        alt={campaign.clientName || 'Logo'}
+                        className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="bg-amber-400 text-black font-black text-xl sm:text-2xl px-5 py-3 rounded-2xl shadow-xl font-['Montserrat'] tracking-tight">
+                        {campaign.clientName || 'SUPERMERCADO'}
                       </div>
-                    </div>
+                    )
+                  )}
+                </div>
+
+                {/* Direita: Título da Campanha e WhatsApp CTA */}
+                <div className="flex-1 min-w-0 max-w-full sm:max-w-[56%] flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-1.5 sm:gap-2">
+                  {/* Título Superior da Campanha */}
+                  <div className="w-full flex flex-col items-center sm:items-end text-center sm:text-right">
+                    <h1 
+                      className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.15] block break-words"
+                      style={{
+                        fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
+                        color: effectiveStyles.campaignTitleColor || '#fde047',
+                      }}
+                    >
+                      {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
+                    </h1>
+
+                    {/* Subtítulo / Slogan (se houver) */}
+                    {isSubtitleValid && (
+                      <span 
+                        className="text-[10px] sm:text-[11px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                      >
+                        {campaign.campaignSubtitle}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Bloco 3: Validade das Ofertas (Posicionada exatamente na BASE do cabeçalho, com texto integral sem cortes) */}
-                  <div className="w-full flex items-center justify-center sm:justify-end mt-auto pt-2">
+                  {/* WhatsApp CTA */}
+                  <div className="w-full flex items-center justify-center sm:justify-end">
                     <div 
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-black/65 border border-white/20 text-amber-200 font-semibold shadow-sm backdrop-blur-xs ${validityFontSize} max-w-full`}
-                      style={{ fontFamily: "'Montserrat', sans-serif" }}
-                      title={validityDisplay}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.2 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-[10.5px] sm:text-[11.5px] font-black shadow-md backdrop-blur-xs transition-colors max-w-full"
+                      title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
                     >
-                      <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400 shrink-0" />
-                      <span className="uppercase tracking-tight leading-tight text-center sm:text-right">
-                        {validityDisplay}
+                      <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-200 shrink-0" />
+                      <span className="tracking-tight whitespace-nowrap truncate">
+                        Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
                       </span>
                     </div>
                   </div>
                 </div>
-              );
-            })()}
-          </div>
-        </div>
+              </div>
+
+              {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Uma Linha */}
+              <div className="relative z-10 w-full flex items-center justify-center gap-1.5 pt-1 border-t border-white/10 text-center">
+                <Calendar className="w-3 h-3 text-amber-400 shrink-0 drop-shadow" />
+                <span 
+                  className="text-[8.5px] sm:text-[9.5px] md:text-[10px] font-bold text-amber-200 tracking-wider uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] truncate max-w-full"
+                  style={{ fontFamily: "'Montserrat', sans-serif" }}
+                  title={validityDisplay}
+                >
+                  {validityDisplay}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ============================================================ */}
         {/* CORPO DO TABLÓIDE: GRADE DE OFERTAS MULTI-COLUNA E MULTI-LINHA */}
