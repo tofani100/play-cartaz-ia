@@ -1358,15 +1358,34 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             </div>
           </div>
 
-          {/* Address & Legal text */}
-          <div className="pt-1 flex flex-wrap items-center justify-between gap-1 text-[7px] sm:text-[8px] text-neutral-300/80">
+          {/* Linha 2: Endereço da Unidade (Esquerda) e Desenvolvido por playcomunique.com.br (Direita em Amarelo Ouro) */}
+          <div className="pt-1 flex items-center justify-between gap-1 text-[7px] sm:text-[8px] text-neutral-300/80">
             <div className="flex items-center gap-1 min-w-0">
               <MapPin className="w-2.5 h-2.5 text-amber-500 shrink-0" />
               <span className="truncate">{campaign.storeAddress || 'Consulte a unidade mais próxima de você.'}</span>
             </div>
-            <div className="text-right text-neutral-400 shrink-0 ml-auto">
-              <span>{campaign.legalNotice || 'Imagens meramente ilustrativas. Ofertas válidas enquanto durarem os estoques.'}</span>
+            <div className="text-right shrink-0 ml-auto whitespace-nowrap pl-1">
+              <span 
+                className={`${
+                  effectiveRows >= 4 ? 'text-[6.8px]' : 'text-[7.5px] sm:text-[8.5px]'
+                } font-bold tracking-tight inline-block drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]`}
+                style={{ color: '#FFD700' }}
+              >
+                Desenvolvido por playcomunique.com.br
+              </span>
             </div>
+          </div>
+
+          {/* Linha 3: Mensagem Legal / Proibido Bebidas Centralizada em Todos os Tablóides */}
+          <div className="pt-0.5 text-center w-full">
+            <span 
+              className={`${
+                effectiveRows >= 4 ? 'text-[6px]' : 'text-[6.8px] sm:text-[7.5px]'
+              } text-neutral-400/90 tracking-tight text-center block leading-tight truncate`}
+              title={campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'}
+            >
+              {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'}
+            </span>
           </div>
         </div>
       </div>
