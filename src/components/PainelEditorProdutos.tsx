@@ -154,6 +154,21 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
         ...(updates.secondBadgeBgColor ? { secondBadgeBgColor: updates.secondBadgeBgColor } : {}),
         ...(updates.secondBadgeTextColor ? { secondBadgeTextColor: updates.secondBadgeTextColor } : {}),
       });
+
+      // Em formato tablóide, alterações de fundo (cor, gradiente, imagem) ou modelos de mercado
+      // devem atualizar também os estilos gerais da campanha para que a lâmina inteira do tablóide responda
+      if (
+        campaign?.format === 'tabloid' && 
+        onUpdateCampaign && 
+        (updates.bannerBgColor !== undefined || updates.bannerBgGradient !== undefined || updates.bannerBgImageUrl !== undefined || updates.presetThemeId !== undefined)
+      ) {
+        onUpdateCampaign({
+          customStyles: {
+            ...(campaign.customStyles || {}),
+            ...updates,
+          },
+        });
+      }
     } else {
       if (onUpdateCampaign && campaign) {
         const existingStyles = campaign.customStyles || {};
@@ -181,13 +196,31 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   };
 
   const handleResetProductStyles = () => {
-    onUpdateProduct(currentProductIndex, {
-      customStyles: undefined,
-      badgeBgColor: undefined,
-      badgeTextColor: undefined,
-      secondBadgeBgColor: undefined,
-      secondBadgeTextColor: undefined,
-    });
+    if (customizationScope === 'single') {
+      onUpdateProduct(currentProductIndex, {
+        customStyles: undefined,
+        badgeBgColor: undefined,
+        badgeTextColor: undefined,
+        secondBadgeBgColor: undefined,
+        secondBadgeTextColor: undefined,
+      });
+      if (campaign?.format === 'tabloid' && onUpdateCampaign) {
+        onUpdateCampaign({ customStyles: undefined });
+      }
+    } else {
+      if (onUpdateCampaign && campaign) {
+        onUpdateCampaign({ customStyles: undefined });
+      }
+      products.forEach((p, idx) => {
+        onUpdateProduct(idx, {
+          customStyles: undefined,
+          badgeBgColor: undefined,
+          badgeTextColor: undefined,
+          secondBadgeBgColor: undefined,
+          secondBadgeTextColor: undefined,
+        });
+      });
+    }
   };
 
   const handleDownloadIndividualBanner = async (idx: number) => {

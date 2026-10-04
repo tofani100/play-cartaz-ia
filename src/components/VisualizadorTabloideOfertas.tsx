@@ -21,7 +21,7 @@ import {
   Eye,
   Grid
 } from 'lucide-react';
-import { BannerCampaign, ThemeColors, ProductItem } from '../tiposGeradorBanner';
+import { BannerCampaign, ThemeColors, ProductItem, BannerCustomStyles } from '../tiposGeradorBanner';
 import { EtiquetaPrecoPromocional } from './EtiquetaPrecoPromocional';
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng } from '../utils/ajudanteExportacao';
@@ -30,6 +30,7 @@ import { toCanvas } from 'html-to-image';
 interface VisualizadorTabloideOfertasProps {
   campaign: BannerCampaign;
   theme: ThemeColors;
+  currentProductIndex?: number;
   onUpdateCampaign?: (updated: Partial<BannerCampaign>) => void;
   onSelectProductIndex?: (index: number) => void;
 }
@@ -37,9 +38,19 @@ interface VisualizadorTabloideOfertasProps {
 export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasProps> = ({ 
   campaign, 
   theme,
+  currentProductIndex,
   onUpdateCampaign,
   onSelectProductIndex,
 }) => {
+  const targetProdIdx = currentProductIndex ?? campaign.activeProductIndex ?? 0;
+  const activeProduct = campaign.products[targetProdIdx] || campaign.products[0];
+
+  // Fusão de estilos dinâmica: prioriza estilos do produto selecionado sobre os globais da campanha
+  const effectiveStyles: BannerCustomStyles = {
+    ...(campaign.customStyles || {}),
+    ...(activeProduct?.customStyles || {}),
+  };
+
   // Grid Columns: 1, 2, 3 or 4 (default: 2 for mobile/whatsapp screens)
   const columns = campaign.tabloidColumns || 2;
   // Grid Rows: 2, 3, 4, 5, 6 or 0 for all (default: 3 rows = 6 items)
@@ -378,9 +389,13 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
       {/* TABLOID CAPTURE CONTAINER - ADAPTADO PARA CELULAR, INSTAGRAM, FACEBOOK E WHATSAPP */}
       <div
         id="tabloid-capture"
-        className={`w-full ${containerMaxWidth} bg-neutral-950 border-2 border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between select-none transition-all duration-300`}
+        className={`w-full ${containerMaxWidth} rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between select-none transition-all duration-300 relative`}
         style={{
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 158, 11, 0.15)',
+          borderColor: effectiveStyles.cardBorderColor || 'rgba(245, 158, 11, 0.4)',
+          borderWidth: '2px',
+          borderStyle: 'solid',
+          backgroundColor: effectiveStyles.bannerBgColor || '#0a0a0a',
         }}
       >
         {/* ============================================================ */}
@@ -388,12 +403,33 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-header"
-          className="relative p-3.5 sm:p-4 text-white flex flex-col justify-center border-b-4 border-amber-400 overflow-hidden"
+          className="relative p-3.5 sm:p-4 text-white flex flex-col justify-center border-b-4 overflow-hidden"
           style={{ 
-            background: campaign.customStyles?.bannerBgGradient || `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)`,
-            fontFamily: campaign.customStyles?.campaignTitleFont || "'Montserrat', sans-serif"
+            borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
+            fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
           }}
         >
+          {/* Background Layer: Custom Image, Gradient or Base Color */}
+          {effectiveStyles.bannerBgImageUrl ? (
+            <div 
+              style={{
+                backgroundImage: `url(${effectiveStyles.bannerBgImageUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+              className="absolute inset-0"
+            />
+          ) : (
+            <div 
+              style={{
+                background: effectiveStyles.bannerBgGradient || (effectiveStyles.bannerBgColor 
+                  ? `radial-gradient(circle at 60% 50%, ${effectiveStyles.bannerBgColor}ee, ${effectiveStyles.bannerBgColor} 70%, #000000 100%)` 
+                  : `linear-gradient(135deg, ${theme.primary} 0%, #06331e 60%, #031a0f 100%)`)
+              }}
+              className="absolute inset-0" 
+            />
+          )}
+
           {/* Subtle geometric pattern watermark */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
@@ -467,9 +503,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-start">
                   {/* Título Superior da Campanha (Cabeçalho) - Totalmente Visível Sem Cortar ou Sobrepor */}
                   <h1 
-                    className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] tracking-tight leading-tight block break-words"
+                    className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] tracking-tight leading-tight block break-words"
                     style={{
-                      fontFamily: campaign.customStyles?.campaignTitleFont || "'Montserrat', sans-serif",
+                      fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
+                      color: effectiveStyles.campaignTitleColor || '#fde047',
                       height: 'auto',
                       minHeight: 'fit-content'
                     }}
@@ -515,7 +552,14 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         {/* CORPO DO TABLÓIDE: GRADE DE OFERTAS MULTI-COLUNA E MULTI-LINHA */}
         {/* ============================================================ */}
-        <div className="p-3 sm:p-4 bg-gradient-to-b from-[#0a0a0a] via-[#111111] to-[#0a0a0a] flex-1">
+        <div 
+          className="p-3 sm:p-4 flex-1 relative"
+          style={{
+            background: effectiveStyles.bannerBgColor 
+              ? `linear-gradient(180deg, #0a0a0a 0%, ${effectiveStyles.bannerBgColor}1a 50%, #0a0a0a 100%)` 
+              : 'linear-gradient(180deg, #0a0a0a 0%, #111111 50%, #0a0a0a 100%)'
+          }}
+        >
           {productsToRender.length === 0 ? (
             <div className="text-center py-16 text-neutral-400 flex flex-col items-center justify-center">
               <Sparkles className="w-10 h-10 text-amber-400 mb-3 animate-bounce" />
@@ -542,6 +586,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             >
               {productsToRender.map((item, idx) => {
                 const isHero = item.isHero || false;
+                const itemStyles: BannerCustomStyles = {
+                  ...effectiveStyles,
+                  ...(item.customStyles || {}),
+                };
 
                 return (
                   <div
@@ -551,6 +599,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         const originalIdx = campaign.products.findIndex(p => p.id === item.id);
                         if (originalIdx !== -1) onSelectProductIndex(originalIdx);
                       }
+                    }}
+                    style={{
+                      borderColor: itemStyles.cardBorderColor ? `${itemStyles.cardBorderColor}aa` : undefined,
                     }}
                     className={`group relative rounded-xl overflow-hidden border transition-all flex flex-col justify-between cursor-pointer select-none ${
                       isHero && columns > 1
@@ -564,8 +615,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         <span 
                           className="text-[9px] sm:text-[10px] uppercase font-black px-2 py-0.5 rounded-md shadow-md text-center tracking-wider whitespace-nowrap block"
                           style={{
-                            backgroundColor: item.badgeBgColor || theme.badgeBg || '#FACC15',
-                            color: item.badgeTextColor || theme.badgeText || '#000000',
+                            backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
+                            color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
                           }}
                         >
                           {item.badge}
@@ -643,8 +694,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         originalPrice={item.originalPrice}
                         unit={item.unit}
                         themeStyle={{
-                          priceBg: item.customStyles?.priceBoxBgColor || theme.priceBg || '#ea580c',
-                          priceText: item.customStyles?.priceBoxTextColor || theme.priceText || '#ffffff',
+                          priceBg: item.customStyles?.priceBoxBgColor || itemStyles.priceBoxBgColor || theme.priceBg || '#ea580c',
+                          priceText: item.customStyles?.priceBoxTextColor || itemStyles.priceBoxTextColor || theme.priceText || '#ffffff',
                         }}
                         size={columns === 1 ? 'md' : columns === 2 ? 'sm' : columns === 3 ? 'xs' : 'compact'}
                       />
@@ -677,8 +728,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-footer" 
-          className="p-3 sm:p-4 bg-black border-t-2 border-amber-500/40 text-neutral-300 text-xs"
-          style={{ fontFamily: "'Montserrat', sans-serif" }}
+          className="p-3 sm:p-4 bg-black text-neutral-300 text-xs"
+          style={{ 
+            fontFamily: "'Montserrat', sans-serif",
+            borderTop: `2px solid ${effectiveStyles.cardBorderColor || 'rgba(245, 158, 11, 0.4)'}`
+          }}
         >
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800">
             {/* Accepted Payments */}

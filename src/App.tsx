@@ -825,6 +825,7 @@ export default function App() {
             <VisualizadorTabloideOfertas 
               campaign={campaign} 
               theme={activeTheme} 
+              currentProductIndex={campaign.activeProductIndex}
               onUpdateCampaign={handleUpdateCampaign}
               onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
             />
