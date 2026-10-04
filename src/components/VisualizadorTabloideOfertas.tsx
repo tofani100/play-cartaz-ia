@@ -121,6 +121,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     return result;
   }, [candidateProducts, columns, rows]);
 
+  // Proporções de grade reais para dimensionamento flexível e travamento estrito de aspecto
+  const effectiveRows = rows === 0 
+    ? Math.max(1, Math.ceil(productsToRender.length / columns)) 
+    : Math.max(1, rows);
+
   // Total de vagas efetivamente ocupadas na grade
   const slotsUsed = useMemo(() => {
     return productsToRender.reduce((sum, item) => sum + ((item.isHero && columns > 1) ? 2 : 1), 0);
@@ -348,9 +353,26 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     setIsExporting(true);
     setToastMessage('Copiando imagem para WhatsApp Web...');
     try {
+      const rect = el.getBoundingClientRect();
+      let sourceW = Math.round(rect.width || el.offsetWidth || 1120);
+      let sourceH = Math.round(rect.height || el.offsetHeight || 630);
+      if (targetPreset === 'instagram-feed') {
+        sourceH = Math.round(sourceW * 1.25);
+      } else if (targetPreset === 'instagram-square') {
+        sourceH = sourceW;
+      } else if (targetPreset === 'whatsapp-mobile') {
+        sourceH = Math.round(sourceW * (16 / 9));
+      } else if (targetPreset === 'classic-a4') {
+        sourceH = Math.round(sourceW * 1.4142);
+      }
+
       const canvas = await toCanvas(el, {
         quality: 1.0,
         pixelRatio: 2,
+        canvasWidth: sourceW,
+        canvasHeight: sourceH,
+        width: sourceW,
+        height: sourceH,
         filter: (node) => {
           if (node instanceof HTMLElement && (
             node.classList.contains('group-hover:opacity-100') ||
@@ -389,15 +411,36 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     window.print();
   };
 
-  // Responsive container width according to target preset
-  const containerMaxWidth = 
-    targetPreset === 'whatsapp-mobile'
-      ? 'max-w-[520px]'
-      : targetPreset === 'instagram-feed'
-      ? 'max-w-[580px]'
-      : targetPreset === 'instagram-square'
-      ? 'max-w-[620px]'
-      : 'max-w-[860px]';
+  // Configurações de proporção geométrica travada por plataforma para evitar qualquer corte
+  const { aspectRatioStyle, targetAspectRatioClass, containerMaxWidth } = useMemo(() => {
+    switch (targetPreset) {
+      case 'instagram-feed':
+        return {
+          aspectRatioStyle: '4 / 5',
+          targetAspectRatioClass: 'aspect-[4/5]',
+          containerMaxWidth: 'max-w-[560px] sm:max-w-[590px]',
+        };
+      case 'instagram-square':
+        return {
+          aspectRatioStyle: '1 / 1',
+          targetAspectRatioClass: 'aspect-square',
+          containerMaxWidth: 'max-w-[560px] sm:max-w-[590px]',
+        };
+      case 'whatsapp-mobile':
+        return {
+          aspectRatioStyle: '9 / 16',
+          targetAspectRatioClass: 'aspect-[9/16]',
+          containerMaxWidth: 'max-w-[430px] sm:max-w-[460px]',
+        };
+      case 'classic-a4':
+      default:
+        return {
+          aspectRatioStyle: '1 / 1.4142',
+          targetAspectRatioClass: 'aspect-[1/1.4142]',
+          containerMaxWidth: 'max-w-[580px] sm:max-w-[620px]',
+        };
+    }
+  }, [targetPreset]);
 
   return (
     <div className="w-full flex flex-col items-center p-2 sm:p-4 select-none pb-12">
@@ -563,11 +606,14 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         </div>
       </div>
 
-      {/* TABLOID CAPTURE CONTAINER - ADAPTADO PARA CELULAR, INSTAGRAM, FACEBOOK E WHATSAPP */}
+      {/* TABLOID CAPTURE CONTAINER - PROPORÇÃO TRAVADA POR PLATAFORMA (ZERO CORTE NO FEED OU WHATSAPP) */}
       <div
         id="tabloid-capture"
-        className={`w-full ${containerMaxWidth} rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between select-none transition-all duration-300 relative`}
+        data-aspect-ratio={targetPreset}
+        className={`w-full ${containerMaxWidth} ${targetAspectRatioClass} rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between select-none transition-all duration-300 relative`}
         style={{
+          aspectRatio: aspectRatioStyle,
+          maxHeight: 'calc(100vh - 140px)',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 158, 11, 0.15)',
           borderColor: effectiveStyles.cardBorderColor || (paletaHarmonica.isLightBase ? '#ca8a04' : 'rgba(245, 158, 11, 0.4)'),
           borderWidth: '2px',
@@ -602,7 +648,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           return (
             <div 
               id="tabloid-header"
-              className="relative px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5 text-white flex flex-col justify-between border-b-4 overflow-hidden"
+              className={`relative ${
+                effectiveRows >= 4 || targetPreset === 'instagram-square'
+                  ? 'px-3 pt-2 pb-1.5'
+                  : 'px-3.5 sm:px-4 pt-2.5 sm:pt-3 pb-1.5 sm:pb-2'
+              } text-white flex flex-col justify-between border-b-2 sm:border-b-4 overflow-hidden shrink-0`}
               style={{ 
                 borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
                 fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
@@ -671,7 +721,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
 
               {/* Linha Superior do Cabeçalho: Logo à Esquerda e Título + WhatsApp à Direita (sutilmente elevados alguns mm) */}
               <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-2 sm:gap-4 pb-1 sm:pb-1.5">
-                {/* Esquerda: Logo Oficial em Escala Maior e Imponente */}
+                {/* Esquerda: Logo Oficial em Escala Proporcional */}
                 <div className="flex items-center justify-center sm:justify-start shrink-0 max-w-[44%] sm:max-w-[46%] py-0.5">
                   {campaign.showClientLogo !== false && (
                     (campaign.clientLogoUrl && !campaign.clientLogoUrl.startsWith('/logos/belissima')) ? (
@@ -679,7 +729,13 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         crossOrigin="anonymous"
                         src={campaign.clientLogoUrl}
                         alt={campaign.clientName || 'Logo Oficial'}
-                        className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
+                        className={`${
+                          effectiveRows >= 4 || targetPreset === 'instagram-square'
+                            ? 'max-h-14 sm:max-h-16'
+                            : effectiveRows === 3
+                            ? 'max-h-16 sm:max-h-20'
+                            : 'max-h-20 sm:max-h-24 md:max-h-28'
+                        } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105`}
                         referrerPolicy="no-referrer"
                       />
                     ) : isBelissima ? (
@@ -687,7 +743,13 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         crossOrigin="anonymous"
                         src="/logos/belissima-casa-di-frutas.png"
                         alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                        className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
+                        className={`${
+                          effectiveRows >= 4 || targetPreset === 'instagram-square'
+                            ? 'max-h-14 sm:max-h-16'
+                            : effectiveRows === 3
+                            ? 'max-h-16 sm:max-h-20'
+                            : 'max-h-20 sm:max-h-24 md:max-h-28'
+                        } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105`}
                         referrerPolicy="no-referrer"
                         onError={(e) => {
                           const target = e.currentTarget;
@@ -699,11 +761,17 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         crossOrigin="anonymous"
                         src={campaign.clientLogoUrl}
                         alt={campaign.clientName || 'Logo'}
-                        className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
+                        className={`${
+                          effectiveRows >= 4 || targetPreset === 'instagram-square'
+                            ? 'max-h-14 sm:max-h-16'
+                            : effectiveRows === 3
+                            ? 'max-h-16 sm:max-h-20'
+                            : 'max-h-20 sm:max-h-24 md:max-h-28'
+                        } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]`}
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <div className="bg-amber-400 text-black font-black text-xl sm:text-2xl px-5 py-3 rounded-2xl shadow-xl font-['Montserrat'] tracking-tight">
+                      <div className="bg-amber-400 text-black font-black text-sm sm:text-base px-3 py-1.5 rounded-xl shadow-xl font-['Montserrat'] tracking-tight">
                         {campaign.clientName || 'SUPERMERCADO'}
                       </div>
                     )
@@ -711,11 +779,17 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 </div>
 
                 {/* Direita: Título da Campanha e WhatsApp CTA */}
-                <div className="flex-1 min-w-0 max-w-full sm:max-w-[56%] flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-1.5 sm:gap-2">
+                <div className="flex-1 min-w-0 max-w-full sm:max-w-[56%] flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-1 sm:gap-1.5">
                   {/* Título Superior da Campanha */}
                   <div className="w-full flex flex-col items-center sm:items-end text-center sm:text-right">
                     <h1 
-                      className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.15] block break-words"
+                      className={`w-full ${
+                        effectiveRows >= 4 || targetPreset === 'instagram-square'
+                          ? 'text-xs sm:text-sm md:text-base leading-tight'
+                          : effectiveRows === 3
+                          ? 'text-sm sm:text-base md:text-lg leading-tight'
+                          : 'text-base sm:text-lg md:text-xl lg:text-[22px] leading-[1.15]'
+                      } font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight block break-words`}
                       style={{
                         fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
                         color: effectiveStyles.campaignTitleColor || '#fde047',
@@ -727,7 +801,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     {/* Subtítulo / Slogan (se houver) */}
                     {isSubtitleValid && (
                       <span 
-                        className="text-[10px] sm:text-[11px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
+                        className="text-[9px] sm:text-[10px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
                         style={{ fontFamily: "'Montserrat', sans-serif" }}
                       >
                         {campaign.campaignSubtitle}
@@ -739,15 +813,21 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                   <div className="w-full flex items-center justify-center sm:justify-end">
                     <div 
                       className={`inline-flex items-center ${
-                        targetPreset === 'whatsapp-mobile' ? 'gap-1.5 px-2.5 py-1' : 'gap-1.5 px-3 py-1 sm:py-1.2'
+                        effectiveRows >= 4
+                          ? 'gap-1 px-2 py-0.5'
+                          : effectiveRows === 3 || targetPreset === 'whatsapp-mobile'
+                          ? 'gap-1.5 px-2.5 py-0.5 sm:py-1'
+                          : 'gap-1.5 px-3 py-1 sm:py-1.2'
                       } rounded-full bg-emerald-600 hover:bg-emerald-500 border border-emerald-300/60 text-white shadow-lg backdrop-blur-xs transition-colors shrink-0 max-w-full`}
                       title={`Peça no WhatsApp: ${campaign.phoneWhatsapp || '(11) 98765-4321'}`}
                     >
-                      <MessageCircle className={`${targetPreset === 'whatsapp-mobile' ? 'w-3 h-3 sm:w-3.5 sm:h-3.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
+                      <MessageCircle className={`${effectiveRows >= 4 ? 'w-2.5 h-2.5' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} text-emerald-200 shrink-0`} />
                       <span className={`${
-                        targetPreset === 'whatsapp-mobile'
+                        effectiveRows >= 4
+                          ? 'text-[8px] sm:text-[8.5px]'
+                          : targetPreset === 'whatsapp-mobile'
                           ? ((campaign.phoneWhatsapp && campaign.phoneWhatsapp.length > 18) ? 'text-[8.5px]' : 'text-[9.5px] sm:text-[10px]')
-                          : 'text-[10.5px] sm:text-[11.5px]'
+                          : 'text-[9.5px] sm:text-[10.5px]'
                       } font-medium tracking-normal antialiased whitespace-nowrap drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
                         Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}
                       </span>
@@ -757,14 +837,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
               </div>
 
               {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Linha Única sem Cortar */}
-              <div className="relative z-10 w-full flex items-center justify-center gap-1 sm:gap-1.5 pt-1 border-t border-white/10 text-center px-1">
-                <Calendar className={`${targetPreset === 'whatsapp-mobile' ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-amber-400 shrink-0 drop-shadow`} />
+              <div className="relative z-10 w-full flex items-center justify-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1 border-t border-white/10 text-center px-1">
+                <Calendar className={`${effectiveRows >= 4 ? 'w-2 h-2' : 'w-2.5 h-2.5'} text-amber-400 shrink-0 drop-shadow`} />
                 <span 
                   className={`${
-                    targetPreset === 'whatsapp-mobile'
+                    effectiveRows >= 4
+                      ? 'text-[6.5px] sm:text-[7px]'
+                      : targetPreset === 'whatsapp-mobile'
                       ? (validityDisplay.length > 55 ? 'text-[7px] sm:text-[7.5px]' : 'text-[7.5px] sm:text-[8px]')
-                      : 'text-[8.5px] sm:text-[9.5px] md:text-[10px]'
-                  } font-bold text-amber-200 ${targetPreset === 'whatsapp-mobile' ? 'tracking-normal' : 'tracking-wide'} uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
+                      : 'text-[8px] sm:text-[9px] md:text-[9.5px]'
+                  } font-bold text-amber-200 uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
                   style={{ fontFamily: "'Montserrat', sans-serif" }}
                   title={validityDisplay}
                 >
@@ -779,7 +861,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* CORPO DO TABLÓIDE: GRADE DE OFERTAS MULTI-COLUNA E MULTI-LINHA */}
         {/* ============================================================ */}
         <div 
-          className="p-3 sm:p-4 flex-1 relative"
+          className="p-1.5 sm:p-2 md:p-2.5 flex-1 min-h-0 relative flex flex-col overflow-hidden"
           style={{
             background: paletaHarmonica.canvasBackground,
           }}
@@ -798,15 +880,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             </div>
           ) : (
             <div 
-              className={`grid gap-2.5 sm:gap-3.5 [grid-auto-flow:dense] ${
-                columns === 1
-                  ? 'grid-cols-1'
-                  : columns === 2
-                  ? 'grid-cols-2'
-                  : columns === 3
-                  ? 'grid-cols-2 sm:grid-cols-3'
-                  : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'
-              }`}
+              className="grid w-full h-full min-h-0 [grid-auto-flow:dense]"
+              style={{
+                gap: effectiveRows >= 4 ? '5px' : effectiveRows === 3 ? '7px' : '9px',
+                gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${effectiveRows}, minmax(0, 1fr))`,
+              }}
             >
               {productsToRender.map((item, idx) => {
                 const isHero = item.isHero || false;
@@ -864,7 +943,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         : (itemStyles.cardBorderColor ? `1px solid ${itemStyles.cardBorderColor}` : paletaHarmonica.cardBorder),
                       boxShadow: isHero && columns > 1 ? paletaHarmonica.cardHeroShadow : paletaHarmonica.cardShadow,
                     }}
-                    className={`group relative rounded-2xl overflow-hidden transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing select-none ${
+                    className={`group relative rounded-xl sm:rounded-2xl overflow-hidden transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing select-none h-full min-h-0 ${
                       isHero && columns > 1 ? 'col-span-2' : ''
                     } ${
                       isDragging ? 'opacity-35 scale-95 border-dashed border-amber-400' : ''
@@ -874,12 +953,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     title="Arraste para mover de posição ou clique para editar este produto"
                   >
                     {/* Header Superior do Card: Badge à esquerda, Ações e Unidade à direita (sem sobreposição) */}
-                    <div className="absolute top-2 inset-x-2 z-20 flex items-start justify-between gap-1 pointer-events-none">
+                    <div className="absolute top-1.5 inset-x-1.5 z-20 flex items-start justify-between gap-1 pointer-events-none">
                       {/* Left: Badge Promocional */}
                       <div className="pointer-events-auto shrink-0 max-w-[62%]">
                         {item.badge && (
                           <span 
-                            className="text-[9px] sm:text-[10px] uppercase font-black px-2 py-0.5 rounded-md shadow-md text-center tracking-wider truncate block"
+                            className={`${
+                              effectiveRows >= 4 ? 'text-[7px] px-1 py-0.2' :
+                              effectiveRows === 3 ? 'text-[7.5px] sm:text-[8px] px-1.5 py-0.5' :
+                              'text-[8.5px] sm:text-[9.5px] px-2 py-0.5'
+                            } uppercase font-black rounded-md shadow-md text-center tracking-wider truncate block`}
                             style={{
                               backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
                               color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
@@ -897,14 +980,14 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                           <button
                             type="button"
                             onClick={(e) => handleToggleHero(item.id, e)}
-                            className={`no-export px-1.5 py-0.5 rounded-md text-[8.5px] font-black uppercase flex items-center gap-0.5 shadow-sm transition-all cursor-pointer ${
+                            className={`no-export px-1 py-0.5 rounded text-[7.5px] sm:text-[8px] font-black uppercase flex items-center gap-0.5 shadow-sm transition-all cursor-pointer ${
                               isHero
                                 ? 'bg-amber-400 hover:bg-amber-300 text-black ring-1 ring-amber-300'
                                 : 'bg-black/60 hover:bg-black/90 text-neutral-200 hover:text-amber-300 border border-white/25 backdrop-blur-xs'
                             }`}
                             title={isHero ? 'Clique para voltar ao tamanho normal (1 vaga)' : 'Clique para tornar DUPLO (2 vagas de destaque)'}
                           >
-                            <Star className={`w-2.5 h-2.5 ${isHero ? 'fill-black text-black' : 'text-amber-400'}`} />
+                            <Star className={`w-2 h-2 ${isHero ? 'fill-black text-black' : 'text-amber-400'}`} />
                             <span className="hidden sm:inline">{isHero ? 'Duplo' : '1x'}</span>
                           </button>
                         )}
@@ -917,13 +1000,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                             border: paletaHarmonica.unitPillBorder,
                           }}
                           className={`font-black uppercase rounded shadow-sm whitespace-nowrap inline-block ${
-                            columns === 1 
-                              ? 'text-[10px] px-2 py-0.5' 
-                              : columns === 2 
-                              ? 'text-[9px] px-1.5 py-0.5' 
-                              : columns === 3 
-                              ? 'text-[7.5px] px-1 py-0.5' 
-                              : 'text-[6.5px] px-1 py-0.2'
+                            effectiveRows >= 4 ? 'text-[6px] px-1 py-0.2' :
+                            effectiveRows === 3 ? 'text-[7px] px-1.5 py-0.5' :
+                            'text-[8px] sm:text-[9px] px-1.5 py-0.5'
                           }`}
                         >
                           {item.unit || 'UN'}
@@ -931,54 +1010,35 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       </div>
                     </div>
 
-                    {/* Product Image Frame com Pedestal Estúdio */}
-                    <div className={`relative pt-7 pb-2 px-2 flex items-center justify-center overflow-hidden ${
-                      columns === 1 
-                        ? 'min-h-[180px] sm:min-h-[220px]' 
-                        : columns === 2 
-                        ? 'min-h-[140px] sm:min-h-[170px]' 
-                        : columns === 3
-                        ? 'min-h-[110px] sm:min-h-[130px]'
-                        : 'min-h-[95px] sm:min-h-[115px]'
-                    }`}>
-                      {/* Halo Iluminado do Packshot (adeus ao preto opaco) */}
+                    {/* Product Image Frame com Pedestal Estúdio: flex-1 para auto-ajuste de escala sem estouro */}
+                    <div className="relative flex-1 min-h-0 pt-6 pb-1 px-1.5 flex items-center justify-center overflow-hidden">
+                      {/* Halo Iluminado do Packshot */}
                       <div 
                         className="absolute inset-0 pointer-events-none rounded-t-xl"
                         style={{ background: paletaHarmonica.imagePedestalGradient }}
                       />
-                      <div className="absolute bottom-2 w-3/4 h-3 bg-black/40 rounded-full blur-md" />
+                      <div className="absolute bottom-1 w-3/4 h-2.5 bg-black/40 rounded-full blur-md" />
 
                       <img
                         crossOrigin="anonymous"
                         src={item.imageUrl}
                         alt={item.title}
                         onError={(e) => handleImageError(e, item.title, item.category)}
-                        className={`relative z-10 w-auto object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-300 ${
-                          columns === 1 
-                            ? 'max-h-40 sm:max-h-48' 
-                            : columns === 2 
-                            ? (isHero ? 'max-h-36 sm:max-h-44' : 'max-h-28 sm:max-h-36') 
-                            : columns === 3
-                            ? (isHero ? 'max-h-28 sm:max-h-34' : 'max-h-22 sm:max-h-26')
-                            : 'max-h-18 sm:max-h-22'
-                        }`}
+                        className="relative z-10 max-h-full max-w-full w-auto h-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-300"
                         referrerPolicy="no-referrer"
                         loading="lazy"
                       />
                     </div>
 
                     {/* Product Title (Nitidez Máxima WCAG AAA) */}
-                    <div className="px-2.5 pt-1 pb-1.5 text-left flex-1 flex flex-col justify-start">
+                    <div className="px-1.5 sm:px-2 pt-0.5 pb-1 text-left shrink-0">
                       <h4 
-                        className={`font-black line-clamp-3 leading-snug break-words ${
-                          columns === 1 
-                            ? 'text-sm sm:text-base' 
-                            : columns === 2 
-                            ? 'text-xs sm:text-sm' 
-                            : columns === 3 
-                            ? 'text-[10px] sm:text-[11px]' 
-                            : 'text-[9px] sm:text-[10px]'
-                        }`}
+                        className={`font-black ${
+                          effectiveRows >= 4 ? 'text-[7.5px] sm:text-[8px] line-clamp-1 leading-tight' :
+                          effectiveRows === 3 ? 'text-[9px] sm:text-[9.5px] line-clamp-2 leading-tight' :
+                          columns >= 3 ? 'text-[9.5px] sm:text-[10.5px] line-clamp-2 leading-tight' :
+                          'text-xs sm:text-sm line-clamp-2 leading-snug'
+                        } break-words`}
                         style={{
                           color: paletaHarmonica.titleColor,
                           textShadow: paletaHarmonica.titleShadow,
@@ -995,7 +1055,11 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         background: paletaHarmonica.priceBarBackground,
                         borderTop: paletaHarmonica.priceBarBorder,
                       }}
-                      className={`${columns >= 3 ? 'px-1.5 pb-2 pt-1' : 'px-2.5 pb-2.5 pt-1'} flex items-center justify-between gap-1 min-w-0`}
+                      className={`${
+                        effectiveRows >= 4 ? 'px-1 py-0.5' :
+                        effectiveRows === 3 || columns >= 3 ? 'px-1.5 py-1' :
+                        'px-2 py-1.5'
+                      } flex items-center justify-between gap-1 min-w-0 shrink-0`}
                     >
                       <EtiquetaPrecoPromocional
                         price={item.price}
@@ -1005,19 +1069,21 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                           priceBg: item.customStyles?.priceBoxBgColor || itemStyles.priceBoxBgColor || theme.priceBg || '#ea580c',
                           priceText: item.customStyles?.priceBoxTextColor || itemStyles.priceBoxTextColor || theme.priceText || '#ffffff',
                         }}
-                        size={columns === 1 ? 'md' : columns === 2 ? 'sm' : columns === 3 ? 'xs' : 'compact'}
+                        size={effectiveRows >= 4 ? 'compact' : effectiveRows === 3 || columns >= 3 ? 'xs' : 'sm'}
                       />
 
                       {/* Economy Tag */}
                       {item.discountPercentage && item.discountPercentage > 0 && (
-                        <div className="text-right shrink-0 flex flex-col items-end justify-center min-w-0 pl-1">
+                        <div className="text-right shrink-0 flex flex-col items-end justify-center min-w-0 pl-0.5">
                           <span className={`font-black text-red-400 block leading-none uppercase whitespace-nowrap ${
-                            columns >= 3 ? 'text-[7px]' : 'text-[8px] sm:text-[9px]'
+                            effectiveRows >= 4 ? 'text-[5.5px]' :
+                            effectiveRows === 3 || columns >= 3 ? 'text-[6.5px]' : 'text-[7.5px]'
                           }`}>
-                            {columns >= 3 ? 'ECON.' : 'ECONOMIZE'}
+                            {columns >= 3 || effectiveRows >= 3 ? 'ECON.' : 'ECONOMIZE'}
                           </span>
                           <span className={`font-black text-amber-400 leading-none mt-0.5 whitespace-nowrap ${
-                            columns >= 4 ? 'text-[8.5px]' : columns === 3 ? 'text-[9.5px]' : 'text-[10px] sm:text-xs'
+                            effectiveRows >= 4 ? 'text-[7px]' :
+                            effectiveRows === 3 || columns >= 3 ? 'text-[8px]' : 'text-[9.5px]'
                           }`}>
                             -{item.discountPercentage}%
                           </span>
@@ -1028,7 +1094,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     {/* Dica de arrasto sutil no rodapé ao passar o mouse */}
                     {!isExporting && (
                       <div className="absolute bottom-1 right-1 z-10 no-export opacity-0 group-hover:opacity-60 transition-opacity text-[8px] font-bold text-neutral-400 flex items-center gap-0.5 pointer-events-none">
-                        <GripVertical className="w-2.5 h-2.5" />
+                        <GripVertical className="w-2 h-2" />
                         <span>Arraste</span>
                       </div>
                     )}
@@ -1044,33 +1110,35 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-footer" 
-          className="p-3 sm:p-4 text-neutral-200 text-xs"
+          className={`${
+            effectiveRows >= 4 ? 'p-1.5' : 'p-2 sm:p-2.5'
+          } text-neutral-200 text-xs shrink-0`}
           style={{ 
             fontFamily: "'Montserrat', sans-serif",
             background: paletaHarmonica.footerBackground,
             borderTop: paletaHarmonica.footerBorder,
           }}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10">
+          <div className="flex flex-wrap items-center justify-between gap-1 pb-1 border-b border-white/10">
             {/* Accepted Payments */}
-            <div className="flex items-center gap-1.5 min-w-0">
-              <CreditCard className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="text-[10px] sm:text-[11px] font-bold text-neutral-200 truncate">
+            <div className="flex items-center gap-1 min-w-0">
+              <CreditCard className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
+              <span className={`${effectiveRows >= 4 ? 'text-[7.5px]' : 'text-[9px] sm:text-[9.5px]'} font-bold text-neutral-200 truncate`}>
                 Aceitamos PIX, Todos os Cartões e Vales Alimentação
               </span>
             </div>
 
             {/* Direct Contact - WHATSAPP INTEGRAL EM LINHA ÚNICA SEM QUEBRA */}
-            <div className="flex items-center gap-1 text-[10.5px] sm:text-[11.5px] font-medium text-amber-400 whitespace-nowrap shrink-0 ml-auto antialiased">
-              <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div className={`flex items-center gap-1 ${effectiveRows >= 4 ? 'text-[8px]' : 'text-[9px] sm:text-[10px]'} font-medium text-amber-400 whitespace-nowrap shrink-0 ml-auto antialiased`}>
+              <Phone className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
               <span className="whitespace-nowrap tracking-normal">{campaign.phoneWhatsapp ? `WhatsApp: ${campaign.phoneWhatsapp}` : 'Fale Conosco'}</span>
             </div>
           </div>
 
           {/* Address & Legal text */}
-          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[8.5px] sm:text-[9.5px] text-neutral-300/80">
+          <div className="pt-1 flex flex-wrap items-center justify-between gap-1 text-[7px] sm:text-[8px] text-neutral-300/80">
             <div className="flex items-center gap-1 min-w-0">
-              <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
+              <MapPin className="w-2.5 h-2.5 text-amber-500 shrink-0" />
               <span className="truncate">{campaign.storeAddress || 'Consulte a unidade mais próxima de você.'}</span>
             </div>
             <div className="text-right text-neutral-400 shrink-0 ml-auto">

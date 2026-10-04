@@ -108,8 +108,24 @@ export async function downloadElementAsPng(elementId: string, filename: string =
   }
 
   try {
-    const sourceW = el.offsetWidth || 1120;
-    const sourceH = Math.max(el.offsetHeight || 0, el.scrollHeight || 0) || 630;
+    const rect = el.getBoundingClientRect();
+    let sourceW = Math.round(rect.width || el.offsetWidth || 1120);
+    let sourceH = Math.round(rect.height || el.offsetHeight || 630);
+
+    // Se for o tablóide, trava com exatidão matemática a proporção da plataforma destino para garantir 0% de corte
+    if (elementId === 'tabloid-capture') {
+      const preset = el.dataset.aspectRatio;
+      if (preset === 'instagram-feed') {
+        sourceH = Math.round(sourceW * 1.25); // Exatamente 4:5 (1080x1350)
+      } else if (preset === 'instagram-square') {
+        sourceH = sourceW; // Exatamente 1:1 (1080x1080)
+      } else if (preset === 'whatsapp-mobile') {
+        sourceH = Math.round(sourceW * (16 / 9)); // Exatamente 9:16 (1080x1920)
+      } else if (preset === 'classic-a4') {
+        sourceH = Math.round(sourceW * 1.4142); // Exatamente A4 (1080x1528)
+      }
+    }
+
     const canvas = await toCanvas(el, {
       quality: 1.0,
       pixelRatio: 2, // 2x Retina / 4K crispness
