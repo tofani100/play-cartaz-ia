@@ -984,11 +984,13 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         <div className="flex flex-col items-start gap-1 min-w-0">
                           {item.badge && (
                             <span 
-                              className={`${
-                                effectiveRows >= 4 ? 'text-[7.5px] px-1.5 py-0.5' :
-                                effectiveRows === 3 ? 'text-[8.5px] sm:text-[9.5px] px-2 py-0.5' :
-                                'text-[9.5px] sm:text-[10.5px] px-2.5 py-0.5'
-                              } uppercase font-black rounded-md shadow-md text-center tracking-wider truncate inline-block max-w-full`}
+                              className={`tabloid-badge-pill ${
+                                effectiveRows >= 4 
+                                  ? (item.badge.length > 10 ? 'text-[6.5px] px-1 py-0.5' : 'text-[7px] px-1.5 py-0.5')
+                                  : effectiveRows === 3 || columns >= 3
+                                  ? (item.badge.length > 10 ? 'text-[7px] px-1.5 py-0.5' : 'text-[7.5px] sm:text-[8px] px-2 py-0.5')
+                                  : (item.badge.length > 10 ? 'text-[8px] px-2 py-0.5' : 'text-[8.5px] sm:text-[9px] px-2.5 py-0.5')
+                              } uppercase font-black rounded-md shadow-md text-center tracking-normal whitespace-nowrap inline-flex items-center justify-center shrink-0 max-w-full leading-tight`}
                               style={{
                                 backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
                                 color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
@@ -1176,14 +1178,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     {/* Header Superior do Card: Badge à esquerda, Ações e Unidade à direita (sem sobreposição) */}
                     <div className="absolute top-1.5 inset-x-1.5 z-20 flex items-start justify-between gap-1 pointer-events-none">
                       {/* Left: Badge Promocional */}
-                      <div className="pointer-events-auto shrink-0 max-w-[85%]">
+                      <div className="pointer-events-auto shrink-0 max-w-full">
                         {item.badge && (
                           <span 
-                            className={`${
-                              effectiveRows >= 4 ? 'text-[7px] px-1.5 py-0.5' :
-                              effectiveRows === 3 ? 'text-[8px] sm:text-[8.5px] px-2 py-0.5' :
-                              'text-[8.5px] sm:text-[9.5px] px-2 py-0.5'
-                            } uppercase font-black rounded-md shadow-md text-center tracking-wider truncate block`}
+                            className={`tabloid-badge-pill ${
+                              effectiveRows >= 4 
+                                ? (item.badge.length > 10 ? 'text-[6.5px] px-1 py-0.5' : 'text-[7px] px-1.5 py-0.5')
+                                : effectiveRows === 3 || columns >= 3
+                                ? (item.badge.length > 10 ? 'text-[7px] px-1.5 py-0.5' : 'text-[7.5px] sm:text-[8px] px-2 py-0.5')
+                                : (item.badge.length > 10 ? 'text-[8px] px-2 py-0.5' : 'text-[8.5px] sm:text-[9px] px-2.5 py-0.5')
+                            } uppercase font-black rounded-md shadow-md text-center tracking-normal whitespace-nowrap inline-flex items-center justify-center shrink-0 max-w-full leading-tight`}
                             style={{
                               backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
                               color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',

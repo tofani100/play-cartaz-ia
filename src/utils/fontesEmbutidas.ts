@@ -76,4 +76,11 @@ export const FONT_EMBED_CSS = `
   white-space: nowrap !important;
   flex-shrink: 0 !important;
 }
+.tabloid-badge-pill {
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  letter-spacing: normal !important;
+  flex-shrink: 0 !important;
+}
 `;
