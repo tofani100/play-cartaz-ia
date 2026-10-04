@@ -228,16 +228,16 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
 
     if (preset === 'whatsapp-mobile') {
       newCols = 2;
-      newRows = 3; // 2x3 = 6 products, perfect for smartphone screens & WhatsApp (9:16)
+      newRows = 3; // 2x3 = 6 produtos, formato vertical perfeito para WhatsApp/Stories (9:16)
     } else if (preset === 'instagram-feed') {
       newCols = 2;
-      newRows = 2; // 2x2 = 4 products (or 2x3), perfect for 4:5 portrait post
+      newRows = 3; // 2x3 = 6 produtos, formato vertical retrato do Instagram Feed (4:5)
     } else if (preset === 'instagram-square') {
       newCols = 2;
-      newRows = 2; // 2x2 = 4 products, perfect for 1:1 square post
+      newRows = 2; // 2x2 = 4 produtos, formato quadrado balanceado (1:1)
     } else if (preset === 'classic-a4') {
       newCols = 3;
-      newRows = 3; // 3x3 = 9 products, standard supermarket paper leaflet
+      newRows = 3; // 3x3 = 9 produtos, encarte padrão de supermercado A4
     }
 
     if (onUpdateCampaign) {
@@ -249,7 +249,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     }
     const label = 
       preset === 'whatsapp-mobile' ? 'WhatsApp & Celular (9:16)' :
-      preset === 'instagram-feed' ? 'Instagram Feed (4:5 Retrato)' :
+      preset === 'instagram-feed' ? 'Instagram Retrato (4:5)' :
       preset === 'instagram-square' ? 'Feed Quadrado (1:1)' :
       'Encarte A4 Clássico';
     setToastMessage(`✨ Formato ajustado para: ${label}`);
@@ -418,26 +418,26 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         return {
           aspectRatioStyle: '4 / 5',
           targetAspectRatioClass: 'aspect-[4/5]',
-          containerMaxWidth: 'max-w-[560px] sm:max-w-[590px]',
+          containerMaxWidth: 'max-w-[520px]',
         };
       case 'instagram-square':
         return {
           aspectRatioStyle: '1 / 1',
           targetAspectRatioClass: 'aspect-square',
-          containerMaxWidth: 'max-w-[560px] sm:max-w-[590px]',
+          containerMaxWidth: 'max-w-[620px]',
         };
       case 'whatsapp-mobile':
         return {
           aspectRatioStyle: '9 / 16',
           targetAspectRatioClass: 'aspect-[9/16]',
-          containerMaxWidth: 'max-w-[430px] sm:max-w-[460px]',
+          containerMaxWidth: 'max-w-[420px]',
         };
       case 'classic-a4':
       default:
         return {
           aspectRatioStyle: '1 / 1.4142',
           targetAspectRatioClass: 'aspect-[1/1.4142]',
-          containerMaxWidth: 'max-w-[580px] sm:max-w-[620px]',
+          containerMaxWidth: 'max-w-[680px]',
         };
     }
   }, [targetPreset]);
@@ -485,7 +485,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
               }`}
             >
               <Instagram className="w-3.5 h-3.5 text-pink-300" />
-              <span>Instagram Feed (4:5)</span>
+              <span>Instagram Retrato (4:5)</span>
             </button>
 
             <button
@@ -613,7 +613,6 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         className={`w-full ${containerMaxWidth} ${targetAspectRatioClass} rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between select-none transition-all duration-300 relative`}
         style={{
           aspectRatio: aspectRatioStyle,
-          maxHeight: 'calc(100vh - 140px)',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 158, 11, 0.15)',
           borderColor: effectiveStyles.cardBorderColor || (paletaHarmonica.isLightBase ? '#ca8a04' : 'rgba(245, 158, 11, 0.4)'),
           borderWidth: '2px',
@@ -1010,25 +1009,51 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       </div>
                     </div>
 
-                    {/* Product Image Frame com Pedestal Estúdio: flex-1 para auto-ajuste de escala sem estouro */}
-                    <div className="relative flex-1 min-h-0 pt-6 pb-1 px-1.5 flex items-center justify-center overflow-hidden">
-                      {/* Halo Iluminado do Packshot */}
-                      <div 
-                        className="absolute inset-0 pointer-events-none rounded-t-xl"
-                        style={{ background: paletaHarmonica.imagePedestalGradient }}
-                      />
-                      <div className="absolute bottom-1 w-3/4 h-2.5 bg-black/40 rounded-full blur-md" />
+                    {/* Product Image Frame com Pedestal Estúdio */}
+                    {(() => {
+                      const imgContainerHeight = 
+                        effectiveRows >= 4 
+                          ? 'h-20 sm:h-24 min-h-[75px]' 
+                          : effectiveRows === 3 
+                          ? 'h-28 sm:h-32 min-h-[105px]' 
+                          : columns === 1
+                          ? 'h-44 sm:h-52 min-h-[160px]'
+                          : isHero
+                          ? 'h-36 sm:h-44 min-h-[140px]'
+                          : 'h-32 sm:h-40 min-h-[120px]';
 
-                      <img
-                        crossOrigin="anonymous"
-                        src={item.imageUrl}
-                        alt={item.title}
-                        onError={(e) => handleImageError(e, item.title, item.category)}
-                        className="relative z-10 max-h-full max-w-full w-auto h-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-300"
-                        referrerPolicy="no-referrer"
-                        loading="lazy"
-                      />
-                    </div>
+                      const imgMaxHeight = 
+                        effectiveRows >= 4 
+                          ? 'max-h-[68px] sm:max-h-[82px]' 
+                          : effectiveRows === 3 
+                          ? 'max-h-[95px] sm:max-h-[112px]' 
+                          : columns === 1
+                          ? 'max-h-[150px] sm:max-h-[190px]'
+                          : isHero
+                          ? 'max-h-[130px] sm:max-h-[160px]'
+                          : 'max-h-[110px] sm:max-h-[140px]';
+
+                      return (
+                        <div className={`relative w-full ${imgContainerHeight} pt-5 pb-1 px-1.5 flex items-center justify-center overflow-hidden shrink-0`}>
+                          {/* Halo Iluminado do Packshot */}
+                          <div 
+                            className="absolute inset-0 pointer-events-none rounded-t-xl"
+                            style={{ background: paletaHarmonica.imagePedestalGradient }}
+                          />
+                          <div className="absolute bottom-1 w-3/4 h-2.5 bg-black/40 rounded-full blur-md" />
+
+                          <img
+                            crossOrigin="anonymous"
+                            src={item.imageUrl}
+                            alt={item.title}
+                            onError={(e) => handleImageError(e, item.title, item.category)}
+                            className={`relative z-10 w-auto ${imgMaxHeight} max-w-[92%] object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-300`}
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                          />
+                        </div>
+                      );
+                    })()}
 
                     {/* Product Title (Nitidez Máxima WCAG AAA) */}
                     <div className="px-1.5 sm:px-2 pt-0.5 pb-1 text-left shrink-0">
