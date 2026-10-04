@@ -30,6 +30,7 @@ import { EtiquetaPrecoPromocional } from './EtiquetaPrecoPromocional';
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng } from '../utils/ajudanteExportacao';
 import { toCanvas } from 'html-to-image';
+import { gerarPaletaHarmonicaTabloide } from '../utils/coloristaHarmonizadorTabloide';
 
 interface VisualizadorTabloideOfertasProps {
   campaign: BannerCampaign;
@@ -58,6 +59,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     ...(campaign.customStyles || {}),
     ...(activeProduct?.customStyles || {}),
   };
+
+  // Motor Colorista Sênior: Harmonização tonal dinâmica a partir da cor do fundo do banner
+  const baseBannerColor = effectiveStyles.bannerBgColor || theme.primary || '#7f1d1d';
+  const paletaHarmonica = useMemo(() => {
+    return gerarPaletaHarmonicaTabloide(baseBannerColor);
+  }, [baseBannerColor]);
 
   // Grid Columns: 1, 2, 3 or 4 (default: 2 for mobile/whatsapp screens)
   const columns = campaign.tabloidColumns || 2;
@@ -518,10 +525,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         className={`w-full ${containerMaxWidth} rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between select-none transition-all duration-300 relative`}
         style={{
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 158, 11, 0.15)',
-          borderColor: effectiveStyles.cardBorderColor || 'rgba(245, 158, 11, 0.4)',
+          borderColor: effectiveStyles.cardBorderColor || (paletaHarmonica.isLightBase ? '#ca8a04' : 'rgba(245, 158, 11, 0.4)'),
           borderWidth: '2px',
           borderStyle: 'solid',
-          backgroundColor: effectiveStyles.bannerBgColor || '#0a0a0a',
+          backgroundColor: paletaHarmonica.baseHex,
         }}
       >
         {/* ============================================================ */}
@@ -681,9 +688,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         <div 
           className="p-3 sm:p-4 flex-1 relative"
           style={{
-            background: effectiveStyles.bannerBgColor 
-              ? `linear-gradient(180deg, #0a0a0a 0%, ${effectiveStyles.bannerBgColor}1a 50%, #0a0a0a 100%)` 
-              : 'linear-gradient(180deg, #0a0a0a 0%, #111111 50%, #0a0a0a 100%)'
+            background: paletaHarmonica.canvasBackground,
           }}
         >
           {productsToRender.length === 0 ? (
@@ -760,70 +765,81 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       }
                     }}
                     style={{
-                      borderColor: itemStyles.cardBorderColor ? `${itemStyles.cardBorderColor}aa` : undefined,
+                      background: isHero && columns > 1 ? paletaHarmonica.cardHeroBackground : paletaHarmonica.cardBackground,
+                      border: isHero && columns > 1 
+                        ? paletaHarmonica.cardHeroBorder 
+                        : (itemStyles.cardBorderColor ? `1px solid ${itemStyles.cardBorderColor}` : paletaHarmonica.cardBorder),
+                      boxShadow: isHero && columns > 1 ? paletaHarmonica.cardHeroShadow : paletaHarmonica.cardShadow,
                     }}
-                    className={`group relative rounded-xl overflow-hidden border transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing select-none ${
-                      isHero && columns > 1
-                        ? 'col-span-2 bg-gradient-to-br from-neutral-900 via-neutral-850 to-neutral-950 border-amber-400 shadow-xl'
-                        : 'bg-neutral-900/95 border-neutral-800 hover:border-amber-500/60 shadow-md hover:shadow-xl'
+                    className={`group relative rounded-2xl overflow-hidden transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing select-none ${
+                      isHero && columns > 1 ? 'col-span-2' : ''
                     } ${
                       isDragging ? 'opacity-35 scale-95 border-dashed border-amber-400' : ''
                     } ${
-                      isDragOver ? 'ring-2 ring-amber-400 bg-amber-500/25 scale-[1.02]' : ''
+                      isDragOver ? 'ring-2 ring-amber-400 scale-[1.02]' : ''
                     }`}
                     title="Arraste para mover de posição ou clique para editar este produto"
                   >
-                    {/* Badge Promotional Stamp Top Left */}
-                    {item.badge && (
-                      <div className="absolute top-2 left-2 z-10">
+                    {/* Header Superior do Card: Badge à esquerda, Ações e Unidade à direita (sem sobreposição) */}
+                    <div className="absolute top-2 inset-x-2 z-20 flex items-start justify-between gap-1 pointer-events-none">
+                      {/* Left: Badge Promocional */}
+                      <div className="pointer-events-auto shrink-0 max-w-[62%]">
+                        {item.badge && (
+                          <span 
+                            className="text-[9px] sm:text-[10px] uppercase font-black px-2 py-0.5 rounded-md shadow-md text-center tracking-wider truncate block"
+                            style={{
+                              backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
+                              color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
+                            }}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Right: Botão Duplo + Pílula de Unidade */}
+                      <div className="flex items-center gap-1 pointer-events-auto ml-auto shrink-0">
+                        {/* Botão Duplo rápido (Não visível no PNG de exportação) */}
+                        {!isExporting && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleHero(item.id, e)}
+                            className={`no-export px-1.5 py-0.5 rounded-md text-[8.5px] font-black uppercase flex items-center gap-0.5 shadow-sm transition-all cursor-pointer ${
+                              isHero
+                                ? 'bg-amber-400 hover:bg-amber-300 text-black ring-1 ring-amber-300'
+                                : 'bg-black/60 hover:bg-black/90 text-neutral-200 hover:text-amber-300 border border-white/25 backdrop-blur-xs'
+                            }`}
+                            title={isHero ? 'Clique para voltar ao tamanho normal (1 vaga)' : 'Clique para tornar DUPLO (2 vagas de destaque)'}
+                          >
+                            <Star className={`w-2.5 h-2.5 ${isHero ? 'fill-black text-black' : 'text-amber-400'}`} />
+                            <span className="hidden sm:inline">{isHero ? 'Duplo' : '1x'}</span>
+                          </button>
+                        )}
+
+                        {/* Unit Pill com harmonização cromática */}
                         <span 
-                          className="text-[9px] sm:text-[10px] uppercase font-black px-2 py-0.5 rounded-md shadow-md text-center tracking-wider whitespace-nowrap block"
                           style={{
-                            backgroundColor: item.badgeBgColor || itemStyles.badgeBgColor || theme.badgeBg || '#FACC15',
-                            color: item.badgeTextColor || itemStyles.badgeTextColor || theme.badgeText || '#000000',
+                            background: paletaHarmonica.unitPillBackground,
+                            color: paletaHarmonica.unitPillTextColor,
+                            border: paletaHarmonica.unitPillBorder,
                           }}
+                          className={`font-black uppercase rounded shadow-sm whitespace-nowrap inline-block ${
+                            columns === 1 
+                              ? 'text-[10px] px-2 py-0.5' 
+                              : columns === 2 
+                              ? 'text-[9px] px-1.5 py-0.5' 
+                              : columns === 3 
+                              ? 'text-[7.5px] px-1 py-0.5' 
+                              : 'text-[6.5px] px-1 py-0.2'
+                          }`}
                         >
-                          {item.badge}
+                          {item.unit || 'UN'}
                         </span>
                       </div>
-                    )}
-
-                    {/* Botão Flutuante: Alternar Duplo (2 Vagas) / 1 Vaga (Não visível na exportação) */}
-                    {!isExporting && (
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 no-export opacity-85 group-hover:opacity-100 transition-opacity">
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleHero(item.id, e)}
-                          className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase flex items-center gap-1 shadow-md transition-all cursor-pointer ${
-                            isHero
-                              ? 'bg-amber-400 hover:bg-amber-300 text-black ring-1 ring-amber-300'
-                              : 'bg-black/80 hover:bg-neutral-900 text-neutral-300 hover:text-amber-300 border border-white/20'
-                          }`}
-                          title={isHero ? 'Clique para voltar ao tamanho normal (1 vaga)' : 'Clique para tornar DUPLO (2 vagas de destaque)'}
-                        >
-                          <Star className={`w-2.5 h-2.5 ${isHero ? 'fill-black text-black' : 'text-amber-400'}`} />
-                          <span>{isHero ? '⭐ Duplo (2x)' : '1 Vaga'}</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Unit Pill Top Right - Totalmente Visível Sem Cortar */}
-                    <div className="absolute top-2 right-2 z-10">
-                      <span className={`font-black uppercase rounded bg-black/85 text-amber-300 border border-white/15 shadow-sm whitespace-nowrap inline-block ${
-                        columns === 1 
-                          ? 'text-[10px] px-2 py-0.5' 
-                          : columns === 2 
-                          ? 'text-[9px] px-1.5 py-0.5' 
-                          : columns === 3 
-                          ? 'text-[7.5px] px-1 py-0.5' 
-                          : 'text-[6.5px] px-1 py-0.2'
-                      }`}>
-                        {item.unit || 'UN'}
-                      </span>
                     </div>
 
-                    {/* Product Image Frame */}
-                    <div className={`relative pt-7 pb-2 px-2 flex items-center justify-center ${
+                    {/* Product Image Frame com Pedestal Estúdio */}
+                    <div className={`relative pt-7 pb-2 px-2 flex items-center justify-center overflow-hidden ${
                       columns === 1 
                         ? 'min-h-[180px] sm:min-h-[220px]' 
                         : columns === 2 
@@ -832,13 +848,19 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                         ? 'min-h-[110px] sm:min-h-[130px]'
                         : 'min-h-[95px] sm:min-h-[115px]'
                     }`}>
-                      <div className="absolute bottom-2 w-3/4 h-4 bg-black/60 rounded-full blur-md" />
+                      {/* Halo Iluminado do Packshot (adeus ao preto opaco) */}
+                      <div 
+                        className="absolute inset-0 pointer-events-none rounded-t-xl"
+                        style={{ background: paletaHarmonica.imagePedestalGradient }}
+                      />
+                      <div className="absolute bottom-2 w-3/4 h-3 bg-black/40 rounded-full blur-md" />
+
                       <img
                         crossOrigin="anonymous"
                         src={item.imageUrl}
                         alt={item.title}
                         onError={(e) => handleImageError(e, item.title, item.category)}
-                        className={`relative z-10 w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] transform group-hover:scale-105 transition-transform duration-300 ${
+                        className={`relative z-10 w-auto object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-300 ${
                           columns === 1 
                             ? 'max-h-40 sm:max-h-48' 
                             : columns === 2 
@@ -852,10 +874,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       />
                     </div>
 
-                    {/* Product Title (Exibe o Nome Comercial por Inteiro em até 3 Linhas, sem a marca em amarelo) */}
+                    {/* Product Title (Nitidez Máxima WCAG AAA) */}
                     <div className="px-2.5 pt-1 pb-1.5 text-left flex-1 flex flex-col justify-start">
                       <h4 
-                        className={`font-black text-white line-clamp-3 leading-snug break-words ${
+                        className={`font-black line-clamp-3 leading-snug break-words ${
                           columns === 1 
                             ? 'text-sm sm:text-base' 
                             : columns === 2 
@@ -864,14 +886,24 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                             ? 'text-[10px] sm:text-[11px]' 
                             : 'text-[9px] sm:text-[10px]'
                         }`}
+                        style={{
+                          color: paletaHarmonica.titleColor,
+                          textShadow: paletaHarmonica.titleShadow,
+                        }}
                         title={item.title}
                       >
                         {item.title}
                       </h4>
                     </div>
 
-                    {/* Supermarket Orange Price Section */}
-                    <div className={`${columns >= 3 ? 'px-1.5 pb-2 pt-1' : 'px-2.5 pb-2.5 pt-1'} bg-black/60 border-t border-neutral-800 flex items-center justify-between gap-1 min-w-0`}>
+                    {/* Supermarket Orange Price Section (Rodapé do Card Integrado) */}
+                    <div 
+                      style={{
+                        background: paletaHarmonica.priceBarBackground,
+                        borderTop: paletaHarmonica.priceBarBorder,
+                      }}
+                      className={`${columns >= 3 ? 'px-1.5 pb-2 pt-1' : 'px-2.5 pb-2.5 pt-1'} flex items-center justify-between gap-1 min-w-0`}
+                    >
                       <EtiquetaPrecoPromocional
                         price={item.price}
                         originalPrice={item.originalPrice}
@@ -919,13 +951,14 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-footer" 
-          className="p-3 sm:p-4 bg-black text-neutral-300 text-xs"
+          className="p-3 sm:p-4 text-neutral-200 text-xs"
           style={{ 
             fontFamily: "'Montserrat', sans-serif",
-            borderTop: `2px solid ${effectiveStyles.cardBorderColor || 'rgba(245, 158, 11, 0.4)'}`
+            background: paletaHarmonica.footerBackground,
+            borderTop: paletaHarmonica.footerBorder,
           }}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10">
             {/* Accepted Payments */}
             <div className="flex items-center gap-1.5 min-w-0">
               <CreditCard className="w-4 h-4 text-amber-400 shrink-0" />
@@ -942,12 +975,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           </div>
 
           {/* Address & Legal text */}
-          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[8.5px] sm:text-[9.5px] text-neutral-400">
+          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[8.5px] sm:text-[9.5px] text-neutral-300/80">
             <div className="flex items-center gap-1 min-w-0">
               <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
               <span className="truncate">{campaign.storeAddress || 'Consulte a unidade mais próxima de você.'}</span>
             </div>
-            <div className="text-right text-neutral-500 shrink-0 ml-auto">
+            <div className="text-right text-neutral-400 shrink-0 ml-auto">
               <span>{campaign.legalNotice || 'Imagens meramente ilustrativas. Ofertas válidas enquanto durarem os estoques.'}</span>
             </div>
           </div>
