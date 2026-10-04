@@ -536,7 +536,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* ============================================================ */}
         <div 
           id="tabloid-header"
-          className="relative p-3.5 sm:p-4 text-white flex flex-col justify-center border-b-4 overflow-hidden"
+          className="relative p-4 sm:p-5 text-white flex flex-col justify-center border-b-4 overflow-hidden"
           style={{ 
             borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
             fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif"
@@ -563,21 +563,57 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             />
           )}
 
-          {/* Subtle geometric pattern watermark */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-          <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Ondas Finas e Elegantes no Fundo (Linhas Douradas Sinuosas de Alta Sofisticação) */}
+          <svg 
+            className="absolute inset-0 w-full h-full pointer-events-none opacity-45 overflow-hidden" 
+            preserveAspectRatio="none" 
+            viewBox="0 0 1000 240"
+          >
+            <defs>
+              <linearGradient id="tabloidGoldWave1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
+                <stop offset="35%" stopColor="#fde047" stopOpacity="0.8" />
+                <stop offset="70%" stopColor="#d97706" stopOpacity="0.65" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.15" />
+              </linearGradient>
+              <linearGradient id="tabloidGoldWave2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#fde047" stopOpacity="0.08" />
+                <stop offset="50%" stopColor="#ffffff" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.18" />
+              </linearGradient>
+              <linearGradient id="tabloidGoldWave3" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.12" />
+                <stop offset="45%" stopColor="#fef08a" stopOpacity="0.75" />
+                <stop offset="85%" stopColor="#b45309" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
 
-          {/* Top Row: Client Logo & Campaign Master Title + Validity */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full gap-2.5 sm:gap-3.5">
-            {/* Store Brand / Official Logo */}
-            <div className="flex items-center justify-center shrink-0">
+            {/* Conjunto de ondas sinuosas finas e paralelas que cruzam o cabeçalho */}
+            <path d="M -60,35 Q 220,185 500,65 T 1060,105" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.6" />
+            <path d="M -60,60 Q 240,210 520,90 T 1060,130" fill="none" stroke="url(#tabloidGoldWave2)" strokeWidth="1.0" />
+            <path d="M -60,105 Q 200,245 560,115 T 1060,170" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.4" />
+            
+            <path d="M -60,165 Q 320,35 680,175 T 1060,85" fill="none" stroke="url(#tabloidGoldWave3)" strokeWidth="1.2" />
+            <path d="M -60,190 Q 340,60 700,200 T 1060,110" fill="none" stroke="url(#tabloidGoldWave2)" strokeWidth="1.0" />
+            <path d="M -60,225 Q 380,95 740,230 T 1060,145" fill="none" stroke="url(#tabloidGoldWave1)" strokeWidth="1.8" />
+          </svg>
+
+          {/* Sutil iluminação ambiente */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 left-10 -translate-y-1/2 w-72 h-72 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+
+          {/* Conteúdo Principal do Cabeçalho: Logo Maior à Esquerda e Textos Acumulados à Direita */}
+          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-stretch justify-between w-full gap-3 sm:gap-5">
+            {/* Esquerda: Logo Oficial em Escala Maior e Imponente */}
+            <div className="flex items-center justify-center sm:justify-start shrink-0 min-w-[150px] sm:min-w-[210px] md:min-w-[240px] py-0.5">
               {campaign.showClientLogo !== false && (
                 isBelissima ? (
                   <img 
                     crossOrigin="anonymous"
                     src="/logos/belissima-casa-di-frutas.png"
                     alt={campaign.clientName || 'Belíssima Casa di Frutas'}
-                    className="max-h-13 sm:max-h-14 md:max-h-15 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-[220px] sm:max-w-[260px] md:max-w-[280px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -589,23 +625,22 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     crossOrigin="anonymous"
                     src={campaign.clientLogoUrl}
                     alt={campaign.clientName || 'Logo'}
-                    className="max-h-13 sm:max-h-14 md:max-h-15 w-auto object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]"
+                    className="max-h-24 sm:max-h-28 md:max-h-32 lg:max-h-36 w-auto max-w-[220px] sm:max-w-[260px] md:max-w-[280px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="bg-amber-400 text-black font-black text-lg sm:text-xl px-4 py-2 rounded-xl shadow-lg font-['Montserrat'] tracking-tight">
+                  <div className="bg-amber-400 text-black font-black text-xl sm:text-2xl px-5 py-3 rounded-2xl shadow-xl font-['Montserrat'] tracking-tight">
                     {campaign.clientName || 'SUPERMERCADO'}
                   </div>
                 )
               )}
             </div>
 
-            {/* Campaign Headline & Validity Section */}
+            {/* Direita: Textos Acumulados (Título, Validade e WhatsApp) Alinhados à Direita */}
             {(() => {
               const defaultVal1 = 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques';
               const defaultVal2 = 'Ofertas válidas até domingo ou enquanto durarem os estoques';
               
-              // Determina o texto de validade com prioridade inteligente
               let validityDisplay = campaign.validityText;
               if (
                 (!validityDisplay || validityDisplay === defaultVal1 || validityDisplay === defaultVal2) &&
@@ -618,67 +653,64 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                 validityDisplay = defaultVal2;
               }
 
-              // Verifica se o subtítulo é um slogan real ou se duplica a validade
               const isSubtitleValid = 
                 campaign.campaignSubtitle &&
                 campaign.campaignSubtitle.trim().toLowerCase() !== validityDisplay.trim().toLowerCase() &&
                 !campaign.campaignSubtitle.toLowerCase().includes('válid');
 
-              // Escala de fonte inteligente para garantir exibição 100% integral sem corte (evita estourar o container em desktop)
               const validityFontSize = 
                 validityDisplay.length > 52
-                  ? 'text-[6.8px] sm:text-[7.2px]'
+                  ? 'text-[7.5px] sm:text-[8.5px]'
                   : validityDisplay.length > 38
-                  ? 'text-[7.2px] sm:text-[7.8px]'
-                  : 'text-[7.8px] sm:text-[8.5px]';
+                  ? 'text-[8.5px] sm:text-[9.5px]'
+                  : 'text-[9.5px] sm:text-[10.5px]';
 
               return (
-                <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-start">
-                  {/* Título Superior da Campanha (Cabeçalho) - Totalmente Visível Sem Cortar ou Sobrepor */}
-                  <h1 
-                    className="w-full text-base sm:text-lg md:text-xl lg:text-[22px] font-black uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] tracking-tight leading-tight block break-words"
-                    style={{
-                      fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
-                      color: effectiveStyles.campaignTitleColor || '#fde047',
-                      height: 'auto',
-                      minHeight: 'fit-content'
-                    }}
-                  >
-                    {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
-                  </h1>
-
-                  {/* Subtítulo / Slogan (apenas se for slogan real) */}
-                  {isSubtitleValid && (
-                    <span 
-                      className="text-[10px] sm:text-[11px] text-white/80 font-medium uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
-                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                <div className="flex-1 min-w-0 w-full flex flex-col items-center sm:items-end text-center sm:text-right justify-center gap-2">
+                  {/* Bloco 1: Título Superior da Campanha */}
+                  <div className="w-full flex flex-col items-center sm:items-end text-center sm:text-right">
+                    <h1 
+                      className="w-full text-lg sm:text-xl md:text-2xl lg:text-[26px] font-black uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] tracking-tight leading-[1.1] block break-words"
+                      style={{
+                        fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
+                        color: effectiveStyles.campaignTitleColor || '#fde047',
+                      }}
                     >
-                      {campaign.campaignSubtitle}
-                    </span>
-                  )}
+                      {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
+                    </h1>
 
-                  {/* Texto de Validade das Ofertas - Linha Única Integral Sem Cortes em Linha Própria Separada */}
-                  <div className="mt-1.5 w-full flex items-center justify-center sm:justify-end clear-both">
+                    {/* Subtítulo / Slogan (se houver) */}
+                    {isSubtitleValid && (
+                      <span 
+                        className="text-[11px] sm:text-xs text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                      >
+                        {campaign.campaignSubtitle}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bloco 2: Validade das Ofertas (Pílula Elegante à Direita) */}
+                  <div className="w-full flex items-center justify-center sm:justify-end">
                     <div 
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/20 ${validityFontSize} text-amber-200/95 font-semibold whitespace-nowrap max-w-full shadow-sm`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/55 border border-white/20 ${validityFontSize} text-amber-200 font-semibold whitespace-nowrap max-w-full shadow-md backdrop-blur-xs`}
                       style={{ fontFamily: "'Montserrat', sans-serif" }}
                     >
-                      <Calendar className="w-2.5 h-2.5 text-amber-400/90 shrink-0" />
+                      <Calendar className="w-3 h-3 text-amber-400 shrink-0" />
                       <span className="uppercase whitespace-nowrap tracking-tight">{validityDisplay}</span>
+                    </div>
+                  </div>
+
+                  {/* Bloco 3: WhatsApp CTA (Acumulado diretamente na direita sob a validade!) */}
+                  <div className="w-full flex items-center justify-center sm:justify-end">
+                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300/60 text-white text-xs sm:text-[12.5px] font-black shadow-lg backdrop-blur-xs transition-colors">
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                      <span className="tracking-tight whitespace-nowrap">Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}</span>
                     </div>
                   </div>
                 </div>
               );
             })()}
-          </div>
-
-          {/* Sub Row: WhatsApp Direct Order Banner (sem frases redundantes) */}
-          <div className="relative z-10 mt-2.5 w-full flex items-center justify-center sm:justify-start pt-2 border-t border-white/15">
-            {/* WhatsApp CTA Call */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-700/90 border border-emerald-400/50 text-white text-xs font-bold shadow-sm">
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-              <span>Peça no WhatsApp: {campaign.phoneWhatsapp || '(11) 98765-4321'}</span>
-            </div>
           </div>
         </div>
 
