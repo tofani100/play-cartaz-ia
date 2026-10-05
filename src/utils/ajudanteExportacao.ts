@@ -107,34 +107,130 @@ export async function downloadElementAsPng(elementId: string, filename: string =
     return;
   }
 
-  try {
-    const rect = el.getBoundingClientRect();
-    let sourceW = Math.round(rect.width || el.offsetWidth || 1120);
-    let sourceH = Math.round(rect.height || el.offsetHeight || 630);
+  // Mapa para restaurar estilos dos elementos animados após a captura
+  const originalStyles = new Map<HTMLElement, { opacity: string; visibility: string; transform: string }>();
 
-    // Se for o tablóide, trava com exatidão matemática a proporção da plataforma destino para garantir 0% de corte
-    if (elementId === 'tabloid-capture') {
-      const preset = el.dataset.aspectRatio;
-      if (preset === 'instagram-feed') {
-        sourceH = Math.round(sourceW * 1.25); // Exatamente 4:5 (1080x1350)
-      } else if (preset === 'instagram-square') {
-        sourceH = sourceW; // Exatamente 1:1 (1080x1080)
-      } else if (preset === 'whatsapp-mobile') {
-        sourceH = Math.round(sourceW * (16 / 9)); // Exatamente 9:16 (1080x1920)
-      } else if (preset === 'classic-a4') {
-        sourceH = Math.round(sourceW * 1.4142); // Exatamente A4 (1080x1528)
+  try {
+    // 1. Congela todos os elementos animados em estado de repouso perfeito para garantir 100% de conformidade com o que o usuário vê na tela
+    const animatedNodes = el.querySelectorAll<HTMLElement>(
+      '#tv-anim-title-block, #tv-anim-price-block, #tv-anim-product-card, #tv-anim-card-wrapper, #tv-badge-pill-1, #tv-badge-pill-2, #tv-anim-title-text, #tv-anim-original-price, #tv-anim-second-badge'
+    );
+    animatedNodes.forEach((node) => {
+      originalStyles.set(node, {
+        opacity: node.style.opacity,
+        visibility: node.style.visibility,
+        transform: node.style.transform,
+      });
+      node.style.setProperty('opacity', '1', 'important');
+      node.style.setProperty('visibility', 'visible', 'important');
+      node.style.setProperty('transform', 'none', 'important');
+    });
+
+    // 2. Aguarda fontes do navegador prontas
+    try {
+      if (typeof document !== 'undefined' && document.fonts) {
+        await document.fonts.ready;
       }
+    } catch {}
+
+    // 3. Garante que as imagens (produto, logo) estejam completamente decodificadas
+    const images = el.querySelectorAll<HTMLImageElement>('img');
+    await Promise.all(
+      Array.from(images).map(async (img) => {
+        if (!img.complete) {
+          await new Promise<void>((res) => {
+            img.onload = () => res();
+            img.onerror = () => res();
+            setTimeout(res, 500);
+          });
+        }
+        if (typeof img.decode === 'function') {
+          try {
+            await img.decode();
+          } catch {}
+        }
+      })
+    );
+    await new Promise((r) => setTimeout(r, 60));
+
+    let sourceW = 1120;
+    let sourceH = 630;
+    let targetExportW = 1920;
+    let targetExportH = 1080;
+    let pixelRatio = 2;
+
+    if (elementId === 'tv-banner-capture') {
+      const bannerFormat = el.dataset.bannerFormat;
+      const rawW = parseInt(el.style.width) || el.offsetWidth || 1120;
+      const rawH = parseInt(el.style.height) || el.offsetHeight || 630;
+
+      sourceW = rawW;
+      sourceH = rawH;
+
+      if (bannerFormat === '9:16' || rawW === 440 || rawH === 782) {
+        // Vertical 9:16 (WhatsApp Status / Instagram Stories / Reels - 1080x1920)
+        sourceW = 440;
+        sourceH = 782;
+        targetExportW = 1080;
+        targetExportH = 1920;
+        pixelRatio = targetExportW / sourceW;
+      } else if (bannerFormat === '4:5' || rawW === 540 || rawH === 675) {
+        // Instagram Feed 4:5 (Retrato Oficial - 1080x1350)
+        sourceW = 540;
+        sourceH = 675;
+        targetExportW = 1080;
+        targetExportH = 1350;
+        pixelRatio = 2.0;
+      } else if (bannerFormat === '1:1' || rawW === 680 || rawH === 680) {
+        // Feed Quadrado 1:1 (Instagram & Facebook - 1080x1080)
+        sourceW = 680;
+        sourceH = 680;
+        targetExportW = 1080;
+        targetExportH = 1080;
+        pixelRatio = targetExportW / sourceW;
+      } else {
+        // TV 16:9 Broadcast Horizontal (1920x1080)
+        sourceW = 1120;
+        sourceH = 630;
+        targetExportW = 1920;
+        targetExportH = 1080;
+        pixelRatio = targetExportW / sourceW;
+      }
+    } else {
+      const rect = el.getBoundingClientRect();
+      sourceW = Math.round(rect.width || el.offsetWidth || 1120);
+      sourceH = Math.round(rect.height || el.offsetHeight || 630);
+
+      // Se for o tablóide, trava com exatidão matemática a proporção da plataforma destino para garantir 0% de corte
+      if (elementId === 'tabloid-capture') {
+        const preset = el.dataset.aspectRatio;
+        if (preset === 'instagram-feed') {
+          sourceH = Math.round(sourceW * 1.25); // Exatamente 4:5 (1080x1350)
+        } else if (preset === 'instagram-square') {
+          sourceH = sourceW; // Exatamente 1:1 (1080x1080)
+        } else if (preset === 'whatsapp-mobile') {
+          sourceH = Math.round(sourceW * (16 / 9)); // Exatamente 9:16 (1080x1920)
+        } else if (preset === 'classic-a4') {
+          sourceH = Math.round(sourceW * 1.4142); // Exatamente A4 (1080x1528)
+        }
+      }
+      targetExportW = sourceW * 2;
+      targetExportH = sourceH * 2;
+      pixelRatio = 2;
     }
 
     const canvas = await toCanvas(el, {
       quality: 1.0,
-      pixelRatio: 2, // 2x Retina / 4K crispness
-      canvasWidth: sourceW,
-      canvasHeight: sourceH,
+      pixelRatio: pixelRatio,
       width: sourceW,
       height: sourceH,
       cacheBust: false,
       fontEmbedCSS: FONT_EMBED_CSS,
+      style: {
+        transform: 'none',
+        transformOrigin: 'top left',
+        margin: '0',
+      },
       filter: (node) => {
         if (node instanceof HTMLElement && (
           node.classList.contains('group-hover:opacity-100') || 
@@ -148,7 +244,22 @@ export async function downloadElementAsPng(elementId: string, filename: string =
       },
     });
 
-    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    // Normaliza para as dimensões exatas de saída sem cortes nem distorções
+    let finalCanvas: HTMLCanvasElement = canvas;
+    if (targetExportW && targetExportH && (canvas.width !== targetExportW || canvas.height !== targetExportH)) {
+      const normalizedCanvas = document.createElement('canvas');
+      normalizedCanvas.width = targetExportW;
+      normalizedCanvas.height = targetExportH;
+      const ctx = normalizedCanvas.getContext('2d');
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(canvas, 0, 0, targetExportW, targetExportH);
+        finalCanvas = normalizedCanvas;
+      }
+    }
+
+    const dataUrl = finalCanvas.toDataURL('image/png', 1.0);
     const a = document.createElement('a');
     a.href = dataUrl;
     a.download = filename;
@@ -156,8 +267,14 @@ export async function downloadElementAsPng(elementId: string, filename: string =
     a.click();
     document.body.removeChild(a);
   } catch (err) {
-    console.warn('Erro ao exportar com html-to-image, acionando fallback de impressão:', err);
-    window.print();
+    console.error('Erro ao exportar com html-to-image:', err);
+  } finally {
+    // Restaura estilos originais dos nós animados
+    originalStyles.forEach((style, node) => {
+      if (style.opacity) node.style.opacity = style.opacity; else node.style.removeProperty('opacity');
+      if (style.visibility) node.style.visibility = style.visibility; else node.style.removeProperty('visibility');
+      if (style.transform) node.style.transform = style.transform; else node.style.removeProperty('transform');
+    });
   }
 }
 

@@ -69,3 +69,86 @@ button[disabled] {
   }
 }
 
+/* =========================================================================
+   REGRAS DE IMPRESSÃO DE ALTA FIDELIDADE (@media print)
+   Garante fidelidade absoluta de 100% para Banners (9:16, 4:5, 1:1, 16:9) e Tablóides
+   ========================================================================= */
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    overflow: visible !important;
+  }
+
+  /* Remove transformações dos elementos ancestrais para não distorcer escala na impressão */
+  div, section, main, article {
+    transform: none !important;
+  }
+
+  /* Oculta toda a barra de navegação, painéis de edição, botões, modais e controles de UI */
+  header,
+  nav,
+  aside,
+  #painel-editor-produtos,
+  #tv-card-toolbar,
+  .no-export,
+  button,
+  [role="dialog"],
+  .fixed.inset-0.z-50 {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Esconde todos os elementos do body por padrão */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Torna visível única e exclusivamente a prancheta de captura e seus elementos */
+  #tv-banner-capture,
+  #tv-banner-capture *,
+  #tabloid-capture,
+  #tabloid-capture * {
+    visibility: visible !important;
+  }
+
+  /* Congela os elementos animados em opacidade total e posição correta para impressão */
+  #tv-anim-title-block,
+  #tv-anim-price-block,
+  #tv-anim-product-card,
+  #tv-anim-card-wrapper,
+  #tv-badge-pill-1,
+  #tv-badge-pill-2,
+  #tv-anim-title-text,
+  #tv-anim-original-price,
+  #tv-anim-second-badge {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+  }
+
+  /* Centraliza a arte do banner ou tablóide perfeitamente na página impressa sem bordas extras de UI */
+  #tv-banner-capture,
+  #tabloid-capture {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    z-index: 999999 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+

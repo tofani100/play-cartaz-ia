@@ -434,30 +434,32 @@ export const ModalExportarMaterial: React.FC<ModalExportarMaterialProps> = ({
             )}
           </div>
 
-          {/* Format 4: Print Tabloid / Save as PDF */}
-          {campaign.format === 'tabloid' && (
-            <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 shrink-0">
-                  <Printer className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Imprimir / Salvar Tablóide em PDF</h4>
-                  <p className="text-xs text-neutral-400 mt-0.5">
-                    Gera a lâmina no formato A4 em alta qualidade para impressão em gráfica ou encarte digital.
-                  </p>
-                </div>
+          {/* Format 4: Print / Save as PDF */}
+          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 shrink-0">
+                <Printer className="w-6 h-6" />
               </div>
-
-              <button
-                onClick={handlePrintPdf}
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all shrink-0"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Imprimir / PDF</span>
-              </button>
+              <div>
+                <h4 className="text-sm font-bold text-white">
+                  {campaign.format === 'tabloid' ? 'Imprimir / Salvar Tablóide em PDF' : 'Imprimir / Salvar Banner em PDF'}
+                </h4>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  {campaign.format === 'tabloid'
+                    ? 'Gera a lâmina no formato A4 em alta qualidade para impressão em gráfica ou encarte digital.'
+                    : 'Gera a impressão ou PDF 100% fiel da arte na folha/impressora sem elementos da interface do sistema.'}
+                </p>
+              </div>
             </div>
-          )}
+
+            <button
+              onClick={handlePrintPdf}
+              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimir / PDF</span>
+            </button>
+          </div>
         </div>
 
         {/* Footer */}

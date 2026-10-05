@@ -269,6 +269,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
   const bannerContent = (
     <div
       id="tv-banner-capture"
+      data-banner-format={campaign.format}
       style={{
         width: isTvPlayerMode ? '100%' : `${targetWidth}px`,
         height: isTvPlayerMode ? '100%' : `${targetHeight}px`,
