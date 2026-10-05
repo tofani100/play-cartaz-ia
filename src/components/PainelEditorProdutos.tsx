@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   Plus, 
+  Minus,
   Trash2, 
   Image as ImageIcon, 
   Sparkles, 
@@ -30,7 +31,16 @@ import {
   Store,
   X
 } from 'lucide-react';
-import { ProductItem, CuratedProduct, BannerCampaign, ThemeColors, BannerCustomStyles, AnimationEffect } from '../tiposGeradorBanner';
+import { 
+  ProductItem, 
+  CuratedProduct, 
+  BannerCampaign, 
+  ThemeColors, 
+  BannerCustomStyles, 
+  AnimationEffect,
+  OPCOES_TAMANHO_TITULO,
+  OPCOES_TAMANHO_VALIDADE
+} from '../tiposGeradorBanner';
 import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
 import { handleImageError } from '../utils/imageFallback';
@@ -156,12 +166,20 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
         ...(updates.secondBadgeTextColor ? { secondBadgeTextColor: updates.secondBadgeTextColor } : {}),
       });
 
-      // Em formato tablóide, alterações de fundo (cor, gradiente, imagem) ou modelos de mercado
-      // devem atualizar também os estilos gerais da campanha para que a lâmina inteira do tablóide responda
+      // Em formato tablóide ou alterações de cabeçalho da campanha (fontes, cores, tamanhos do título e validade)
+      // ou fundos e temas, atualizar também os estilos gerais da campanha
       if (
-        campaign?.format === 'tabloid' && 
-        onUpdateCampaign && 
-        (updates.bannerBgColor !== undefined || updates.bannerBgGradient !== undefined || updates.bannerBgImageUrl !== undefined || updates.presetThemeId !== undefined)
+        (campaign?.format === 'tabloid' || 
+         updates.campaignTitleFont !== undefined ||
+         updates.campaignTitleColor !== undefined ||
+         updates.campaignTitleFontSize !== undefined ||
+         updates.validityTextFontSize !== undefined ||
+         updates.bannerBgColor !== undefined ||
+         updates.bannerBgGradient !== undefined ||
+         updates.bannerBgImageUrl !== undefined ||
+         updates.presetThemeId !== undefined) && 
+        onUpdateCampaign &&
+        campaign
       ) {
         onUpdateCampaign({
           customStyles: {
@@ -194,6 +212,20 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
         });
       });
     }
+  };
+
+  const handleStepTitleFontSize = (delta: number) => {
+    const current = currentEffectiveStyles.campaignTitleFontSize;
+    const currentNum = (!current || current === 'auto') ? 32 : (parseInt(current, 10) || 32);
+    const nextVal = Math.min(60, Math.max(16, currentNum + delta));
+    handleApplyCustomStyle({ campaignTitleFontSize: `${nextVal}px` });
+  };
+
+  const handleStepValidityFontSize = (delta: number) => {
+    const current = currentEffectiveStyles.validityTextFontSize;
+    const currentNum = (!current || current === 'auto') ? 14 : (parseInt(current, 10) || 14);
+    const nextVal = Math.min(26, Math.max(8, currentNum + delta));
+    handleApplyCustomStyle({ validityTextFontSize: `${nextVal}px` });
   };
 
   const handleResetProductStyles = () => {
@@ -790,6 +822,57 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Seletor de Tamanho da Fonte do Título Superior */}
+              <div className="mt-1.5 p-1.5 bg-neutral-950/70 rounded-lg border border-neutral-800/80 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[9px] text-neutral-400 mb-0.5 font-medium">Tamanho da Fonte (Título):</label>
+                  <select
+                    value={currentEffectiveStyles.campaignTitleFontSize || 'auto'}
+                    onChange={(e) => handleApplyCustomStyle({ campaignTitleFontSize: e.target.value })}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-amber-500"
+                  >
+                    {OPCOES_TAMANHO_TITULO.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                    {currentEffectiveStyles.campaignTitleFontSize && 
+                     !OPCOES_TAMANHO_TITULO.some(o => o.id === currentEffectiveStyles.campaignTitleFontSize) && (
+                      <option value={currentEffectiveStyles.campaignTitleFontSize}>
+                        Personalizado ({currentEffectiveStyles.campaignTitleFontSize})
+                      </option>
+                    )}
+                  </select>
+                </div>
+
+                <div className="flex flex-col items-end shrink-0">
+                  <span className="text-[8px] text-neutral-400 font-bold mb-0.5 uppercase">Ajuste Fino</span>
+                  <div className="flex items-center gap-1 bg-neutral-900 rounded border border-neutral-800 p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleStepTitleFontSize(-2)}
+                      className="w-5 h-5 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Diminuir tamanho da fonte do título (-2px)"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-[9px] font-mono font-bold text-amber-300 px-1 min-w-[28px] text-center">
+                      {currentEffectiveStyles.campaignTitleFontSize && currentEffectiveStyles.campaignTitleFontSize !== 'auto'
+                        ? currentEffectiveStyles.campaignTitleFontSize
+                        : 'Auto'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleStepTitleFontSize(2)}
+                      className="w-5 h-5 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Aumentar tamanho da fonte do título (+2px)"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* 3. Subtítulo e Validade */}
@@ -818,6 +901,54 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
                   placeholder="Ex: Ofertas válidas até domingo..."
                 />
+
+                {/* Seletor de Tamanho da Fonte da Validade */}
+                <div className="mt-1.5 p-1 bg-neutral-950/70 rounded-lg border border-neutral-800/80 flex items-center justify-between gap-1.5">
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-[8.5px] text-neutral-400 mb-0.5 font-medium">Tamanho da Validade:</label>
+                    <select
+                      value={currentEffectiveStyles.validityTextFontSize || 'auto'}
+                      onChange={(e) => handleApplyCustomStyle({ validityTextFontSize: e.target.value })}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded px-1 py-0.5 text-[9px] text-white focus:outline-none focus:border-amber-500"
+                    >
+                      {OPCOES_TAMANHO_VALIDADE.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                      {currentEffectiveStyles.validityTextFontSize && 
+                       !OPCOES_TAMANHO_VALIDADE.some(o => o.id === currentEffectiveStyles.validityTextFontSize) && (
+                        <option value={currentEffectiveStyles.validityTextFontSize}>
+                          Personalizado ({currentEffectiveStyles.validityTextFontSize})
+                        </option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-0.5 bg-neutral-900 rounded border border-neutral-800 p-0.5 self-end">
+                    <button
+                      type="button"
+                      onClick={() => handleStepValidityFontSize(-1)}
+                      className="w-4 h-4 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Diminuir tamanho da fonte de validade (-1px)"
+                    >
+                      <Minus className="w-2.5 h-2.5" />
+                    </button>
+                    <span className="text-[8.5px] font-mono font-bold text-amber-300 px-0.5 min-w-[24px] text-center">
+                      {currentEffectiveStyles.validityTextFontSize && currentEffectiveStyles.validityTextFontSize !== 'auto'
+                        ? currentEffectiveStyles.validityTextFontSize
+                        : 'Auto'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleStepValidityFontSize(1)}
+                      className="w-4 h-4 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Aumentar tamanho da fonte de validade (+1px)"
+                    >
+                      <Plus className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

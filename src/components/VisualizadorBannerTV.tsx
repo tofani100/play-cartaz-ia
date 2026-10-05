@@ -19,7 +19,14 @@ import {
   ChevronDown,
   MessageCircle
 } from 'lucide-react';
-import { BannerCampaign, ProductItem, ThemeColors, BannerCustomStyles } from '../tiposGeradorBanner';
+import { 
+  BannerCampaign, 
+  ProductItem, 
+  ThemeColors, 
+  BannerCustomStyles, 
+  getScaledCampaignTitleFontSize, 
+  getScaledValidityFontSize 
+} from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
 import { handleImageError } from '../utils/imageFallback';
 import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
@@ -442,7 +449,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 <div className="w-full flex flex-col items-end text-right">
                   <h1 
                     className={`w-full ${
-                      isFeedPortrait
+                      effectiveStyles.campaignTitleFontSize && effectiveStyles.campaignTitleFontSize !== 'auto'
+                        ? 'leading-tight'
+                        : isFeedPortrait
                         ? 'text-[17px] sm:text-[19px] md:text-[20px] leading-[1.12]'
                         : isVertical
                         ? 'text-[15px] sm:text-[17px] md:text-[18px] leading-[1.12]'
@@ -451,6 +460,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     style={{
                       fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
                       color: effectiveStyles.campaignTitleColor || '#fde047',
+                      fontSize: getScaledCampaignTitleFontSize(effectiveStyles.campaignTitleFontSize, campaign.format),
                     }}
                   >
                     {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
@@ -493,7 +503,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     ? ((campaign.validityText && campaign.validityText.length > 55) ? 'text-[6.8px] sm:text-[7.2px]' : 'text-[7.5px] sm:text-[8px]')
                     : 'text-[8.5px] sm:text-[9.5px] md:text-[10px]'
                 } font-bold text-amber-200 ${isVertical ? 'tracking-normal' : 'tracking-wide'} uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
-                style={{ fontFamily: "'Montserrat', sans-serif" }}
+                style={{ 
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: getScaledValidityFontSize(effectiveStyles.validityTextFontSize, campaign.format),
+                }}
                 title={campaign.validityText || 'Ofertas válidas até domingo ou enquanto durarem os estoques'}
               >
                 {campaign.validityText || 'Ofertas válidas até domingo ou enquanto durarem os estoques'}
@@ -550,11 +563,11 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
             <div className="absolute top-1/2 left-10 -translate-y-1/2 w-80 h-80 bg-white/5 rounded-full blur-2xl pointer-events-none" />
 
             {/* Linha Superior do Cabeçalho: Logo (Esquerda) e Título da Campanha (Direita) */}
-            <div className="relative z-10 flex items-center justify-between w-full gap-2.5 sm:gap-4">
+            <div className="relative z-10 flex items-center w-full gap-2 sm:gap-3">
               {/* Left: Client Logo without any artificial container */}
-              <div className="flex items-center shrink-0 w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24">
-                {campaign.showClientLogo !== false && (
-                  (campaign.clientLogoUrl && !campaign.clientLogoUrl.startsWith('/logos/belissima')) ? (
+              {campaign.showClientLogo !== false && (
+                <div className="flex items-center shrink-0 w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24">
+                  {(campaign.clientLogoUrl && !campaign.clientLogoUrl.startsWith('/logos/belissima')) ? (
                     <img
                       id="tv-banner-client-logo"
                       crossOrigin="anonymous"
@@ -599,36 +612,43 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                         </span>
                       </div>
                     </div>
-                  )
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
-              {/* Campaign Title */}
-              <div className="flex-1 flex flex-col items-center text-center px-2 sm:px-4 justify-center min-w-0">
+              {/* Campaign Title & Validity Container:
+                  Perfeitamente centralizado no espaço entre o fim do logo e a margem da direita,
+                  com margem mínima, sem empurrar o logo e mantendo tamanho expressivo */}
+              <div className="flex-1 flex flex-col items-center text-center px-1 sm:px-2 md:px-3 justify-center min-w-0">
                 <h1 
                   style={{
                     color: effectiveStyles.campaignTitleColor || '#fbbf24',
                     fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
+                    fontSize: getScaledCampaignTitleFontSize(effectiveStyles.campaignTitleFontSize, campaign.format),
                   }}
                   className={`${
-                    campaign.campaignTitle && campaign.campaignTitle.length > 35
-                      ? 'text-xs sm:text-sm md:text-base lg:text-xl'
-                      : campaign.campaignTitle && campaign.campaignTitle.length > 25
-                      ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl'
-                      : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]'
+                    effectiveStyles.campaignTitleFontSize && effectiveStyles.campaignTitleFontSize !== 'auto'
+                      ? 'leading-tight tracking-tight'
+                      : (campaign.campaignTitle && campaign.campaignTitle.length > 55
+                          ? 'text-sm sm:text-base md:text-xl lg:text-2xl xl:text-[25px]'
+                          : campaign.campaignTitle && campaign.campaignTitle.length > 42
+                          ? 'text-base sm:text-lg md:text-2xl lg:text-3xl xl:text-[29px]'
+                          : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-[34px]')
                   } font-black uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] w-full leading-tight tracking-tight break-words`}
                 >
                   {campaign.campaignTitle || 'FESTIVAL DE OFERTAS PLAY COMUNIQUE'}
                 </h1>
 
-                <p className="text-[9px] sm:text-[11px] md:text-xs lg:text-sm mt-0.5 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none">
+                <p 
+                  className="mt-0.5 sm:mt-1 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none"
+                  style={{
+                    fontSize: getScaledValidityFontSize(effectiveStyles.validityTextFontSize, campaign.format),
+                  }}
+                >
                   <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
                   <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
                 </p>
               </div>
-
-              {/* Right Symmetrical Spacer so Campaign Title is centered across the screen in Horizontal */}
-              <div className="shrink-0 pointer-events-none hidden md:block w-auto max-w-[195px] sm:max-w-[230px] md:max-w-[260px] lg:max-w-[285px] h-14 sm:h-18 md:h-22 lg:h-24" />
             </div>
           </div>
         )}

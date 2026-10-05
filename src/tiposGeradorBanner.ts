@@ -93,6 +93,8 @@ export interface BannerCustomStyles {
   bannerBgImageUrl?: string;
   campaignTitleColor?: string;
   campaignTitleFont?: string;
+  campaignTitleFontSize?: string;
+  validityTextFontSize?: string;
   campaignSubtitleColor?: string;
   productTitleColor?: string;
   productTitleFont?: string;
@@ -107,6 +109,52 @@ export interface BannerCustomStyles {
   footerLegalColor?: string;
   footerBrandColor?: string;
   presetThemeId?: string;
+}
+
+export const OPCOES_TAMANHO_TITULO = [
+  { id: 'auto', label: 'Auto (Adaptativo)' },
+  { id: '20px', label: 'Pequeno (20px)' },
+  { id: '24px', label: 'Médio-Pequeno (24px)' },
+  { id: '28px', label: 'Médio (28px)' },
+  { id: '32px', label: 'Grande (32px - Padrão)' },
+  { id: '36px', label: 'Muito Grande (36px)' },
+  { id: '40px', label: 'Extra Grande (40px)' },
+  { id: '46px', label: 'Gigante (46px)' },
+  { id: '52px', label: 'Impacto Máximo (52px)' },
+] as const;
+
+export const OPCOES_TAMANHO_VALIDADE = [
+  { id: 'auto', label: 'Auto (Adaptativo)' },
+  { id: '10px', label: 'Pequeno (10px)' },
+  { id: '12px', label: 'Médio (12px)' },
+  { id: '14px', label: 'Grande (14px - Padrão)' },
+  { id: '16px', label: 'Muito Grande (16px)' },
+  { id: '18px', label: 'Destaque (18px)' },
+  { id: '20px', label: 'Impacto Máximo (20px)' },
+] as const;
+
+export function getScaledCampaignTitleFontSize(sizeStr?: string, format: BannerFormat = '16:9'): string | undefined {
+  if (!sizeStr || sizeStr === 'auto') return undefined;
+  const num = parseFloat(sizeStr);
+  if (isNaN(num)) return sizeStr;
+  if (format === '16:9') return `${num}px`;
+  if (format === '1:1') return `${Math.round(num * 0.75)}px`;
+  if (format === '4:5') return `${Math.round(num * 0.65)}px`;
+  if (format === '9:16') return `${Math.round(num * 0.55)}px`;
+  if (format === 'tabloid') return `${Math.round(num * 0.7)}px`;
+  return `${num}px`;
+}
+
+export function getScaledValidityFontSize(sizeStr?: string, format: BannerFormat = '16:9'): string | undefined {
+  if (!sizeStr || sizeStr === 'auto') return undefined;
+  const num = parseFloat(sizeStr);
+  if (isNaN(num)) return sizeStr;
+  if (format === '16:9') return `${num}px`;
+  if (format === '1:1') return `${Math.max(8, Math.round(num * 0.75))}px`;
+  if (format === '4:5') return `${Math.max(7.5, Math.round(num * 0.68))}px`;
+  if (format === '9:16') return `${Math.max(7, Math.round(num * 0.58))}px`;
+  if (format === 'tabloid') return `${Math.max(7, Math.round(num * 0.65))}px`;
+  return `${num}px`;
 }
 
 export interface ClientProfile {

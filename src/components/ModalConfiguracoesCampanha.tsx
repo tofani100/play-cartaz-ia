@@ -13,7 +13,13 @@ import {
   Layers,
   Tag
 } from 'lucide-react';
-import { BannerCampaign, AnimationEffect, BannerCustomStyles } from '../tiposGeradorBanner';
+import { 
+  BannerCampaign, 
+  AnimationEffect, 
+  BannerCustomStyles,
+  OPCOES_TAMANHO_TITULO,
+  OPCOES_TAMANHO_VALIDADE 
+} from '../tiposGeradorBanner';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
 import { aplicarMascaraTelefoneInput } from '../utils/mascaraTelefone';
 
@@ -390,6 +396,54 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                         className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white font-mono"
                       />
                     </div>
+                  </div>
+
+                  {/* Tamanho da Fonte do Título Superior */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Tamanho do Título Superior
+                    </label>
+                    <select
+                      value={styles.campaignTitleFontSize || 'auto'}
+                      onChange={(e) => updateStyleField('campaignTitleFontSize', e.target.value)}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white"
+                    >
+                      {OPCOES_TAMANHO_TITULO.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                      {styles.campaignTitleFontSize && 
+                       !OPCOES_TAMANHO_TITULO.some(o => o.id === styles.campaignTitleFontSize) && (
+                        <option value={styles.campaignTitleFontSize}>
+                          Personalizado ({styles.campaignTitleFontSize})
+                        </option>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Tamanho da Fonte da Validade das Ofertas */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Tamanho do Texto de Validade
+                    </label>
+                    <select
+                      value={styles.validityTextFontSize || 'auto'}
+                      onChange={(e) => updateStyleField('validityTextFontSize', e.target.value)}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white"
+                    >
+                      {OPCOES_TAMANHO_VALIDADE.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                      {styles.validityTextFontSize && 
+                       !OPCOES_TAMANHO_VALIDADE.some(o => o.id === styles.validityTextFontSize) && (
+                        <option value={styles.validityTextFontSize}>
+                          Personalizado ({styles.validityTextFontSize})
+                        </option>
+                      )}
+                    </select>
                   </div>
 
                   {/* Fonte do Nome do Produto */}

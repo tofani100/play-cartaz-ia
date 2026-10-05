@@ -25,7 +25,14 @@ import {
   ChevronRight,
   GripVertical
 } from 'lucide-react';
-import { BannerCampaign, ThemeColors, ProductItem, BannerCustomStyles } from '../tiposGeradorBanner';
+import { 
+  BannerCampaign, 
+  ThemeColors, 
+  ProductItem, 
+  BannerCustomStyles,
+  getScaledCampaignTitleFontSize,
+  getScaledValidityFontSize
+} from '../tiposGeradorBanner';
 import { EtiquetaPrecoPromocional } from './EtiquetaPrecoPromocional';
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, buildExportFilename } from '../utils/ajudanteExportacao';
@@ -794,7 +801,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                   <div className="w-full flex flex-col items-center sm:items-end text-center sm:text-right">
                     <h1 
                       className={`w-full ${
-                        effectiveRows >= 4 || targetPreset === 'instagram-square'
+                        effectiveStyles.campaignTitleFontSize && effectiveStyles.campaignTitleFontSize !== 'auto'
+                          ? 'leading-tight'
+                          : effectiveRows >= 4 || targetPreset === 'instagram-square'
                           ? 'text-xs sm:text-sm md:text-base leading-tight'
                           : effectiveRows === 3
                           ? 'text-sm sm:text-base md:text-lg leading-tight'
@@ -803,6 +812,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       style={{
                         fontFamily: effectiveStyles.campaignTitleFont || "'Montserrat', sans-serif",
                         color: effectiveStyles.campaignTitleColor || '#fde047',
+                        fontSize: getScaledCampaignTitleFontSize(effectiveStyles.campaignTitleFontSize, 'tabloid'),
                       }}
                     >
                       {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
@@ -857,7 +867,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       ? (validityDisplay.length > 55 ? 'text-[7px] sm:text-[7.5px]' : 'text-[7.5px] sm:text-[8px]')
                       : 'text-[8px] sm:text-[9px] md:text-[9.5px]'
                   } font-bold text-amber-200 uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
-                  style={{ fontFamily: "'Montserrat', sans-serif" }}
+                  style={{ 
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontSize: getScaledValidityFontSize(effectiveStyles.validityTextFontSize, 'tabloid'),
+                  }}
                   title={validityDisplay}
                 >
                   {validityDisplay}

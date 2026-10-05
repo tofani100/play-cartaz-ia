@@ -2,5 +2,5 @@
  * Centralized Version Control for Play Comunique TV & Banners
  * Atualizado a cada entrega/versão conforme solicitação do usuário.
  */
-export const APP_VERSION = 'v-141';
-export const BUILD_TIMESTAMP = '2026.10.04-B141-AJUSTE-2-COLUNAS-TABLOIDE';
+export const APP_VERSION = 'v-142';
+export const BUILD_TIMESTAMP = '2026.10.05-B142-CENTRALIZACAO-CABECALHO-E-TAMANHOS-FONTE';
