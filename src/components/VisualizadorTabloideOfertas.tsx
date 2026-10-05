@@ -76,13 +76,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     (targetPreset === 'instagram-feed' || targetPreset === 'instagram-square' || targetPreset === 'classic-a4') ? 3 : 2;
   const columns = useMemo(() => {
     if (campaign.tabloidColumns) {
-      if ((targetPreset === 'instagram-feed' || targetPreset === 'instagram-square') && campaign.tabloidColumns === 2) {
-        return 3;
-      }
       return campaign.tabloidColumns;
     }
     return defaultColsForPreset;
-  }, [campaign.tabloidColumns, targetPreset, defaultColsForPreset]);
+  }, [campaign.tabloidColumns, defaultColsForPreset]);
 
   // Grid Rows: 2, 3, 4, 5, 6 or 0 for all (padrão: 3 linhas)
   const rows = campaign.tabloidRows !== undefined ? campaign.tabloidRows : 3;
