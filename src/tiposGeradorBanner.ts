@@ -94,6 +94,8 @@ export interface BannerCustomStyles {
   campaignTitleColor?: string;
   campaignTitleFont?: string;
   campaignTitleFontSize?: string;
+  validityTextColor?: string;
+  validityTextFont?: string;
   validityTextFontSize?: string;
   campaignSubtitleColor?: string;
   productTitleColor?: string;

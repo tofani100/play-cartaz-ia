@@ -642,25 +642,8 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         {/* CABEÇALHO OFICIAL DO TABLÓIDE: VISÍVEL, IMPONENTE E INTEGRAL */}
         {/* ============================================================ */}
         {(() => {
-          const defaultVal1 = 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques';
           const defaultVal2 = 'Ofertas válidas até domingo ou enquanto durarem os estoques';
-          
-          let validityDisplay = campaign.validityText;
-          if (
-            (!validityDisplay || validityDisplay === defaultVal1 || validityDisplay === defaultVal2) &&
-            campaign.campaignSubtitle &&
-            campaign.campaignSubtitle.toLowerCase().includes('válid')
-          ) {
-            validityDisplay = campaign.campaignSubtitle;
-          }
-          if (!validityDisplay) {
-            validityDisplay = defaultVal2;
-          }
-
-          const isSubtitleValid = 
-            campaign.campaignSubtitle &&
-            campaign.campaignSubtitle.trim().toLowerCase() !== validityDisplay.trim().toLowerCase() &&
-            !campaign.campaignSubtitle.toLowerCase().includes('válid');
+          const validityDisplay = campaign.validityText || defaultVal2;
 
           return (
             <div 
@@ -818,15 +801,6 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       {campaign.campaignTitle || 'FESTIVAL DE OFERTAS'}
                     </h1>
 
-                    {/* Subtítulo / Slogan (se houver) */}
-                    {isSubtitleValid && (
-                      <span 
-                        className="text-[9px] sm:text-[10px] text-white/90 font-semibold uppercase tracking-wider mt-0.5 drop-shadow truncate max-w-full block"
-                        style={{ fontFamily: "'Montserrat', sans-serif" }}
-                      >
-                        {campaign.campaignSubtitle}
-                      </span>
-                    )}
                   </div>
 
                   {/* WhatsApp CTA: Sempre em Linha Única sem Cortar */}
@@ -858,7 +832,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
 
               {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Linha Única sem Cortar */}
               <div className="relative z-10 w-full flex items-center justify-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1 border-t border-white/10 text-center px-1">
-                <Calendar className={`${effectiveRows >= 4 ? 'w-2 h-2' : 'w-2.5 h-2.5'} text-amber-400 shrink-0 drop-shadow`} />
+                <Calendar 
+                  className={`${effectiveRows >= 4 ? 'w-2 h-2' : 'w-2.5 h-2.5'} shrink-0 drop-shadow`} 
+                  style={{ color: effectiveStyles.validityTextColor || '#fbbf24' }} 
+                />
                 <span 
                   className={`${
                     effectiveRows >= 4
@@ -866,9 +843,10 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       : targetPreset === 'whatsapp-mobile'
                       ? (validityDisplay.length > 55 ? 'text-[7px] sm:text-[7.5px]' : 'text-[7.5px] sm:text-[8px]')
                       : 'text-[8px] sm:text-[9px] md:text-[9.5px]'
-                  } font-bold text-amber-200 uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
+                  } font-bold ${!effectiveStyles.validityTextColor ? 'text-amber-200' : ''} uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
                   style={{ 
-                    fontFamily: "'Montserrat', sans-serif",
+                    color: effectiveStyles.validityTextColor || undefined,
+                    fontFamily: effectiveStyles.validityTextFont || "'Montserrat', sans-serif",
                     fontSize: getScaledValidityFontSize(effectiveStyles.validityTextFontSize, 'tabloid'),
                   }}
                   title={validityDisplay}

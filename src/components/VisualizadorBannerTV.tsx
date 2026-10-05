@@ -496,15 +496,19 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
 
             {/* Base do Cabeçalho: Validade Centralizada na Largura Total, Sem Caixa, em Linha Única sem Cortar */}
             <div className="relative z-10 w-full flex items-center justify-center gap-1 sm:gap-1.5 pt-1 border-t border-white/10 text-center px-1">
-              <Calendar className={`${isVertical ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-amber-400 shrink-0 drop-shadow`} />
+              <Calendar 
+                className={`${isVertical ? 'w-2.5 h-2.5' : 'w-3 h-3'} shrink-0 drop-shadow`}
+                style={{ color: effectiveStyles.validityTextColor || '#fde047' }}
+              />
               <span 
                 className={`${
                   isVertical
                     ? ((campaign.validityText && campaign.validityText.length > 55) ? 'text-[6.8px] sm:text-[7.2px]' : 'text-[7.5px] sm:text-[8px]')
                     : 'text-[8.5px] sm:text-[9.5px] md:text-[10px]'
-                } font-bold text-amber-200 ${isVertical ? 'tracking-normal' : 'tracking-wide'} uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
+                } font-bold ${!effectiveStyles.validityTextColor ? 'text-amber-200' : ''} ${isVertical ? 'tracking-normal' : 'tracking-wide'} uppercase whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]`}
                 style={{ 
-                  fontFamily: "'Montserrat', sans-serif",
+                  color: effectiveStyles.validityTextColor || undefined,
+                  fontFamily: effectiveStyles.validityTextFont || "'Montserrat', sans-serif",
                   fontSize: getScaledValidityFontSize(effectiveStyles.validityTextFontSize, campaign.format),
                 }}
                 title={campaign.validityText || 'Ofertas válidas até domingo ou enquanto durarem os estoques'}
@@ -640,12 +644,17 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 </h1>
 
                 <p 
-                  className="mt-0.5 sm:mt-1 text-neutral-100 flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none"
+                  className={`mt-0.5 sm:mt-1 ${!effectiveStyles.validityTextColor ? 'text-neutral-100' : ''} flex items-center justify-center gap-1.5 font-semibold drop-shadow max-w-full leading-none`}
                   style={{
+                    color: effectiveStyles.validityTextColor || undefined,
+                    fontFamily: effectiveStyles.validityTextFont || "'Montserrat', sans-serif",
                     fontSize: getScaledValidityFontSize(effectiveStyles.validityTextFontSize, campaign.format),
                   }}
                 >
-                  <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
+                  <Calendar 
+                    className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" 
+                    style={{ color: effectiveStyles.validityTextColor || '#fbbf24' }} 
+                  />
                   <span className="truncate">{campaign.validityText || 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques'}</span>
                 </p>
               </div>

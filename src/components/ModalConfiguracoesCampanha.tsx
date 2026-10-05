@@ -422,6 +422,45 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                     </select>
                   </div>
 
+                  {/* Fonte do Texto de Validade das Ofertas */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Fonte do Texto de Validade
+                    </label>
+                    <select
+                      value={styles.validityTextFont || "'Montserrat', sans-serif"}
+                      onChange={(e) => updateStyleField('validityTextFont', e.target.value)}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white"
+                    >
+                      {FONTES_COMERCIAIS_RECOMENDADAS.map((f) => (
+                        <option key={f.id} value={f.fontFamily}>
+                          {f.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Cor do Texto de Validade */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Cor do Texto de Validade
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={styles.validityTextColor || '#f5f5f5'}
+                        onChange={(e) => updateStyleField('validityTextColor', e.target.value)}
+                        className="w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={styles.validityTextColor || '#f5f5f5'}
+                        onChange={(e) => updateStyleField('validityTextColor', e.target.value)}
+                        className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-2 text-xs text-white font-mono"
+                      />
+                    </div>
+                  </div>
+
                   {/* Tamanho da Fonte da Validade das Ofertas */}
                   <div>
                     <label className="block text-[11px] font-bold text-neutral-300 mb-1">
@@ -697,18 +736,6 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                   onChange={(e) => setFormData({ ...formData, campaignTitle: e.target.value })}
                   className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
                   placeholder="Ex: Festival de Ofertas Imperdíveis"
-                />
-              </div>
-
-              {/* Subtitle */}
-              <div>
-                <label className="block text-xs font-bold text-neutral-300 mb-1">Subtítulo / Slogan</label>
-                <input
-                  type="text"
-                  value={formData.campaignSubtitle}
-                  onChange={(e) => setFormData({ ...formData, campaignSubtitle: e.target.value })}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="Ex: Preços baixos de verdade para você economizar"
                 />
               </div>
 

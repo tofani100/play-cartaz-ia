@@ -173,6 +173,8 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
          updates.campaignTitleFont !== undefined ||
          updates.campaignTitleColor !== undefined ||
          updates.campaignTitleFontSize !== undefined ||
+         updates.validityTextFont !== undefined ||
+         updates.validityTextColor !== undefined ||
          updates.validityTextFontSize !== undefined ||
          updates.bannerBgColor !== undefined ||
          updates.bannerBgGradient !== undefined ||
@@ -875,66 +877,89 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               </div>
             </div>
 
-            {/* 3. Subtítulo e Validade */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  Subtítulo / Slogan
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.campaignSubtitle || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ campaignSubtitle: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="Ex: Preços baixos de verdade..."
-                />
+            {/* 3. Texto de Validade das Ofertas + Fonte + Cor + Tamanho */}
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                Texto de Validade das Ofertas
+              </label>
+              <input
+                type="text"
+                value={campaign?.validityText || ''}
+                onChange={(e) => onUpdateCampaign && onUpdateCampaign({ validityText: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-semibold"
+                placeholder="Ex: Ofertas válidas até domingo..."
+              />
+
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                <div>
+                  <label className="block text-[9px] text-neutral-400 mb-0.5">Fonte da Validade:</label>
+                  <select
+                    value={currentEffectiveStyles.validityTextFont || "'Montserrat', sans-serif"}
+                    onChange={(e) => handleApplyCustomStyle({ validityTextFont: e.target.value })}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-[10px] text-white"
+                  >
+                    {FONTES_COMERCIAIS_RECOMENDADAS.map((f) => (
+                      <option key={f.id} value={f.fontFamily}>
+                        {f.nome.split(' (')[0]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] text-neutral-400 mb-0.5">Cor da Validade:</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="color"
+                      value={currentEffectiveStyles.validityTextColor || '#f5f5f5'}
+                      onChange={(e) => handleApplyCustomStyle({ validityTextColor: e.target.value })}
+                      className="w-6 h-6 rounded border border-neutral-700 bg-neutral-900 cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={currentEffectiveStyles.validityTextColor || '#f5f5f5'}
+                      onChange={(e) => handleApplyCustomStyle({ validityTextColor: e.target.value })}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-[10px] text-white font-mono"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  Texto de Validade das Ofertas
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.validityText || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ validityText: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="Ex: Ofertas válidas até domingo..."
-                />
+              {/* Seletor de Tamanho da Fonte da Validade */}
+              <div className="mt-1.5 p-1.5 bg-neutral-950/70 rounded-lg border border-neutral-800/80 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[9px] text-neutral-400 mb-0.5 font-medium">Tamanho da Fonte (Validade):</label>
+                  <select
+                    value={currentEffectiveStyles.validityTextFontSize || 'auto'}
+                    onChange={(e) => handleApplyCustomStyle({ validityTextFontSize: e.target.value })}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-amber-500"
+                  >
+                    {OPCOES_TAMANHO_VALIDADE.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                    {currentEffectiveStyles.validityTextFontSize && 
+                     !OPCOES_TAMANHO_VALIDADE.some(o => o.id === currentEffectiveStyles.validityTextFontSize) && (
+                      <option value={currentEffectiveStyles.validityTextFontSize}>
+                        Personalizado ({currentEffectiveStyles.validityTextFontSize})
+                      </option>
+                    )}
+                  </select>
+                </div>
 
-                {/* Seletor de Tamanho da Fonte da Validade */}
-                <div className="mt-1.5 p-1 bg-neutral-950/70 rounded-lg border border-neutral-800/80 flex items-center justify-between gap-1.5">
-                  <div className="flex-1 min-w-0">
-                    <label className="block text-[8.5px] text-neutral-400 mb-0.5 font-medium">Tamanho da Validade:</label>
-                    <select
-                      value={currentEffectiveStyles.validityTextFontSize || 'auto'}
-                      onChange={(e) => handleApplyCustomStyle({ validityTextFontSize: e.target.value })}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded px-1 py-0.5 text-[9px] text-white focus:outline-none focus:border-amber-500"
-                    >
-                      {OPCOES_TAMANHO_VALIDADE.map((opt) => (
-                        <option key={opt.id} value={opt.id}>
-                          {opt.label}
-                        </option>
-                      ))}
-                      {currentEffectiveStyles.validityTextFontSize && 
-                       !OPCOES_TAMANHO_VALIDADE.some(o => o.id === currentEffectiveStyles.validityTextFontSize) && (
-                        <option value={currentEffectiveStyles.validityTextFontSize}>
-                          Personalizado ({currentEffectiveStyles.validityTextFontSize})
-                        </option>
-                      )}
-                    </select>
-                  </div>
-
-                  <div className="flex items-center gap-0.5 bg-neutral-900 rounded border border-neutral-800 p-0.5 self-end">
+                <div className="flex flex-col items-end shrink-0">
+                  <span className="text-[8px] text-neutral-400 font-bold mb-0.5 uppercase">Ajuste Fino</span>
+                  <div className="flex items-center gap-1 bg-neutral-900 rounded border border-neutral-800 p-0.5">
                     <button
                       type="button"
                       onClick={() => handleStepValidityFontSize(-1)}
-                      className="w-4 h-4 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      className="w-5 h-5 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
                       title="Diminuir tamanho da fonte de validade (-1px)"
                     >
-                      <Minus className="w-2.5 h-2.5" />
+                      <Minus className="w-3 h-3" />
                     </button>
-                    <span className="text-[8.5px] font-mono font-bold text-amber-300 px-0.5 min-w-[24px] text-center">
+                    <span className="text-[9px] font-mono font-bold text-amber-300 px-1 min-w-[28px] text-center">
                       {currentEffectiveStyles.validityTextFontSize && currentEffectiveStyles.validityTextFontSize !== 'auto'
                         ? currentEffectiveStyles.validityTextFontSize
                         : 'Auto'}
@@ -942,10 +967,10 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     <button
                       type="button"
                       onClick={() => handleStepValidityFontSize(1)}
-                      className="w-4 h-4 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      className="w-5 h-5 flex items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
                       title="Aumentar tamanho da fonte de validade (+1px)"
                     >
-                      <Plus className="w-2.5 h-2.5" />
+                      <Plus className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
