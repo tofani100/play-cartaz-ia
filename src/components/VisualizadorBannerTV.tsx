@@ -89,7 +89,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
     ...(product.secondBadgeTextColor ? { secondBadgeTextColor: product.secondBadgeTextColor } : {}),
   };
 
-  const isVertical = campaign.format === '9:16' || campaign.format === '4:5';
+  const isFeedPortrait = campaign.format === '4:5';
+  const isStories = campaign.format === '9:16';
+  const isVertical = isStories || isFeedPortrait;
   const isSquare = campaign.format === '1:1';
 
   // Canonical reference resolution matching exactly the Mini Player's golden proportions
@@ -330,8 +332,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         {(isSquare || isVertical) ? (
           <div 
             id="tv-banner-header"
-            className={`relative z-10 ${
-              isVertical ? 'px-2.5 sm:px-3 pt-2 sm:pt-2.5 pb-1 sm:pb-1.5' : 'px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5'
+            className={`relative z-20 ${
+              isFeedPortrait
+                ? 'px-3 pt-2 pb-1.5'
+                : isVertical
+                ? 'px-2.5 sm:px-3 pt-2 sm:pt-2.5 pb-1 sm:pb-1.5'
+                : 'px-3.5 sm:px-5 pt-3 sm:pt-3.5 pb-2 sm:pb-2.5'
             } flex flex-col shrink-0 w-full justify-between border-b-2 sm:border-b-4 overflow-hidden`}
             style={{
               borderBottomColor: effectiveStyles.cardBorderColor || '#f59e0b',
@@ -389,7 +395,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       src={campaign.clientLogoUrl}
                       alt={campaign.clientName || 'Logo Oficial'}
                       className={`${
-                        isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
+                        isFeedPortrait ? 'max-h-13 sm:max-h-15' : isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
                       } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none`}
                       referrerPolicy="no-referrer"
                     />
@@ -400,7 +406,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       src="/logos/belissima-casa-di-frutas.png"
                       alt={campaign.clientName || 'Belíssima Casa di Frutas'}
                       className={`${
-                        isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
+                        isFeedPortrait ? 'max-h-13 sm:max-h-15' : isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
                       } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none`}
                       referrerPolicy="no-referrer"
                       onError={(e) => {
@@ -417,7 +423,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       src={campaign.clientLogoUrl}
                       alt={campaign.clientName || 'Logo Oficial'}
                       className={`${
-                        isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
+                        isFeedPortrait ? 'max-h-13 sm:max-h-15' : isVertical ? 'max-h-16 sm:max-h-20' : 'max-h-20 sm:max-h-24 md:max-h-28'
                       } w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] filter contrast-105 saturate-[1.08] select-none shrink-0 pointer-events-none`}
                       referrerPolicy="no-referrer"
                     />
@@ -617,12 +623,20 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
         )}
 
         {/* CENTER CONTENT: Perfectly Proportioned - Em Vertical, imagem no topo e dados/preço abaixo (conforme solicitado) */}
-        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 ${isSquare ? 'px-3 sm:px-5 py-2' : 'px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5'} gap-2 sm:gap-4 flex ${isVertical ? 'flex-col-reverse justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-visible`}>
+        <div id="tv-banner-center-content" className={`relative z-10 flex-1 min-h-0 ${
+          isFeedPortrait
+            ? 'px-3 sm:px-4 pt-1.5 sm:pt-2 pb-1'
+            : isSquare 
+            ? 'px-3 sm:px-5 py-2' 
+            : isVertical
+            ? 'px-3 sm:px-5 py-1.5 sm:py-2'
+            : 'px-3 sm:px-6 md:px-10 py-1.5 sm:py-2 md:py-2.5'
+        } ${isVertical ? 'gap-1.5 sm:gap-2' : 'gap-2 sm:gap-4'} flex ${isVertical ? 'flex-col-reverse justify-between items-center text-center' : 'flex-row items-center justify-between'} overflow-hidden`}>
           
           {/* Left Column: Product Title, Packaging, Tag, Regular Price & Supermarket Price Tag */}
           <div id="tv-anim-left-column" className={`flex flex-col ${
             isVertical 
-              ? 'items-center text-center max-w-full w-full gap-2 sm:gap-2.5 py-1' 
+              ? 'items-center text-center max-w-full w-full gap-1.5 sm:gap-2 py-0.5' 
               : isSquare
               ? 'justify-between items-start text-left w-[42%] max-w-[42%] h-full max-h-full py-1'
               : 'justify-between items-start text-left w-[48%] max-w-[48%] h-full max-h-full py-0.5'
@@ -632,7 +646,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               key={`title-block-${product.id}-${animCycle}`}
               id="tv-anim-title-block" 
               {...getBlock1Props()}
-              className={`flex flex-col ${isVertical ? 'items-center text-center mt-0.5 sm:mt-1' : 'items-start text-left mt-3 sm:mt-5 md:mt-6'} w-full shrink-0 bg-transparent`}
+              className={`flex flex-col ${isVertical ? 'items-center text-center mt-0' : 'items-start text-left mt-3 sm:mt-5 md:mt-6'} w-full shrink-0 bg-transparent`}
             >
               {/* Nome Comercial do Produto com o 1º Selo Promocional ocupando o início da primeira linha à frente do texto */}
               <h2 
@@ -641,7 +655,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                 }}
                 className={`${
-                  isVertical
+                  isFeedPortrait
+                    ? 'text-[14px] sm:text-[16px] md:text-[17px] leading-snug text-center'
+                    : isVertical
                     ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug text-center'
                     : isSquare
                     ? (product.title || '').length > 40
@@ -724,7 +740,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     color: effectiveStyles.priceBoxTextColor || '#ffffff',
                     fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif",
                   }}
-                  className="relative overflow-hidden rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 lg:p-4 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 gap-2 sm:gap-3 flex flex-nowrap items-center w-auto min-w-max shrink-0 transition-transform hover:scale-[1.02] origin-bottom-left"
+                  className={`relative overflow-hidden rounded-xl md:rounded-2xl ${
+                    isVertical ? 'p-2 sm:p-2.5 md:p-3 gap-1.5 sm:gap-2.5' : 'p-2.5 sm:p-3 md:p-3.5 lg:p-4 gap-2 sm:gap-3'
+                  } shadow-[0_16px_36px_rgba(0,0,0,0.65)] border-2 border-white/30 flex flex-nowrap items-center w-auto min-w-max shrink-0 transition-transform hover:scale-[1.02] origin-bottom-left`}
                 >
                   {/* Glossy top highlight overlay for TV commercial acrylic look */}
                   <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none rounded-t-xl" />
@@ -745,7 +763,9 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                   {/* Big Integer Number */}
                   <div 
                     style={{ fontFamily: effectiveStyles.productTitleFont || "'Montserrat', sans-serif" }}
-                    className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[76px] font-black leading-none tracking-tighter drop-shadow-sm shrink-0 whitespace-nowrap select-none"
+                    className={`${
+                      isVertical ? 'text-4xl sm:text-5xl md:text-5xl' : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[76px]'
+                    } font-black leading-none tracking-tighter drop-shadow-sm shrink-0 whitespace-nowrap select-none`}
                   >
                     {intPrice}
                   </div>
@@ -801,12 +821,12 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
           </div>
 
           {/* Right Column (Bloco 2): Framed Commercial Mini Banner Showcase Card - Dimensões e Proporção 4:3 Padronizadas */}
-          <div id="tv-anim-right-column" className={`relative flex-1 min-w-0 flex items-center justify-center ${isVertical ? 'w-full py-1' : 'h-full max-h-full'}`}>
+          <div id="tv-anim-right-column" className={`relative flex-1 min-w-0 min-h-0 flex items-center justify-center ${isVertical ? 'w-full py-0.5' : 'h-full max-h-full'}`}>
             <motion.div
               key={`card-${product.id}-${animCycle}`}
               id="tv-anim-card-wrapper"
               {...getBlock2Props()}
-              className={`relative w-full h-full flex items-center justify-center ${isSquare ? 'p-0.5 sm:p-1' : 'p-1 sm:p-2'} overflow-visible`}
+              className={`relative w-full h-full min-h-0 flex items-center justify-center ${isSquare ? 'p-0.5 sm:p-1' : 'p-0.5 sm:p-1'} overflow-hidden`}
             >
                 {/* Standardized Mini Banner Container - Proporção 4:3 Idêntica e Padronizada para Todos os Produtos */}
                 {/* Standardized Mini Banner Container - Suporte Duplo: Modo Ambientado Full-Bleed (Print 1) ou Packshot Tradicional (Print 2) */}
@@ -961,8 +981,10 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                       onPaste={handleCardPaste}
                       tabIndex={0}
                       className={`group relative ${
-                        isVertical
-                          ? 'w-full max-w-[340px] sm:max-w-[420px] aspect-[4/3] my-auto'
+                        isFeedPortrait
+                          ? 'w-auto max-w-[330px] sm:max-w-[350px] h-full max-h-[220px] sm:max-h-[235px] aspect-[4/3] my-auto'
+                          : isVertical
+                          ? 'w-auto max-w-[360px] sm:max-w-[390px] h-full max-h-[260px] sm:max-h-[280px] aspect-[4/3] my-auto'
                           : isSquare
                           ? 'w-full h-full max-h-full'
                           : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-full shrink-0 my-auto'
