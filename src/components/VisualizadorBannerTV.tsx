@@ -1001,8 +1001,8 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           : 'h-[92%] max-h-[92%] aspect-[4/3] w-auto max-w-full shrink-0 my-auto'
                       } ${
                         isAmbient
-                          ? 'bg-neutral-950 border-[4px] sm:border-[5px] shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
-                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-[4px] sm:border-[5px] shadow-[0_22px_55px_rgba(0,0,0,0.85)]'
+                          ? 'bg-neutral-950 border-[4px] sm:border-[5px]'
+                          : 'bg-gradient-to-b from-[#f8fafc] via-[#ffffff] to-[#eef2f6] border-[4px] sm:border-[5px]'
                       } rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-2 flex flex-col items-center justify-between overflow-visible select-none outline-none focus:ring-2 focus:ring-amber-400`}
                       style={{
                         borderColor: effectiveStyles.cardBorderColor || '#ffffff',
@@ -1036,23 +1036,19 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                             referrerPolicy="no-referrer"
                             loading="eager"
                           />
-
-                          {/* Ambient Stage Glow & Soft Vignette */}
-                          <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(0,0,0,0.3)] pointer-events-none" />
                         </div>
                       ) : (
                         /* MODE 2: CLASSIC WHITE STUDIO CUTOUT PACKSHOT */
                         <div className="absolute inset-1 rounded-[10px] sm:rounded-[14px] md:rounded-[18px] overflow-hidden flex items-center justify-center p-2 sm:p-3 md:p-4 pointer-events-none">
                           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white/80 to-slate-100/60 pointer-events-none" />
 
-                          <div className="absolute bottom-2 sm:bottom-3 w-3/5 h-3 sm:h-5 bg-black/25 rounded-full blur-md pointer-events-none" />
                           <img
                             id="tv-anim-product-img"
                             crossOrigin="anonymous"
                             src={product.imageUrl}
                             alt={product.title}
                             onError={(e) => handleImageError(e, product.title, product.category)}
-                            className="relative z-10 max-h-full max-w-full object-contain object-center drop-shadow-[0_12px_20px_rgba(0,0,0,0.35)] transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
+                            className="relative z-10 max-h-full max-w-full object-contain object-center transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
                             referrerPolicy="no-referrer"
                             loading="eager"
                           />

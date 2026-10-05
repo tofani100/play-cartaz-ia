@@ -110,7 +110,16 @@ export async function downloadElementAsPng(elementId: string, filename: string =
   // Mapa para restaurar estilos dos elementos animados após a captura
   const originalStyles = new Map<HTMLElement, { opacity: string; visibility: string; transform: string }>();
 
+  // Guarda transform do elemento pai (workspaceScale) para temporariamente desativar e garantir dimensões 100% canônicas nativas
+  const parentWrapper = el.parentElement;
+  let originalParentTransform = '';
+
   try {
+    if (parentWrapper && parentWrapper.style.transform) {
+      originalParentTransform = parentWrapper.style.transform;
+      parentWrapper.style.setProperty('transform', 'none', 'important');
+    }
+
     // 1. Congela todos os elementos animados em estado de repouso perfeito para garantir 100% de conformidade com o que o usuário vê na tela
     const animatedNodes = el.querySelectorAll<HTMLElement>(
       '#tv-anim-title-block, #tv-anim-price-block, #tv-anim-product-card, #tv-anim-card-wrapper, #tv-badge-pill-1, #tv-badge-pill-2, #tv-anim-title-text, #tv-anim-original-price, #tv-anim-second-badge'
@@ -269,6 +278,15 @@ export async function downloadElementAsPng(elementId: string, filename: string =
   } catch (err) {
     console.error('Erro ao exportar com html-to-image:', err);
   } finally {
+    // Restaura escala do elemento pai no workspace
+    if (parentWrapper) {
+      if (originalParentTransform) {
+        parentWrapper.style.transform = originalParentTransform;
+      } else {
+        parentWrapper.style.removeProperty('transform');
+      }
+    }
+
     // Restaura estilos originais dos nós animados
     originalStyles.forEach((style, node) => {
       if (style.opacity) node.style.opacity = style.opacity; else node.style.removeProperty('opacity');
