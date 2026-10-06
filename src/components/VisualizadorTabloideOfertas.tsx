@@ -148,6 +148,29 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
     return productsToRender.reduce((sum, item) => sum + ((item.isHero && columns > 1) ? 2 : 1), 0);
   }, [productsToRender, columns]);
 
+  // Auto-ajuste inteligente de tamanho de fonte do Card Duplo:
+  // Permite até 3 linhas e só reduz a fonte minimamente se o texto não couber em 3 linhas
+  const getDuploTitleFontSize = (title: string) => {
+    const len = (title || '').trim().length;
+
+    if (effectiveRows >= 4) {
+      if (len > 60) return 'text-[7.5px] sm:text-[8.5px]';
+      if (len > 42) return 'text-[8.5px] sm:text-[9.5px]';
+      return 'text-[9.5px] sm:text-[10.5px]';
+    }
+
+    if (effectiveRows === 3 || columns >= 3) {
+      if (len > 70) return 'text-[9px] sm:text-[10px] md:text-[10.5px]';
+      if (len > 50) return 'text-[10px] sm:text-[11px] md:text-[12px]';
+      return 'text-[11.5px] sm:text-[13px] md:text-[14px]';
+    }
+
+    // 1 ou 2 colunas / linhas menores (mais espaço disponível)
+    if (len > 80) return 'text-[11px] sm:text-xs md:text-sm';
+    if (len > 60) return 'text-xs sm:text-sm md:text-base';
+    return 'text-sm sm:text-base md:text-lg';
+  };
+
   // Selected products for the tabloid modal
   const activeSelectedIds = useMemo(() => {
     if (campaign.tabloidSelectedProductIds && campaign.tabloidSelectedProductIds.length > 0) {
@@ -987,18 +1010,13 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                             </span>
                           )}
 
-                          {/* Título Comercial do Produto em Destaque */}
+                          {/* Título Comercial do Produto em Destaque (até 3 linhas com ajuste inteligente de fonte se necessário) */}
                           <h4 
-                            className={`font-black ${
-                              effectiveRows >= 4
-                                ? 'text-[9.5px] sm:text-[10.5px] line-clamp-2 leading-tight'
-                                : effectiveRows === 3
-                                ? 'text-[11.5px] sm:text-[13px] md:text-[14px] line-clamp-2 leading-tight'
-                                : 'text-sm sm:text-base md:text-lg line-clamp-2 leading-snug'
-                            } break-words mt-0.5 text-left`}
+                            className={`font-black ${getDuploTitleFontSize(item.title)} line-clamp-3 leading-tight break-words mt-0.5 text-left`}
                             style={{
-                              color: paletaHarmonica.titleColor,
+                              color: item.customStyles?.productTitleColor || itemStyles.productTitleColor || paletaHarmonica.titleColor,
                               textShadow: paletaHarmonica.titleShadow,
+                              fontFamily: item.customStyles?.productTitleFont || itemStyles.productTitleFont || undefined,
                             }}
                             title={item.title}
                           >
