@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { 
   Calendar, 
   Phone, 
-  MapPin, 
   CreditCard, 
   Sparkles, 
   Smartphone, 
@@ -1237,9 +1236,9 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                       <h4 
                         className={`font-black ${
                           effectiveRows >= 4 || columns >= 4
-                            ? 'text-[7px] sm:text-[7.5px] line-clamp-1 leading-tight'
+                            ? 'text-[7px] sm:text-[7.5px] line-clamp-2 leading-tight'
                             : effectiveRows === 3 || columns === 3
-                            ? 'text-[8.5px] sm:text-[9.5px] line-clamp-1 leading-tight'
+                            ? 'text-[8.5px] sm:text-[9.5px] line-clamp-2 leading-tight'
                             : 'text-xs sm:text-sm line-clamp-2 leading-snug'
                         } break-words`}
                         style={{
@@ -1311,12 +1310,12 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
         </div>
 
         {/* ============================================================ */}
-        {/* RODAPÉ DO TABLÓIDE: PAGAMENTOS, WHATSAPP, LOCALIZAÇÃO E LEGAL */}
+        {/* RODAPÉ DO TABLÓIDE: PAGAMENTOS E WHATSAPP                     */}
         {/* ============================================================ */}
         <div 
           id="tabloid-footer" 
           className={`${
-            effectiveRows >= 4 ? 'p-1.5' : 'p-2 sm:p-2.5'
+            effectiveRows >= 4 ? 'px-2 py-1' : 'px-2.5 sm:px-3 py-1.5'
           } text-neutral-200 text-xs shrink-0`}
           style={{ 
             fontFamily: "'Montserrat', sans-serif",
@@ -1324,7 +1323,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
             borderTop: paletaHarmonica.footerBorder,
           }}
         >
-          <div className="flex flex-wrap items-center justify-between gap-1 pb-1 border-b border-white/10">
+          <div className="flex flex-wrap items-center justify-between gap-1">
             {/* Accepted Payments */}
             <div className="flex items-center gap-1 min-w-0">
               <CreditCard className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
@@ -1338,36 +1337,6 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
               <Phone className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
               <span className="whitespace-nowrap tracking-normal">{campaign.phoneWhatsapp ? `WhatsApp: ${formatarTelefoneWhatsapp(campaign.phoneWhatsapp, '(41) 9 9999 - 9999')}` : 'Fale Conosco'}</span>
             </div>
-          </div>
-
-          {/* Linha 2: Endereço da Unidade (Esquerda) e Desenvolvido por playcomunique.com.br (Direita em Amarelo Ouro) */}
-          <div className="pt-1 flex items-center justify-between gap-1 text-[7px] sm:text-[8px] text-neutral-300/80">
-            <div className="flex items-center gap-1 min-w-0">
-              <MapPin className="w-2.5 h-2.5 text-amber-500 shrink-0" />
-              <span className="truncate">{campaign.storeAddress || 'Consulte a unidade mais próxima de você.'}</span>
-            </div>
-            <div className="text-right shrink-0 ml-auto whitespace-nowrap pl-1">
-              <span 
-                className={`${
-                  effectiveRows >= 4 ? 'text-[6.8px]' : 'text-[7.5px] sm:text-[8.5px]'
-                } font-bold tracking-tight inline-block drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]`}
-                style={{ color: '#FFD700' }}
-              >
-                Desenvolvido por playcomunique.com.br
-              </span>
-            </div>
-          </div>
-
-          {/* Linha 3: Mensagem Legal / Proibido Bebidas Centralizada em Todos os Tablóides */}
-          <div className="pt-0.5 text-center w-full">
-            <span 
-              className={`${
-                effectiveRows >= 4 ? 'text-[6px]' : 'text-[6.8px] sm:text-[7.5px]'
-              } text-neutral-400/90 tracking-tight text-center block leading-tight truncate`}
-              title={campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'}
-            >
-              {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'}
-            </span>
           </div>
         </div>
       </div>
