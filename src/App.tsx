@@ -109,6 +109,23 @@ export default function App() {
         };
         if (!restored.formatsData || Object.keys(restored.formatsData).length === 0) {
           restored.formatsData = initFormatsData(restored);
+        } else {
+          // Garante que o formato ativo na inicialização tenha seus dados exclusivos aplicados
+          const activeFmt = restored.format || '16:9';
+          const fmtData = restored.formatsData[activeFmt];
+          if (fmtData) {
+            if (fmtData.campaignTitle !== undefined) restored.campaignTitle = fmtData.campaignTitle;
+            if (fmtData.campaignSubtitle !== undefined) restored.campaignSubtitle = fmtData.campaignSubtitle;
+            if (fmtData.validityText !== undefined) restored.validityText = fmtData.validityText;
+            if (fmtData.legalNotice !== undefined) restored.legalNotice = fmtData.legalNotice;
+            if (fmtData.footerBrandText !== undefined) restored.footerBrandText = fmtData.footerBrandText;
+            if (fmtData.tickerText !== undefined) restored.tickerText = fmtData.tickerText;
+            if (fmtData.phoneWhatsapp !== undefined) restored.phoneWhatsapp = fmtData.phoneWhatsapp;
+            if (fmtData.storeAddress !== undefined) restored.storeAddress = fmtData.storeAddress;
+            if (fmtData.themeId) restored.themeId = fmtData.themeId;
+            if (fmtData.customStyles !== undefined) restored.customStyles = fmtData.customStyles;
+            if (fmtData.products && fmtData.products.length > 0) restored.products = fmtData.products;
+          }
         }
         return restored;
       }
@@ -132,17 +149,25 @@ export default function App() {
       const cloudCampaign = await loadCampaignFromCloud();
       if (cloudCampaign && isMounted) {
         setCampaign((prev) => {
+          const localTs = (prev as any)._syncTimestamp || '';
+          const remoteTs = (cloudCampaign as any)._syncTimestamp || '';
+
+          // PROTEÇÃO MÁXIMA CONTRA PERDA NO F5:
+          // Se houver alteração local recente (< 90s) ou se a versão local for mais recente ou igual à da nuvem,
+          // mantém os dados locais do usuário intactos e sincroniza de volta para a nuvem
+          const isLocalNewerOrEqual = localTs && remoteTs ? new Date(localTs).getTime() >= new Date(remoteTs).getTime() : false;
+          const hadRecentLocalEdit = Date.now() - lastLocalEditTimeRef.current < 90000;
+
+          if (isLocalNewerOrEqual || hadRecentLocalEdit) {
+            console.log('[CloudSync] Versão local é mais recente ou em edição ativa. Preservando estado local e gravando na nuvem.');
+            saveCampaignToCloud(prev).catch(() => {});
+            return prev;
+          }
+
+          // Se a nuvem for genuinamente mais recente:
           const localProducts = prev.products || [];
           const remoteProducts = cloudCampaign.products || [];
-
-          // PROTEÇÃO CONTRA PERDA: Se a nuvem tem mais produtos que o local (ex: acervo completo de 22 itens),
-          // prioriza sempre a integridade da nuvem para não truncar dados.
-          let finalProducts = remoteProducts;
-          if (localProducts.length > remoteProducts.length) {
-            finalProducts = localProducts;
-          } else if (remoteProducts.length === 0) {
-            finalProducts = localProducts.length > 0 ? localProducts : INITIAL_PRODUCTS;
-          }
+          let finalProducts = remoteProducts.length > 0 ? remoteProducts : localProducts;
 
           isRemoteUpdateRef.current = true;
           if ((cloudCampaign as any)._syncTimestamp) {
@@ -164,15 +189,30 @@ export default function App() {
             finalLogo = '/logos/belissima-casa-di-frutas.png';
           }
 
+          const targetFormat = cloudCampaign.format || prev.format || '16:9';
+          const formatsData = cloudCampaign.formatsData && Object.keys(cloudCampaign.formatsData).length > 0
+            ? cloudCampaign.formatsData
+            : (prev.formatsData && Object.keys(prev.formatsData).length > 0 ? prev.formatsData : initFormatsData(cloudCampaign));
+
+          const activeFormatData = formatsData[targetFormat] || extractFormatData(cloudCampaign);
+
           const mergedCampaign: BannerCampaign = {
             ...prev,
             ...cloudCampaign,
-            products: finalProducts,
+            format: targetFormat,
+            campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : cloudCampaign.campaignTitle,
+            campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
+            validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
+            customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : cloudCampaign.customStyles,
+            products: activeFormatData.products && activeFormatData.products.length > 0 ? activeFormatData.products : finalProducts,
             clientLogoUrl: finalLogo,
+            formatsData,
           };
-          if (!mergedCampaign.formatsData || Object.keys(mergedCampaign.formatsData).length === 0) {
-            mergedCampaign.formatsData = initFormatsData(mergedCampaign);
-          }
+
+          try {
+            localStorage.setItem('playcomunique_campanha', JSON.stringify(mergedCampaign));
+          } catch (_) {}
+
           return mergedCampaign;
         });
       }
@@ -252,9 +292,9 @@ export default function App() {
         return;
       }
 
-      // PROTEÇÃO CRÍTICA: Se o usuário fez uma alteração local recente (< 7s),
+      // PROTEÇÃO CRÍTICA: Se o usuário fez uma alteração local recente (< 15s),
       // não deixa um snapshot antigo sobrescrever o trabalho em andamento
-      if (Date.now() - lastLocalEditTimeRef.current < 7000) {
+      if (Date.now() - lastLocalEditTimeRef.current < 15000) {
         return;
       }
 
@@ -263,6 +303,11 @@ export default function App() {
       }
       isRemoteUpdateRef.current = true;
       setCampaign((prev) => {
+        const localTs = (prev as any)._syncTimestamp || '';
+        if (localTs && remoteTimestamp && new Date(localTs).getTime() >= new Date(remoteTimestamp).getTime()) {
+          return prev;
+        }
+
         // Preserva imagens locais válidas de upload caso o snapshot ainda não as tenha propagado
         const mergedProducts = (updatedCampaign.products || []).map((remP) => {
           const locP = prev.products.find((lp) => lp.id === remP.id);
@@ -272,14 +317,29 @@ export default function App() {
           return remP;
         });
 
+        const targetFormat = updatedCampaign.format || prev.format || '16:9';
+        const formatsData = updatedCampaign.formatsData && Object.keys(updatedCampaign.formatsData).length > 0
+          ? updatedCampaign.formatsData
+          : (prev.formatsData && Object.keys(prev.formatsData).length > 0 ? prev.formatsData : initFormatsData(updatedCampaign));
+
+        const activeFormatData = formatsData[targetFormat] || extractFormatData(updatedCampaign);
+
         const nextSynced: BannerCampaign = {
           ...prev,
           ...updatedCampaign,
-          products: mergedProducts,
+          format: targetFormat,
+          campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : updatedCampaign.campaignTitle,
+          campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : updatedCampaign.campaignSubtitle,
+          validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : updatedCampaign.validityText,
+          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : updatedCampaign.customStyles,
+          products: activeFormatData.products && activeFormatData.products.length > 0 ? activeFormatData.products : mergedProducts,
+          formatsData,
         };
-        if (!nextSynced.formatsData || Object.keys(nextSynced.formatsData).length === 0) {
-          nextSynced.formatsData = initFormatsData(nextSynced);
-        }
+
+        try {
+          localStorage.setItem('playcomunique_campanha', JSON.stringify(nextSynced));
+        } catch (_) {}
+
         return nextSynced;
       });
     });
@@ -591,6 +651,8 @@ export default function App() {
   const activeTheme = BANCO_TEMAS_VISUAIS[campaign.themeId] || BANCO_TEMAS_VISUAIS['supermarket-red'];
 
   const handleFormatChange = (fmt: BannerFormat) => {
+    lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
     setCampaign((prev) => {
       if (prev.format === fmt) return prev;
 
@@ -605,6 +667,7 @@ export default function App() {
       const nextCampaign: BannerCampaign = {
         ...prev,
         format: fmt,
+        _syncTimestamp: now,
         campaignTitle: targetFormatData.campaignTitle !== undefined ? targetFormatData.campaignTitle : prev.campaignTitle,
         campaignSubtitle: targetFormatData.campaignSubtitle !== undefined ? targetFormatData.campaignSubtitle : prev.campaignSubtitle,
         validityText: targetFormatData.validityText !== undefined ? targetFormatData.validityText : prev.validityText,
@@ -633,6 +696,8 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
       } catch (e) {}
+      saveLocalCampaign(nextCampaign).catch(() => {});
+      saveCampaignToCloud(nextCampaign).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -643,6 +708,7 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
+        saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -775,6 +841,7 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
       } catch (e) {}
+      saveLocalCampaign(nextCampaign).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -785,6 +852,7 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
+        saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -816,6 +884,7 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
       } catch (e) {}
+      saveLocalCampaign(nextCampaign).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -826,6 +895,7 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
+        saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -870,6 +940,7 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
       } catch (e) {}
+      saveLocalCampaign(nextCampaign).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -880,6 +951,7 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
+        saveLocalClients(updatedClients).catch(() => {});
         saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
@@ -936,6 +1008,7 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
       } catch (e) {}
+      saveLocalCampaign(nextCampaign).catch(() => {});
 
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
@@ -946,6 +1019,7 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
         } catch (e) {}
+        saveLocalClients(updated).catch(() => {});
         saveClientsToCloud(updated).catch(() => {});
         return updated;
       });
@@ -979,6 +1053,7 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
       } catch (e) {}
+      saveLocalCampaign(nextCampaign).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -989,6 +1064,7 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
+        saveLocalClients(updatedClients).catch(() => {});
         saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
@@ -1005,9 +1081,11 @@ export default function App() {
   };
 
   const handleUpdateCampaign = (updated: Partial<BannerCampaign>) => {
+    lastLocalEditTimeRef.current = Date.now();
+    const now = new Date().toISOString();
     setCampaign((prev) => {
       const currentFormat = prev.format || '16:9';
-      const tempMerged = { ...prev, ...updated };
+      const tempMerged = { ...prev, ...updated, _syncTimestamp: now };
 
       // Sincroniza as alterações no formatsData especificamente para o formato ativo
       const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempMerged);
@@ -1016,6 +1094,11 @@ export default function App() {
         ...tempMerged,
         formatsData: nextFormatsData,
       };
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(next));
+      } catch (e) {}
+      saveLocalCampaign(next).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -1035,6 +1118,7 @@ export default function App() {
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
+        saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -1052,11 +1136,15 @@ export default function App() {
           activeProductIndex: idx,
         };
       }
-      return {
+      const next: BannerCampaign = {
         ...prev,
         activeProductIndex: idx,
         formatsData: updatedFormats,
       };
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(next));
+      } catch (e) {}
+      return next;
     });
   };
 

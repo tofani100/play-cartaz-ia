@@ -150,13 +150,17 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
     // Salva cópia local integral no IndexedDB (gigabytes de capacidade)
     saveLocalCampaign(payloadToSave).catch(() => {});
 
-    // 3. Grava no documento central da campanha no Firestore
+    // 3. Grava no documento central da campanha no Firestore (sanitizado contra campos undefined)
+    const sanitizedPayload = JSON.parse(
+      JSON.stringify({
+        ...payloadToSave,
+        _syncTimestamp: (payloadToSave as any)._syncTimestamp || new Date().toISOString(),
+        _version: '2.6.0',
+      })
+    );
+
     const campaignDocRef = doc(db, CAMPAIGN_DOC_PATH, ACTIVE_CAMPAIGN_ID);
-    await setDoc(campaignDocRef, {
-      ...payloadToSave,
-      _syncTimestamp: (payloadToSave as any)._syncTimestamp || new Date().toISOString(),
-      _version: '2.6.0',
-    });
+    await setDoc(campaignDocRef, sanitizedPayload);
 
     // 4. Backup no servidor Express local (se estiver rodando)
     try {
@@ -362,10 +366,13 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
     );
 
     const docRef = doc(db, CLIENTS_DOC_PATH, CLIENTS_LIST_ID);
-    await setDoc(docRef, {
-      clients: sanitizedClients,
-      updatedAt: new Date().toISOString(),
-    });
+    const sanitizedClientsPayload = JSON.parse(
+      JSON.stringify({
+        clients: sanitizedClients,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+    await setDoc(docRef, sanitizedClientsPayload);
     return true;
   } catch (err) {
     console.error('[CloudSync] Erro ao salvar clientes no Firestore:', err);

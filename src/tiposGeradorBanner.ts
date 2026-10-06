@@ -86,6 +86,7 @@ export interface BannerCampaign {
   tabloidSelectedProductIds?: string[]; // IDs dos produtos escolhidos para exibição no tablóide
   tabloidTarget?: 'whatsapp-mobile' | 'instagram-feed' | 'instagram-square' | 'classic-a4'; // Destino / preset do tablóide
   formatsData?: Partial<Record<BannerFormat, FormatCampaignData>>; // Dados e ajustes exclusivos salvos por formato
+  _syncTimestamp?: string;
 }
 
 export interface BannerCustomStyles {
@@ -203,7 +204,7 @@ export interface FormatCampaignData {
 export const ALL_BANNER_FORMATS: BannerFormat[] = ['16:9', '9:16', '4:5', '1:1', 'tabloid'];
 
 export function extractFormatData(c: BannerCampaign): FormatCampaignData {
-  return {
+  const data: FormatCampaignData = {
     campaignTitle: c.campaignTitle || '',
     campaignSubtitle: c.campaignSubtitle || '',
     validityText: c.validityText || '',
@@ -213,16 +214,19 @@ export function extractFormatData(c: BannerCampaign): FormatCampaignData {
     phoneWhatsapp: c.phoneWhatsapp || '',
     storeAddress: c.storeAddress || '',
     themeId: c.themeId,
-    customColors: c.customColors ? { ...c.customColors } : undefined,
-    customStyles: c.customStyles ? JSON.parse(JSON.stringify(c.customStyles)) : undefined,
-    products: c.products ? JSON.parse(JSON.stringify(c.products)) : [],
     activeProductIndex: c.activeProductIndex ?? 0,
     showClientLogo: c.showClientLogo !== false,
-    tabloidColumns: c.tabloidColumns,
-    tabloidRows: c.tabloidRows,
-    tabloidSelectedProductIds: c.tabloidSelectedProductIds ? [...c.tabloidSelectedProductIds] : undefined,
-    tabloidTarget: c.tabloidTarget,
   };
+  if (c.customColors) data.customColors = { ...c.customColors };
+  if (c.customStyles) data.customStyles = JSON.parse(JSON.stringify(c.customStyles));
+  if (c.products && c.products.length > 0) data.products = JSON.parse(JSON.stringify(c.products));
+  if (c.tabloidColumns !== undefined && c.tabloidColumns !== null) data.tabloidColumns = c.tabloidColumns;
+  if (c.tabloidRows !== undefined && c.tabloidRows !== null) data.tabloidRows = c.tabloidRows;
+  if (c.tabloidSelectedProductIds && c.tabloidSelectedProductIds.length > 0) {
+    data.tabloidSelectedProductIds = [...c.tabloidSelectedProductIds];
+  }
+  if (c.tabloidTarget) data.tabloidTarget = c.tabloidTarget;
+  return data;
 }
 
 export function initFormatsData(c: BannerCampaign): Record<BannerFormat, FormatCampaignData> {
