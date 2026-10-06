@@ -85,6 +85,7 @@ export interface BannerCampaign {
   tabloidRows?: number; // 2, 3, 4, 5, 6 ou 0 para todas as linhas
   tabloidSelectedProductIds?: string[]; // IDs dos produtos escolhidos para exibição no tablóide
   tabloidTarget?: 'whatsapp-mobile' | 'instagram-feed' | 'instagram-square' | 'classic-a4'; // Destino / preset do tablóide
+  formatsData?: Partial<Record<BannerFormat, FormatCampaignData>>; // Dados e ajustes exclusivos salvos por formato
 }
 
 export interface BannerCustomStyles {
@@ -175,6 +176,78 @@ export interface ClientProfile {
   campaignTitle?: string;
   campaignSubtitle?: string;
   validityText?: string;
+  formatsData?: Partial<Record<BannerFormat, FormatCampaignData>>;
+}
+
+export interface FormatCampaignData {
+  campaignTitle?: string;
+  campaignSubtitle?: string;
+  validityText?: string;
+  legalNotice?: string;
+  footerBrandText?: string;
+  tickerText?: string;
+  phoneWhatsapp?: string;
+  storeAddress?: string;
+  themeId?: ThemePresetId;
+  customColors?: Partial<ThemeColors>;
+  customStyles?: BannerCustomStyles;
+  products?: ProductItem[];
+  activeProductIndex?: number;
+  showClientLogo?: boolean;
+  tabloidColumns?: number;
+  tabloidRows?: number;
+  tabloidSelectedProductIds?: string[];
+  tabloidTarget?: 'whatsapp-mobile' | 'instagram-feed' | 'instagram-square' | 'classic-a4';
+}
+
+export const ALL_BANNER_FORMATS: BannerFormat[] = ['16:9', '9:16', '4:5', '1:1', 'tabloid'];
+
+export function extractFormatData(c: BannerCampaign): FormatCampaignData {
+  return {
+    campaignTitle: c.campaignTitle || '',
+    campaignSubtitle: c.campaignSubtitle || '',
+    validityText: c.validityText || '',
+    legalNotice: c.legalNotice || '',
+    footerBrandText: c.footerBrandText || '',
+    tickerText: c.tickerText || '',
+    phoneWhatsapp: c.phoneWhatsapp || '',
+    storeAddress: c.storeAddress || '',
+    themeId: c.themeId,
+    customColors: c.customColors ? { ...c.customColors } : undefined,
+    customStyles: c.customStyles ? JSON.parse(JSON.stringify(c.customStyles)) : undefined,
+    products: c.products ? JSON.parse(JSON.stringify(c.products)) : [],
+    activeProductIndex: c.activeProductIndex ?? 0,
+    showClientLogo: c.showClientLogo !== false,
+    tabloidColumns: c.tabloidColumns,
+    tabloidRows: c.tabloidRows,
+    tabloidSelectedProductIds: c.tabloidSelectedProductIds ? [...c.tabloidSelectedProductIds] : undefined,
+    tabloidTarget: c.tabloidTarget,
+  };
+}
+
+export function initFormatsData(c: BannerCampaign): Record<BannerFormat, FormatCampaignData> {
+  const base = extractFormatData(c);
+  return {
+    '16:9': JSON.parse(JSON.stringify(base)),
+    '9:16': JSON.parse(JSON.stringify(base)),
+    '4:5': JSON.parse(JSON.stringify(base)),
+    '1:1': JSON.parse(JSON.stringify(base)),
+    'tabloid': JSON.parse(JSON.stringify(base)),
+  };
+}
+
+export function syncCurrentFormatToFormatsData(
+  formatsData: Partial<Record<BannerFormat, FormatCampaignData>> | undefined,
+  currentFormat: BannerFormat,
+  campaign: BannerCampaign
+): Record<BannerFormat, FormatCampaignData> {
+  const existing = formatsData && Object.keys(formatsData).length > 0
+    ? { ...formatsData }
+    : initFormatsData(campaign);
+  return {
+    ...existing,
+    [currentFormat]: extractFormatData(campaign),
+  } as Record<BannerFormat, FormatCampaignData>;
 }
 
 export interface CuratedProduct {

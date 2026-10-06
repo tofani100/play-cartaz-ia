@@ -4,7 +4,17 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { BannerCampaign, BannerFormat, ProductItem, ThemePresetId } from './tiposGeradorBanner';
+import { 
+  BannerCampaign, 
+  BannerFormat, 
+  ProductItem, 
+  ThemePresetId,
+  FormatCampaignData,
+  ALL_BANNER_FORMATS,
+  extractFormatData,
+  initFormatsData,
+  syncCurrentFormatToFormatsData
+} from './tiposGeradorBanner';
 import { BANCO_TEMAS_VISUAIS } from './data/bancoTemasVisuais';
 import { BANCO_PRODUTOS_COMERCIAIS } from './data/bancoProdutosComerciais';
 import { BarraSuperiorNavegacao } from './components/BarraSuperiorNavegacao';
@@ -39,7 +49,7 @@ import {
 const BELISSIMA_CLIENT = CLIENTES_PREDEFINIDOS.find((c) => c.id === 'cli-belissima') || CLIENTES_PREDEFINIDOS[0];
 const INITIAL_PRODUCTS: ProductItem[] = BELISSIMA_CLIENT?.products || [];
 
-const DEFAULT_CAMPAIGN: BannerCampaign = {
+const DEFAULT_CAMPAIGN_RAW: BannerCampaign = {
   id: 'camp-1',
   clientId: 'cli-belissima',
   clientName: 'Belíssima Casa di Frutas',
@@ -69,6 +79,11 @@ const DEFAULT_CAMPAIGN: BannerCampaign = {
   },
 };
 
+const DEFAULT_CAMPAIGN: BannerCampaign = {
+  ...DEFAULT_CAMPAIGN_RAW,
+  formatsData: initFormatsData(DEFAULT_CAMPAIGN_RAW),
+};
+
 export default function App() {
   const [campaign, setCampaign] = useState<BannerCampaign>(() => {
     try {
@@ -82,7 +97,7 @@ export default function App() {
           products = INITIAL_PRODUCTS;
         }
 
-        return {
+        const restored: BannerCampaign = {
           ...DEFAULT_CAMPAIGN,
           ...parsed,
           products,
@@ -92,6 +107,10 @@ export default function App() {
               ? '/logos/belissima-casa-di-frutas.png'
               : ''),
         };
+        if (!restored.formatsData || Object.keys(restored.formatsData).length === 0) {
+          restored.formatsData = initFormatsData(restored);
+        }
+        return restored;
       }
     } catch (e) {
       console.error('Erro ao ler campanha do localStorage:', e);
@@ -145,12 +164,16 @@ export default function App() {
             finalLogo = '/logos/belissima-casa-di-frutas.png';
           }
 
-          return {
+          const mergedCampaign: BannerCampaign = {
             ...prev,
             ...cloudCampaign,
             products: finalProducts,
             clientLogoUrl: finalLogo,
           };
+          if (!mergedCampaign.formatsData || Object.keys(mergedCampaign.formatsData).length === 0) {
+            mergedCampaign.formatsData = initFormatsData(mergedCampaign);
+          }
+          return mergedCampaign;
         });
       }
       initialLoadDoneRef.current = true;
@@ -249,11 +272,15 @@ export default function App() {
           return remP;
         });
 
-        return {
+        const nextSynced: BannerCampaign = {
           ...prev,
           ...updatedCampaign,
           products: mergedProducts,
         };
+        if (!nextSynced.formatsData || Object.keys(nextSynced.formatsData).length === 0) {
+          nextSynced.formatsData = initFormatsData(nextSynced);
+        }
+        return nextSynced;
       });
     });
 
@@ -442,6 +469,7 @@ export default function App() {
             campaignTitle: campaign.campaignTitle,
             campaignSubtitle: campaign.campaignSubtitle,
             validityText: campaign.validityText,
+            formatsData: campaign.formatsData,
           };
         }
         return c;
@@ -479,7 +507,8 @@ export default function App() {
 
     // 3. Atualiza a campanha com os dados e banners exclusivos deste cliente
     setCampaign((prev) => {
-      const nextCampaign: BannerCampaign = {
+      let nextFormats = target.formatsData;
+      const initialTargetCampaign: BannerCampaign = {
         ...prev,
         clientId: client.id,
         clientName: client.name,
@@ -496,6 +525,26 @@ export default function App() {
         campaignTitle: target.campaignTitle || `FESTIVAL DE OFERTAS ${client.name.toUpperCase()}`,
         campaignSubtitle: target.campaignSubtitle || prev.campaignSubtitle,
         validityText: target.validityText || prev.validityText,
+      };
+
+      if (!nextFormats || Object.keys(nextFormats).length === 0) {
+        nextFormats = initFormatsData(initialTargetCampaign);
+      }
+
+      // Se o formato atual já tiver customizações salvas para este cliente, aplica-as
+      const currentFmtData = nextFormats[prev.format];
+      const activeProducts = currentFmtData?.products && currentFmtData.products.length > 0
+        ? currentFmtData.products
+        : targetProducts;
+
+      const nextCampaign: BannerCampaign = {
+        ...initialTargetCampaign,
+        campaignTitle: currentFmtData?.campaignTitle || initialTargetCampaign.campaignTitle,
+        campaignSubtitle: currentFmtData?.campaignSubtitle || initialTargetCampaign.campaignSubtitle,
+        validityText: currentFmtData?.validityText || initialTargetCampaign.validityText,
+        products: activeProducts,
+        customStyles: currentFmtData?.customStyles || initialTargetCampaign.customStyles,
+        formatsData: nextFormats,
       };
 
       try {
@@ -542,7 +591,63 @@ export default function App() {
   const activeTheme = BANCO_TEMAS_VISUAIS[campaign.themeId] || BANCO_TEMAS_VISUAIS['supermarket-red'];
 
   const handleFormatChange = (fmt: BannerFormat) => {
-    setCampaign((prev) => ({ ...prev, format: fmt }));
+    setCampaign((prev) => {
+      if (prev.format === fmt) return prev;
+
+      // 1. Salva o estado atual do formato que está saindo
+      const currentFormat = prev.format || '16:9';
+      const updatedFormats = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, prev);
+
+      // 2. Obtém os dados do novo formato de destino
+      const targetFormatData = updatedFormats[fmt] || extractFormatData(prev);
+
+      // 3. Aplica os dados do novo formato no campaign ativo
+      const nextCampaign: BannerCampaign = {
+        ...prev,
+        format: fmt,
+        campaignTitle: targetFormatData.campaignTitle !== undefined ? targetFormatData.campaignTitle : prev.campaignTitle,
+        campaignSubtitle: targetFormatData.campaignSubtitle !== undefined ? targetFormatData.campaignSubtitle : prev.campaignSubtitle,
+        validityText: targetFormatData.validityText !== undefined ? targetFormatData.validityText : prev.validityText,
+        legalNotice: targetFormatData.legalNotice !== undefined ? targetFormatData.legalNotice : prev.legalNotice,
+        footerBrandText: targetFormatData.footerBrandText !== undefined ? targetFormatData.footerBrandText : prev.footerBrandText,
+        tickerText: targetFormatData.tickerText !== undefined ? targetFormatData.tickerText : prev.tickerText,
+        phoneWhatsapp: targetFormatData.phoneWhatsapp !== undefined ? targetFormatData.phoneWhatsapp : prev.phoneWhatsapp,
+        storeAddress: targetFormatData.storeAddress !== undefined ? targetFormatData.storeAddress : prev.storeAddress,
+        themeId: targetFormatData.themeId || prev.themeId,
+        customColors: targetFormatData.customColors || prev.customColors,
+        customStyles: targetFormatData.customStyles ? JSON.parse(JSON.stringify(targetFormatData.customStyles)) : prev.customStyles,
+        products: targetFormatData.products && targetFormatData.products.length > 0 
+          ? JSON.parse(JSON.stringify(targetFormatData.products)) 
+          : prev.products,
+        activeProductIndex: targetFormatData.activeProductIndex !== undefined 
+          ? Math.min(targetFormatData.activeProductIndex, Math.max(0, (targetFormatData.products?.length || prev.products.length) - 1))
+          : prev.activeProductIndex,
+        showClientLogo: targetFormatData.showClientLogo !== undefined ? targetFormatData.showClientLogo : prev.showClientLogo,
+        tabloidColumns: targetFormatData.tabloidColumns,
+        tabloidRows: targetFormatData.tabloidRows,
+        tabloidSelectedProductIds: targetFormatData.tabloidSelectedProductIds,
+        tabloidTarget: targetFormatData.tabloidTarget,
+        formatsData: updatedFormats,
+      };
+
+      try {
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+      } catch (e) {}
+
+      setClients((prevClients) => {
+        const updatedClients = prevClients.map((c) =>
+          c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
+            ? { ...c, formatsData: updatedFormats }
+            : c
+        );
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
+        } catch (e) {}
+        return updatedClients;
+      });
+
+      return nextCampaign;
+    });
   };
 
   const handleApplyAiProducts = (
@@ -581,7 +686,7 @@ export default function App() {
 
       const targetIndex = mode === 'replace' ? 0 : Math.max(0, (prev.products?.length || 0));
 
-      const nextCampaign: BannerCampaign = {
+      const tempCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         activeProductIndex: targetIndex,
@@ -589,6 +694,32 @@ export default function App() {
         validityText: validityText || prev.validityText,
         _syncTimestamp: now,
       } as any;
+
+      // Quando gerado/substituído novo catálogo, replica para todos os formatos como baseline
+      // Se for append, adiciona a todos os formatos mantendo eventuais estilos específicos
+      let nextFormatsData: Record<BannerFormat, FormatCampaignData>;
+      if (mode === 'replace') {
+        nextFormatsData = initFormatsData(tempCampaign);
+      } else {
+        const existing = prev.formatsData && Object.keys(prev.formatsData).length > 0
+          ? { ...prev.formatsData }
+          : initFormatsData(prev);
+        ALL_BANNER_FORMATS.forEach((f) => {
+          const fData = existing[f] || extractFormatData(prev);
+          existing[f] = {
+            ...fData,
+            products: [...(fData.products || []), ...newProducts],
+            campaignTitle: campaignTitle || fData.campaignTitle,
+            validityText: validityText || fData.validityText,
+          };
+        });
+        nextFormatsData = existing as Record<BannerFormat, FormatCampaignData>;
+      }
+
+      const nextCampaign: BannerCampaign = {
+        ...tempCampaign,
+        formatsData: nextFormatsData,
+      };
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
@@ -599,7 +730,7 @@ export default function App() {
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts }
+            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
             : c
         );
         try {
@@ -626,11 +757,20 @@ export default function App() {
     setCampaign((prev) => {
       const nextProducts = [...prev.products];
       nextProducts[idx] = { ...nextProducts[idx], ...updated };
-      const nextCampaign: BannerCampaign = {
+      const currentFormat = prev.format || '16:9';
+
+      const tempCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         _syncTimestamp: now,
       } as any;
+
+      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
+
+      const nextCampaign: BannerCampaign = {
+        ...tempCampaign,
+        formatsData: nextFormatsData,
+      };
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
@@ -639,7 +779,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts }
+            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
             : c
         );
         try {
@@ -657,12 +797,21 @@ export default function App() {
     const now = new Date().toISOString();
     setCampaign((prev) => {
       const nextProducts = [...prev.products, newProduct];
-      const nextCampaign: BannerCampaign = {
+      const currentFormat = prev.format || '16:9';
+
+      const tempCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         activeProductIndex: nextProducts.length - 1,
         _syncTimestamp: now,
       } as any;
+
+      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
+
+      const nextCampaign: BannerCampaign = {
+        ...tempCampaign,
+        formatsData: nextFormatsData,
+      };
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
@@ -671,7 +820,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts }
+            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
             : c
         );
         try {
@@ -703,12 +852,20 @@ export default function App() {
         nextActiveIndex++;
       }
 
-      const nextCampaign: BannerCampaign = {
+      const currentFormat = prev.format || '16:9';
+      const tempCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         activeProductIndex: nextActiveIndex,
         _syncTimestamp: now,
       } as any;
+
+      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
+
+      const nextCampaign: BannerCampaign = {
+        ...tempCampaign,
+        formatsData: nextFormatsData,
+      };
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
@@ -717,7 +874,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts }
+            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
             : c
         );
         try {
@@ -760,12 +917,21 @@ export default function App() {
 
       const next = prev.products.filter((_, i) => i !== idx);
       const nextIdx = Math.min(prev.activeProductIndex, Math.max(0, next.length - 1));
-      const nextCampaign: BannerCampaign = {
+      const currentFormat = prev.format || '16:9';
+
+      const tempCampaign: BannerCampaign = {
         ...prev,
         products: next,
         activeProductIndex: nextIdx,
         _syncTimestamp: now,
       } as any;
+
+      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
+
+      const nextCampaign: BannerCampaign = {
+        ...tempCampaign,
+        formatsData: nextFormatsData,
+      };
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
@@ -774,7 +940,7 @@ export default function App() {
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: next }
+            ? { ...c, products: next, formatsData: nextFormatsData }
             : c
         );
         try {
@@ -794,12 +960,21 @@ export default function App() {
     const now = new Date().toISOString();
     setCampaign((prev) => {
       const nextProducts = [...prev.products, productToRestore];
-      const nextCampaign: BannerCampaign = {
+      const currentFormat = prev.format || '16:9';
+
+      const tempCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         activeProductIndex: nextProducts.length - 1,
         _syncTimestamp: now,
       } as any;
+
+      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
+
+      const nextCampaign: BannerCampaign = {
+        ...tempCampaign,
+        formatsData: nextFormatsData,
+      };
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
@@ -808,7 +983,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts }
+            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
             : c
         );
         try {
@@ -831,7 +1006,16 @@ export default function App() {
 
   const handleUpdateCampaign = (updated: Partial<BannerCampaign>) => {
     setCampaign((prev) => {
-      const next = { ...prev, ...updated };
+      const currentFormat = prev.format || '16:9';
+      const tempMerged = { ...prev, ...updated };
+
+      // Sincroniza as alterações no formatsData especificamente para o formato ativo
+      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempMerged);
+
+      const next: BannerCampaign = {
+        ...tempMerged,
+        formatsData: nextFormatsData,
+      };
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -844,6 +1028,7 @@ export default function App() {
                 campaignSubtitle: next.campaignSubtitle,
                 validityText: next.validityText,
                 themeId: next.themeId || c.themeId,
+                formatsData: nextFormatsData,
               }
             : c
         );
@@ -854,6 +1039,24 @@ export default function App() {
       });
 
       return next;
+    });
+  };
+
+  const handleSelectProductIndex = (idx: number) => {
+    setCampaign((prev) => {
+      const currentFormat = prev.format || '16:9';
+      const updatedFormats = prev.formatsData ? { ...prev.formatsData } : initFormatsData(prev);
+      if (updatedFormats[currentFormat]) {
+        updatedFormats[currentFormat] = {
+          ...updatedFormats[currentFormat]!,
+          activeProductIndex: idx,
+        };
+      }
+      return {
+        ...prev,
+        activeProductIndex: idx,
+        formatsData: updatedFormats,
+      };
     });
   };
 
@@ -914,7 +1117,7 @@ export default function App() {
               theme={activeTheme} 
               currentProductIndex={campaign.activeProductIndex}
               onUpdateCampaign={handleUpdateCampaign}
-              onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+              onSelectProductIndex={handleSelectProductIndex}
               onUpdateProduct={handleUpdateProduct}
               onReorderProduct={handleReorderProduct}
             />
@@ -923,7 +1126,7 @@ export default function App() {
               campaign={campaign}
               theme={activeTheme}
               currentProductIndex={campaign.activeProductIndex}
-              onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+              onSelectProductIndex={handleSelectProductIndex}
               onReorderProduct={handleReorderProduct}
               onUpdateProductImage={(productId, newImageUrl) => {
                 const targetIdx = campaign.products.findIndex((p) => p.id === productId);
@@ -940,7 +1143,7 @@ export default function App() {
           <PainelEditorProdutos
             products={campaign.products}
             currentProductIndex={campaign.activeProductIndex}
-            onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+            onSelectProductIndex={handleSelectProductIndex}
             onUpdateProduct={handleUpdateProduct}
             onAddProduct={handleAddProduct}
             onRemoveProduct={handleRemoveProduct}
@@ -978,7 +1181,7 @@ export default function App() {
         campaign={campaign}
         theme={activeTheme}
         onOpenTvPlayer={() => setIsTvPlayerOpen(true)}
-        onSelectProductIndex={(idx) => setCampaign((p) => ({ ...p, activeProductIndex: idx }))}
+        onSelectProductIndex={handleSelectProductIndex}
       />
 
       <ModalGestaoClientes
@@ -989,7 +1192,7 @@ export default function App() {
         activeThemeId={campaign.themeId}
         showClientLogo={campaign.showClientLogo !== false}
         onSelectClient={handleSelectClient}
-        onSelectThemeOnly={(themeId) => setCampaign((p) => ({ ...p, themeId }))}
+        onSelectThemeOnly={(themeId) => handleUpdateCampaign({ themeId })}
         onSaveClient={handleSaveClient}
         onDeleteClient={handleDeleteClient}
         onToggleShowLogo={(show) => handleUpdateCampaign({ showClientLogo: show })}

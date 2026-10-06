@@ -413,6 +413,26 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
         </button>
       </div>
 
+      {/* Indicador de Formato Ativo com Isolamento */}
+      <div className="flex items-center justify-between bg-neutral-950/80 border border-neutral-800 rounded-xl px-3 py-2 text-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-pulse"></span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] text-neutral-400 font-medium leading-none">Formato em Edição:</span>
+            <span className="font-extrabold text-amber-400 text-xs truncate">
+              {campaign?.format === '16:9' ? 'TV Indoor (16:9)' :
+               campaign?.format === '9:16' ? 'Stories / Reels (9:16)' :
+               campaign?.format === '4:5' ? 'Feed Retrato (4:5)' :
+               campaign?.format === '1:1' ? 'Feed Quadrado (1:1)' :
+               campaign?.format === 'tabloid' ? 'Tablóide de Ofertas' : (campaign?.format || '16:9')}
+            </span>
+          </div>
+        </div>
+        <span className="text-[9px] font-bold text-neutral-300 bg-neutral-800/90 border border-neutral-700/60 px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0" title="Todas as edições feitas aqui são preservadas exclusivamente neste formato">
+          Ajustes Exclusivos
+        </span>
+      </div>
+
       {/* Top action row: Lista de Banners */}
       <div className="flex items-center justify-between">
         <div>
