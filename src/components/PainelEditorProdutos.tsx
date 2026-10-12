@@ -1023,41 +1023,12 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={campaign?.footerBrandText !== undefined ? campaign.footerBrandText : 'ts.playcomunique.com.br'}
+                    value={campaign?.footerBrandText || 'playcomunique.com.br'}
                     onChange={(e) => onUpdateCampaign && onUpdateCampaign({ footerBrandText: e.target.value })}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
-                    placeholder="ts.playcomunique.com.br"
+                    placeholder="playcomunique.com.br"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* 5. Contatos da Loja */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  WhatsApp Pedidos
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.phoneWhatsapp || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ phoneWhatsapp: aplicarMascaraTelefoneInput(e.target.value) })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="(41) 9 9999 - 9999"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                  Endereço Loja
-                </label>
-                <input
-                  type="text"
-                  value={campaign?.storeAddress || ''}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ storeAddress: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  placeholder="Rua das Frutas, 2004"
-                />
               </div>
             </div>
           </div>
@@ -1079,9 +1050,20 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 #{currentProductIndex + 1}
               </div>
               <div>
-                <span className="text-xs font-black text-white group-hover:text-amber-300">
-                  2. Editando Item #{currentProductIndex + 1} de {products.length}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-black text-white group-hover:text-amber-300">
+                    2. Editando Item #{currentProductIndex + 1} de {products.length}
+                  </span>
+                  {campaign?.format === '16:9' ? (
+                    <span className="text-[8.5px] bg-emerald-950/70 text-emerald-400 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30" title="Alterações em 16:9 são sincronizadas automaticamente em todos os formatos">
+                      TV 16:9 (Mestre)
+                    </span>
+                  ) : (
+                    <span className="text-[8.5px] bg-amber-950/70 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-500/30" title="Alterações neste formato ficam individualizadas e preservadas">
+                      Personalizado: {campaign?.format}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] text-neutral-400 block truncate max-w-[210px]">
                   {activeProduct.title}
                 </span>

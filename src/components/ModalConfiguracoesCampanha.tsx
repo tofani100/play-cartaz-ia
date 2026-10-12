@@ -48,7 +48,7 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
     validityText: campaign.validityText,
     tickerText: campaign.tickerText,
     legalNotice: campaign.legalNotice || '',
-    footerBrandText: campaign.footerBrandText !== undefined ? campaign.footerBrandText : 'ts.playcomunique.com.br',
+    footerBrandText: campaign.footerBrandText || 'playcomunique.com.br',
     animationStyle: campaign.animationStyle,
     slideDuration: campaign.slideDuration || 6,
     showClock: campaign.showClock,
@@ -69,7 +69,7 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
         validityText: campaign.validityText,
         tickerText: campaign.tickerText,
         legalNotice: campaign.legalNotice || '',
-        footerBrandText: campaign.footerBrandText !== undefined ? campaign.footerBrandText : 'ts.playcomunique.com.br',
+        footerBrandText: campaign.footerBrandText || 'playcomunique.com.br',
         animationStyle: campaign.animationStyle,
         slideDuration: campaign.slideDuration || 6,
         showClock: campaign.showClock,
@@ -809,7 +809,7 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                       value={formData.footerBrandText}
                       onChange={(e) => setFormData({ ...formData, footerBrandText: e.target.value })}
                       className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
-                      placeholder="Ex: ts.playcomunique.com.br"
+                      placeholder="Ex: playcomunique.com.br"
                     />
                   </div>
                 </div>

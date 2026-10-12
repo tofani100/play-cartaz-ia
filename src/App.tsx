@@ -60,7 +60,7 @@ const DEFAULT_CAMPAIGN_RAW: BannerCampaign = {
   campaignSubtitle: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
   validityText: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
   legalNotice: 'Imagens meramente ilustrativas. Proibida venda de bebidas a menores de 18 anos.',
-  footerBrandText: 'ts.playcomunique.com.br',
+  footerBrandText: 'playcomunique.com.br',
   tickerText: '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ QUALIDADE BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★',
   format: '16:9',
   themeId: 'hortifruti-green',
@@ -106,6 +106,9 @@ export default function App() {
             (parsed.clientName === 'Belíssima Casa di Frutas' || parsed.id === 'camp-1'
               ? '/logos/belissima-casa-di-frutas.png'
               : ''),
+          footerBrandText: (!parsed.footerBrandText || parsed.footerBrandText === 'ts.playcomunique.com.br')
+            ? 'playcomunique.com.br'
+            : parsed.footerBrandText,
         };
         if (!restored.formatsData || Object.keys(restored.formatsData).length === 0) {
           restored.formatsData = initFormatsData(restored);
@@ -118,7 +121,11 @@ export default function App() {
             if (fmtData.campaignSubtitle !== undefined) restored.campaignSubtitle = fmtData.campaignSubtitle;
             if (fmtData.validityText !== undefined) restored.validityText = fmtData.validityText;
             if (fmtData.legalNotice !== undefined) restored.legalNotice = fmtData.legalNotice;
-            if (fmtData.footerBrandText !== undefined) restored.footerBrandText = fmtData.footerBrandText;
+            if (fmtData.footerBrandText !== undefined && fmtData.footerBrandText !== 'ts.playcomunique.com.br') {
+              restored.footerBrandText = fmtData.footerBrandText;
+            } else {
+              restored.footerBrandText = 'playcomunique.com.br';
+            }
             if (fmtData.tickerText !== undefined) restored.tickerText = fmtData.tickerText;
             if (fmtData.phoneWhatsapp !== undefined) restored.phoneWhatsapp = fmtData.phoneWhatsapp;
             if (fmtData.storeAddress !== undefined) restored.storeAddress = fmtData.storeAddress;
@@ -486,9 +493,9 @@ export default function App() {
           showClientLogo: Boolean(newOrUpdatedClient.logoUrl),
           themeId: newOrUpdatedClient.themeId,
           segment: newOrUpdatedClient.segment,
-          tickerText: newOrUpdatedClient.defaultTickerText || prev.tickerText,
-          phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || prev.phoneWhatsapp,
-          storeAddress: newOrUpdatedClient.storeAddress || prev.storeAddress,
+          tickerText: newOrUpdatedClient.defaultTickerText !== undefined ? newOrUpdatedClient.defaultTickerText : prev.tickerText,
+          phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp !== undefined ? newOrUpdatedClient.phoneWhatsapp : (prev.phoneWhatsapp || ''),
+          storeAddress: newOrUpdatedClient.storeAddress !== undefined ? newOrUpdatedClient.storeAddress : (prev.storeAddress || ''),
         };
         try {
           localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCamp));
@@ -576,9 +583,10 @@ export default function App() {
         showClientLogo: Boolean(client.logoUrl),
         themeId: client.themeId,
         segment: client.segment,
-        tickerText: client.defaultTickerText || prev.tickerText,
-        phoneWhatsapp: client.phoneWhatsapp || prev.phoneWhatsapp,
-        storeAddress: client.storeAddress || prev.storeAddress,
+        footerBrandText: prev.footerBrandText || 'playcomunique.com.br',
+        tickerText: client.defaultTickerText !== undefined ? client.defaultTickerText : (target.defaultTickerText || prev.tickerText),
+        phoneWhatsapp: client.phoneWhatsapp !== undefined ? client.phoneWhatsapp : (target.phoneWhatsapp || ''),
+        storeAddress: client.storeAddress !== undefined ? client.storeAddress : (target.storeAddress || ''),
         products: targetProducts,
         activeProductIndex: 0,
         customStyles: target.customStyles || undefined,
@@ -663,6 +671,29 @@ export default function App() {
       // 2. Obtém os dados do novo formato de destino
       const targetFormatData = updatedFormats[fmt] || extractFormatData(prev);
 
+      // Garante sincronização inteligente dos campos mestres do 16:9 que não foram individualizados no formato de destino
+      let resolvedProducts = targetFormatData.products && targetFormatData.products.length > 0
+        ? JSON.parse(JSON.stringify(targetFormatData.products))
+        : (updatedFormats['16:9']?.products ? JSON.parse(JSON.stringify(updatedFormats['16:9'].products)) : prev.products);
+
+      if (fmt !== '16:9' && updatedFormats['16:9']?.products) {
+        const masterProducts = updatedFormats['16:9'].products;
+        resolvedProducts = resolvedProducts.map((p: ProductItem, pIdx: number) => {
+          const masterP = masterProducts[pIdx];
+          if (!masterP) return p;
+          const customized = p.customizedFields || [];
+          const merged = { ...p };
+          (Object.keys(masterP) as (keyof ProductItem)[]).forEach((prop) => {
+            if (prop === 'customizedFields' || prop === 'id') return;
+            // Se o campo NÃO foi individualizado pelo usuário neste formato, herda o valor atualizado do 16:9 Mestre
+            if (!customized.includes(prop as string)) {
+              (merged as any)[prop] = (masterP as any)[prop];
+            }
+          });
+          return merged;
+        });
+      }
+
       // 3. Aplica os dados do novo formato no campaign ativo
       const nextCampaign: BannerCampaign = {
         ...prev,
@@ -672,25 +703,29 @@ export default function App() {
         campaignSubtitle: targetFormatData.campaignSubtitle !== undefined ? targetFormatData.campaignSubtitle : prev.campaignSubtitle,
         validityText: targetFormatData.validityText !== undefined ? targetFormatData.validityText : prev.validityText,
         legalNotice: targetFormatData.legalNotice !== undefined ? targetFormatData.legalNotice : prev.legalNotice,
-        footerBrandText: targetFormatData.footerBrandText !== undefined ? targetFormatData.footerBrandText : prev.footerBrandText,
+        footerBrandText: targetFormatData.footerBrandText || prev.footerBrandText || 'playcomunique.com.br',
         tickerText: targetFormatData.tickerText !== undefined ? targetFormatData.tickerText : prev.tickerText,
         phoneWhatsapp: targetFormatData.phoneWhatsapp !== undefined ? targetFormatData.phoneWhatsapp : prev.phoneWhatsapp,
         storeAddress: targetFormatData.storeAddress !== undefined ? targetFormatData.storeAddress : prev.storeAddress,
         themeId: targetFormatData.themeId || prev.themeId,
         customColors: targetFormatData.customColors || prev.customColors,
         customStyles: targetFormatData.customStyles ? JSON.parse(JSON.stringify(targetFormatData.customStyles)) : prev.customStyles,
-        products: targetFormatData.products && targetFormatData.products.length > 0 
-          ? JSON.parse(JSON.stringify(targetFormatData.products)) 
-          : prev.products,
+        products: resolvedProducts,
         activeProductIndex: targetFormatData.activeProductIndex !== undefined 
-          ? Math.min(targetFormatData.activeProductIndex, Math.max(0, (targetFormatData.products?.length || prev.products.length) - 1))
-          : prev.activeProductIndex,
+          ? Math.min(targetFormatData.activeProductIndex, Math.max(0, resolvedProducts.length - 1))
+          : Math.min(prev.activeProductIndex, Math.max(0, resolvedProducts.length - 1)),
         showClientLogo: targetFormatData.showClientLogo !== undefined ? targetFormatData.showClientLogo : prev.showClientLogo,
         tabloidColumns: targetFormatData.tabloidColumns,
         tabloidRows: targetFormatData.tabloidRows,
         tabloidSelectedProductIds: targetFormatData.tabloidSelectedProductIds,
         tabloidTarget: targetFormatData.tabloidTarget,
-        formatsData: updatedFormats,
+        formatsData: {
+          ...updatedFormats,
+          [fmt]: {
+            ...targetFormatData,
+            products: resolvedProducts,
+          },
+        },
       };
 
       try {
@@ -821,21 +856,83 @@ export default function App() {
     lastLocalEditTimeRef.current = Date.now();
     const now = new Date().toISOString();
     setCampaign((prev) => {
-      const nextProducts = [...prev.products];
-      nextProducts[idx] = { ...nextProducts[idx], ...updated };
       const currentFormat = prev.format || '16:9';
+      const isMaster16x9 = currentFormat === '16:9';
 
-      const tempCampaign: BannerCampaign = {
-        ...prev,
+      const nextProducts = [...prev.products];
+      const existingProduct = nextProducts[idx] || ({} as ProductItem);
+
+      // Se estamos em formato secundário (9:16, 1:1, 4:5, tabloid), registra os campos alterados como customizados
+      let nextCustomized = existingProduct.customizedFields ? [...existingProduct.customizedFields] : [];
+      if (!isMaster16x9) {
+        const modifiedKeys = Object.keys(updated).filter((k) => k !== 'customizedFields' && k !== 'id');
+        modifiedKeys.forEach((k) => {
+          if (!nextCustomized.includes(k)) {
+            nextCustomized.push(k);
+          }
+        });
+      }
+
+      const updatedProduct: ProductItem = {
+        ...existingProduct,
+        ...updated,
+        ...(!isMaster16x9 ? { customizedFields: nextCustomized } : {}),
+      };
+      nextProducts[idx] = updatedProduct;
+
+      // Inicializa ou clona os formatos existentes
+      const updatedFormats: Record<BannerFormat, FormatCampaignData> = prev.formatsData && Object.keys(prev.formatsData).length > 0
+        ? { ...(prev.formatsData as Record<BannerFormat, FormatCampaignData>) }
+        : initFormatsData(prev);
+
+      // Atualiza o formato ativo
+      const currentFormatData = updatedFormats[currentFormat] || extractFormatData(prev);
+      updatedFormats[currentFormat] = {
+        ...currentFormatData,
         products: nextProducts,
-        _syncTimestamp: now,
-      } as any;
+      };
 
-      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
+      // SE ESTIVER NO PADRÃO 16:9 (MESTRE):
+      // Propaga automaticamente as alterações para TODOS os outros formatos de banners,
+      // RESPEITANDO os campos que o usuário eventualmente já tenha customizado individualmente!
+      if (isMaster16x9) {
+        ALL_BANNER_FORMATS.forEach((fmt) => {
+          if (fmt === '16:9') return;
+          const fmtData = updatedFormats[fmt] || extractFormatData(prev);
+          const fmtProducts = fmtData.products && fmtData.products.length > 0 
+            ? [...fmtData.products] 
+            : [...nextProducts];
+
+          if (fmtProducts[idx]) {
+            const targetProd = fmtProducts[idx];
+            const targetCustomized = targetProd.customizedFields || [];
+            const mergedProd: ProductItem = { ...targetProd };
+
+            (Object.keys(updated) as (keyof ProductItem)[]).forEach((prop) => {
+              if (prop === 'customizedFields' || prop === 'id') return;
+              // Se o campo NÃO foi individualizado pelo usuário neste formato, recebe o novo dado do 16:9!
+              if (!targetCustomized.includes(prop as string)) {
+                (mergedProd as any)[prop] = (updated as any)[prop];
+              }
+            });
+
+            fmtProducts[idx] = mergedProd;
+          } else {
+            fmtProducts[idx] = { ...updatedProduct, customizedFields: [] };
+          }
+
+          updatedFormats[fmt] = {
+            ...fmtData,
+            products: fmtProducts,
+          };
+        });
+      }
 
       const nextCampaign: BannerCampaign = {
-        ...tempCampaign,
-        formatsData: nextFormatsData,
+        ...prev,
+        products: nextProducts,
+        formatsData: updatedFormats,
+        _syncTimestamp: now,
       };
 
       try {
@@ -846,7 +943,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
+            ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
         try {
@@ -867,18 +964,26 @@ export default function App() {
       const nextProducts = [...prev.products, newProduct];
       const currentFormat = prev.format || '16:9';
 
-      const tempCampaign: BannerCampaign = {
+      const updatedFormats: Record<BannerFormat, FormatCampaignData> = prev.formatsData && Object.keys(prev.formatsData).length > 0
+        ? { ...(prev.formatsData as Record<BannerFormat, FormatCampaignData>) }
+        : initFormatsData(prev);
+
+      ALL_BANNER_FORMATS.forEach((fmt) => {
+        const fmtData = updatedFormats[fmt] || extractFormatData(prev);
+        const fmtProducts = fmtData.products ? [...fmtData.products, { ...newProduct, customizedFields: [] }] : [...nextProducts];
+        updatedFormats[fmt] = {
+          ...fmtData,
+          products: fmtProducts,
+          activeProductIndex: fmtProducts.length - 1,
+        };
+      });
+
+      const nextCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         activeProductIndex: nextProducts.length - 1,
+        formatsData: updatedFormats,
         _syncTimestamp: now,
-      } as any;
-
-      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
-
-      const nextCampaign: BannerCampaign = {
-        ...tempCampaign,
-        formatsData: nextFormatsData,
       };
 
       try {
@@ -889,7 +994,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
+            ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
         try {
@@ -922,19 +1027,30 @@ export default function App() {
         nextActiveIndex++;
       }
 
-      const currentFormat = prev.format || '16:9';
-      const tempCampaign: BannerCampaign = {
+      const updatedFormats: Record<BannerFormat, FormatCampaignData> = prev.formatsData && Object.keys(prev.formatsData).length > 0
+        ? { ...(prev.formatsData as Record<BannerFormat, FormatCampaignData>) }
+        : initFormatsData(prev);
+
+      ALL_BANNER_FORMATS.forEach((fmt) => {
+        const fmtData = updatedFormats[fmt] || extractFormatData(prev);
+        if (fmtData.products && fmtData.products.length > fromIndex && fmtData.products.length > toIndex) {
+          const prods = [...fmtData.products];
+          const [moved] = prods.splice(fromIndex, 1);
+          prods.splice(toIndex, 0, moved);
+          updatedFormats[fmt] = {
+            ...fmtData,
+            products: prods,
+            activeProductIndex: nextActiveIndex,
+          };
+        }
+      });
+
+      const nextCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         activeProductIndex: nextActiveIndex,
+        formatsData: updatedFormats,
         _syncTimestamp: now,
-      } as any;
-
-      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
-
-      const nextCampaign: BannerCampaign = {
-        ...tempCampaign,
-        formatsData: nextFormatsData,
       };
 
       try {
@@ -945,7 +1061,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
+            ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
         try {
@@ -989,20 +1105,29 @@ export default function App() {
 
       const next = prev.products.filter((_, i) => i !== idx);
       const nextIdx = Math.min(prev.activeProductIndex, Math.max(0, next.length - 1));
-      const currentFormat = prev.format || '16:9';
 
-      const tempCampaign: BannerCampaign = {
+      const updatedFormats: Record<BannerFormat, FormatCampaignData> = prev.formatsData && Object.keys(prev.formatsData).length > 0
+        ? { ...(prev.formatsData as Record<BannerFormat, FormatCampaignData>) }
+        : initFormatsData(prev);
+
+      ALL_BANNER_FORMATS.forEach((fmt) => {
+        const fmtData = updatedFormats[fmt] || extractFormatData(prev);
+        if (fmtData.products) {
+          const prods = fmtData.products.filter((_, i) => i !== idx);
+          updatedFormats[fmt] = {
+            ...fmtData,
+            products: prods,
+            activeProductIndex: Math.min(fmtData.activeProductIndex ?? 0, Math.max(0, prods.length - 1)),
+          };
+        }
+      });
+
+      const nextCampaign: BannerCampaign = {
         ...prev,
         products: next,
         activeProductIndex: nextIdx,
+        formatsData: updatedFormats,
         _syncTimestamp: now,
-      } as any;
-
-      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
-
-      const nextCampaign: BannerCampaign = {
-        ...tempCampaign,
-        formatsData: nextFormatsData,
       };
 
       try {
@@ -1013,18 +1138,16 @@ export default function App() {
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: next, formatsData: nextFormatsData }
+            ? { ...c, products: next, formatsData: updatedFormats }
             : c
         );
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
         } catch (e) {}
         saveLocalClients(updated).catch(() => {});
-        saveClientsToCloud(updated).catch(() => {});
         return updated;
       });
 
-      saveCampaignToCloud(nextCampaign).catch(() => {});
       return nextCampaign;
     });
   };
@@ -1036,18 +1159,26 @@ export default function App() {
       const nextProducts = [...prev.products, productToRestore];
       const currentFormat = prev.format || '16:9';
 
-      const tempCampaign: BannerCampaign = {
+      const updatedFormats: Record<BannerFormat, FormatCampaignData> = prev.formatsData && Object.keys(prev.formatsData).length > 0
+        ? { ...(prev.formatsData as Record<BannerFormat, FormatCampaignData>) }
+        : initFormatsData(prev);
+
+      ALL_BANNER_FORMATS.forEach((fmt) => {
+        const fmtData = updatedFormats[fmt] || extractFormatData(prev);
+        const fmtProducts = fmtData.products ? [...fmtData.products, { ...productToRestore, customizedFields: [] }] : [...nextProducts];
+        updatedFormats[fmt] = {
+          ...fmtData,
+          products: fmtProducts,
+          activeProductIndex: fmtProducts.length - 1,
+        };
+      });
+
+      const nextCampaign: BannerCampaign = {
         ...prev,
         products: nextProducts,
         activeProductIndex: nextProducts.length - 1,
+        formatsData: updatedFormats,
         _syncTimestamp: now,
-      } as any;
-
-      const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempCampaign);
-
-      const nextCampaign: BannerCampaign = {
-        ...tempCampaign,
-        formatsData: nextFormatsData,
       };
 
       try {
@@ -1058,7 +1189,7 @@ export default function App() {
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, products: nextProducts, formatsData: nextFormatsData }
+            ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
         try {

@@ -326,6 +326,42 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
                     </div>
                   </div>
 
+                  {/* Contatos Oficiais do Cliente (WhatsApp e Endereço) */}
+                  <div className="p-3.5 bg-neutral-900 rounded-xl border border-neutral-800 space-y-2">
+                    <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                      <Store className="w-3.5 h-3.5" />
+                      Contatos Oficiais da Loja (Usados nos Banners e WhatsApp)
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-neutral-300 mb-1 flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-emerald-400" />
+                          Telefone / WhatsApp Oficial
+                        </label>
+                        <input
+                          type="text"
+                          value={formPhone}
+                          onChange={(e) => setFormPhone(aplicarMascaraTelefoneInput(e.target.value))}
+                          placeholder="Ex: (11) 99999-1234"
+                          className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-neutral-300 mb-1 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-amber-400" />
+                          Endereço Físico da Loja
+                        </label>
+                        <input
+                          type="text"
+                          value={formAddress}
+                          onChange={(e) => setFormAddress(e.target.value)}
+                          placeholder="Ex: Rua das Frutas, 2004 - Centro Comercial"
+                          className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Logo Upload Section */}
                   <div className="p-3.5 bg-neutral-900 rounded-xl border border-neutral-800 space-y-3">
                     <div className="flex items-center justify-between">
@@ -443,34 +479,6 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
                           </button>
                         );
                       })}
-                    </div>
-                  </div>
-
-                  {/* Additional info */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-400 mb-1">
-                        Telefone / WhatsApp (Opcional)
-                      </label>
-                      <input
-                        type="text"
-                        value={formPhone}
-                        onChange={(e) => setFormPhone(aplicarMascaraTelefoneInput(e.target.value))}
-                        placeholder="(41) 9 9999 - 9999"
-                        className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-400 mb-1">
-                        Endereço / Loja (Opcional)
-                      </label>
-                      <input
-                        type="text"
-                        value={formAddress}
-                        onChange={(e) => setFormAddress(e.target.value)}
-                        placeholder="Rua / Bairro / Cidade"
-                        className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                      />
                     </div>
                   </div>
 

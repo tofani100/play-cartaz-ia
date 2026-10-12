@@ -53,6 +53,7 @@ export interface ProductItem {
   aiPromptUsed?: string;
   hidden?: boolean; // Oculto da rotação na playlist da TV sem deletar
   customStyles?: BannerCustomStyles; // Estilo customizado exclusivo para este banner individual
+  customizedFields?: string[]; // Lista de propriedades customizadas individualmente neste formato
 }
 
 export interface BannerCampaign {
@@ -66,7 +67,7 @@ export interface BannerCampaign {
   campaignSubtitle?: string;
   validityText: string;
   legalNotice: string;
-  footerBrandText?: string; // Link/assinatura no canto direito do rodapé (ex: ts.playcomunique.com.br)
+  footerBrandText?: string; // Link/assinatura no canto direito do rodapé (padrão: playcomunique.com.br)
   tickerText: string; // Marquee footer for TV
   format: BannerFormat;
   themeId: ThemePresetId;
@@ -209,7 +210,7 @@ export function extractFormatData(c: BannerCampaign): FormatCampaignData {
     campaignSubtitle: c.campaignSubtitle || '',
     validityText: c.validityText || '',
     legalNotice: c.legalNotice || '',
-    footerBrandText: c.footerBrandText || '',
+    footerBrandText: c.footerBrandText || 'playcomunique.com.br',
     tickerText: c.tickerText || '',
     phoneWhatsapp: c.phoneWhatsapp || '',
     storeAddress: c.storeAddress || '',

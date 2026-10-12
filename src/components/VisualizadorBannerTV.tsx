@@ -1178,7 +1178,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 : 'text-[9px] sm:text-[10px] md:text-[11px]'
             }`}
           >
-            {campaign.footerBrandText !== undefined && campaign.footerBrandText !== '' ? campaign.footerBrandText : 'Desenvolvido por: playcomunique.com.br'}
+            {campaign.footerBrandText && campaign.footerBrandText !== 'ts.playcomunique.com.br' ? campaign.footerBrandText : 'playcomunique.com.br'}
           </span>
         </div>
       </div>
