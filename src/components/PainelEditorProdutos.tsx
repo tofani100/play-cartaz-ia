@@ -138,13 +138,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
     ...(activeProduct?.secondBadgeTextColor ? { secondBadgeTextColor: activeProduct.secondBadgeTextColor } : {}),
   };
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
   const handleApplyCustomStyle = (updates: Partial<BannerCustomStyles>) => {
     if (customizationScope === 'single') {
       const existingStyles = activeProduct?.customStyles || {};
@@ -342,45 +335,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 
   return (
     <div className="w-full bg-neutral-900 border-t sm:border-t-0 sm:border-l border-neutral-800 p-3 sm:p-4 flex flex-col gap-3.5">
-      {/* Mini Barra de Acesso Rápido às Seções (Alinhada da Lógica de Cima para Baixo) */}
-      <div className="sticky -top-4 z-20 bg-neutral-900/95 backdrop-blur-md pb-2 pt-1 border-b border-neutral-800/80 -mx-3 sm:-mx-4 px-3 sm:px-4 flex items-center gap-1.5 overflow-x-auto select-none">
-        <button
-          type="button"
-          onClick={() => scrollToSection('painel-secao-campanha')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-amber-300 text-neutral-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 border border-neutral-700/80 transition-all"
-        >
-          <Layers className="w-3 h-3 text-amber-400" />
-          <span>Topo & Identidade</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => scrollToSection('painel-secao-produto')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-amber-300 text-neutral-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 border border-neutral-700/80 transition-all"
-        >
-          <Tag className="w-3 h-3 text-amber-400" />
-          <span>Item #{currentProductIndex + 1}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => scrollToSection('painel-secao-modelos')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-amber-300 text-neutral-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 border border-neutral-700/80 transition-all"
-        >
-          <Palette className="w-3 h-3 text-amber-400" />
-          <span>Modelos & Fundo</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => scrollToSection('painel-secao-tv')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-amber-300 text-neutral-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 border border-neutral-700/80 transition-all"
-        >
-          <Tv className="w-3 h-3 text-amber-400" />
-          <span>TV Indoor</span>
-        </button>
-      </div>
-
       {/* Indicador de Formato Ativo com Isolamento */}
       <div className="flex items-center justify-between bg-neutral-950/80 border border-neutral-800 rounded-xl px-3 py-2 text-xs">
         <div className="flex items-center gap-2 min-w-0">
