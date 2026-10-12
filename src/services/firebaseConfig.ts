@@ -11,6 +11,7 @@ export function isDevEnvironment(): boolean {
   if (typeof window !== 'undefined') {
     const host = (window.location.hostname || '').toLowerCase();
     if (
+      host.includes('play-cartaz-ia-dev') ||
       host.includes('dev-') ||
       host.includes('.dev.') ||
       host.includes('cartaz-ia-dev') ||

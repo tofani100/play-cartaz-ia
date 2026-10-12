@@ -16,6 +16,9 @@
       "hosting": {
         "dev": [
           "play-cartaz-ia-dev"
+        ],
+        "legacy-dev": [
+          "cartaz-ia-dev-778bc"
         ]
       }
     }

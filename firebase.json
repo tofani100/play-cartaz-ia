@@ -39,6 +39,17 @@
       ]
     },
     {
+      "target": "legacy-dev",
+      "public": "dist",
+      "redirects": [
+        {
+          "source": "**",
+          "destination": "https://play-cartaz-ia-dev.web.app",
+          "type": 301
+        }
+      ]
+    },
+    {
       "target": "prod",
       "public": "dist",
       "ignore": [
