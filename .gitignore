@@ -7,4 +7,5 @@ coverage/
 .env*
 !.env.example
 .firebase/
-/data/
+# Local temporary data
+# (data/backups is now tracked for disaster recovery)
