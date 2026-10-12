@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import { 
   ProductItem, 
-  CuratedProduct, 
   BannerCampaign, 
   ThemeColors, 
   BannerCustomStyles, 
@@ -41,7 +40,6 @@ import {
   OPCOES_TAMANHO_TITULO,
   OPCOES_TAMANHO_VALIDADE
 } from '../tiposGeradorBanner';
-import { BANCO_PRODUTOS_COMERCIAIS } from '../data/bancoProdutosComerciais';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
 import { handleImageError } from '../utils/imageFallback';
 import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual, buildExportFilename } from '../utils/ajudanteExportacao';
@@ -92,7 +90,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   theme,
   onUpdateCampaign,
 }) => {
-  const [showCatalogModal, setShowCatalogModal] = useState<boolean>(false);
   const [showTrashModal, setShowTrashModal] = useState<boolean>(false);
   const [trashItems, setTrashItems] = useState<Array<{ product: ProductItem; clientName: string; deletedAt: string }>>([]);
 
@@ -108,8 +105,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
       setTrashItems([]);
     }
   };
-  const [catalogSearch, setCatalogSearch] = useState<string>('');
-  const [catalogCategory, setCatalogCategory] = useState<string>('all');
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
   const [recordingVideoIndex, setRecordingVideoIndex] = useState<number | null>(null);
   const [recordingVideoProgress, setRecordingVideoProgress] = useState<number>(0);
@@ -329,32 +324,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
     }
   };
 
-  const filteredCatalog = BANCO_PRODUTOS_COMERCIAIS.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-      item.brand.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-      item.keywords.some((k) => k.includes(catalogSearch.toLowerCase()));
-
-    const matchesCategory = catalogCategory === 'all' || item.category === catalogCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleAddFromCurated = (curated: CuratedProduct) => {
-    const newItem: ProductItem = {
-      id: `prod-curated-${Date.now()}`,
-      title: curated.title,
-      brand: curated.brand,
-      category: curated.category,
-      unit: curated.defaultUnit,
-      price: curated.suggestedPrice,
-      originalPrice: curated.suggestedOriginalPrice,
-      discountPercentage: 20,
-      badge: curated.badge,
-      imageUrl: curated.imageUrl,
-    };
-    onAddProduct(newItem);
-    setShowCatalogModal(false);
-  };
-
   const handleAddNewBlank = () => {
     const newItem: ProductItem = {
       id: `prod-manual-${Date.now()}`,
@@ -456,15 +425,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
           >
             <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
             <span className="hidden sm:inline">Lixeira</span>
-          </button>
-
-          <button
-            onClick={() => setShowCatalogModal(true)}
-            className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-bold text-xs rounded-lg flex items-center gap-1 border border-neutral-700 cursor-pointer"
-            title="Adicionar produto da biblioteca comercial com foto em alta"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Catálogo</span>
           </button>
 
           <button
@@ -1653,124 +1613,9 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               </div>
             </div>
 
-            {/* Letreiro Marquee de Rodapé */}
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                Letreiro de Rodapé (Marquee TV)
-              </label>
-              <input
-                type="text"
-                value={campaign?.tickerText || ''}
-                onChange={(e) => onUpdateCampaign && onUpdateCampaign({ tickerText: e.target.value })}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                placeholder="Avisos, promoções relâmpago, formas de pagamento..."
-              />
-            </div>
-
-            {/* Checkboxes de exibição */}
-            <div className="flex items-center gap-4 pt-1">
-              <label className="flex items-center gap-1.5 text-[11px] text-neutral-300 cursor-pointer font-bold">
-                <input
-                  type="checkbox"
-                  checked={campaign?.showClock || false}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ showClock: e.target.checked })}
-                  className="rounded bg-neutral-800 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
-                />
-                <span>Relógio na TV</span>
-              </label>
-
-              <label className="flex items-center gap-1.5 text-[11px] text-neutral-300 cursor-pointer font-bold">
-                <input
-                  type="checkbox"
-                  checked={campaign?.showMarqueeTicker !== false}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ showMarqueeTicker: e.target.checked })}
-                  className="rounded bg-neutral-800 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
-                />
-                <span>Letreiro Marquee</span>
-              </label>
-            </div>
           </div>
         )}
       </div>
-
-      {/* Catálogo Comercial Brasil Modal */}
-      {showCatalogModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-2xl bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="p-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-950">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <h4 className="text-sm font-extrabold text-white">
-                  Biblioteca de Produtos Comerciais do Brasil
-                </h4>
-              </div>
-              <button
-                onClick={() => setShowCatalogModal(false)}
-                className="p-1 text-neutral-400 hover:text-white cursor-pointer"
-              >
-                <Plus className="w-5 h-5 rotate-45" />
-              </button>
-            </div>
-
-            <div className="p-3 bg-neutral-950 border-b border-neutral-800 flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="w-4 h-4 text-neutral-500 absolute left-2.5 top-2.5" />
-                <input
-                  type="text"
-                  value={catalogSearch}
-                  onChange={(e) => setCatalogSearch(e.target.value)}
-                  placeholder="Buscar produto (ex: Coca-Cola, OMO, Picanha, Arroz, Heineken)..."
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <select
-                value={catalogCategory}
-                onChange={(e) => setCatalogCategory(e.target.value)}
-                className="bg-neutral-900 border border-neutral-800 text-xs rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-amber-500"
-              >
-                <option value="all">Todas as Categorias</option>
-                <option value="Bebidas">Bebidas</option>
-                <option value="Carnes & Aves">Carnes & Açougue</option>
-                <option value="Mercearia">Mercearia</option>
-                <option value="Limpeza">Limpeza</option>
-                <option value="Hortifrúti">Hortifrúti</option>
-                <option value="Laticínios & Frios">Laticínios & Frios</option>
-                <option value="Higiene & Beleza">Higiene & Beleza</option>
-              </select>
-            </div>
-
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto flex-1">
-              {filteredCatalog.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleAddFromCurated(item)}
-                  className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 hover:border-amber-500/60 cursor-pointer transition-all flex flex-col justify-between group"
-                >
-                  <div className="relative w-full h-24 flex items-center justify-center">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="max-h-20 w-auto object-contain transition-transform group-hover:scale-110"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-amber-400 block">{item.brand}</span>
-                    <h5 className="text-xs font-bold text-white line-clamp-2 leading-tight mt-0.5">
-                      {item.title}
-                    </h5>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-neutral-800">
-                      <span className="text-xs font-black text-amber-400">R$ {item.suggestedPrice}</span>
-                      <span className="text-[10px] text-neutral-400 font-bold">/{item.defaultUnit}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal Lixeira de Banners - Proteção contra perda e restauração em 1 clique */}
       {showTrashModal && (

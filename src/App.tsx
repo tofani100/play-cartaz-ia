@@ -697,28 +697,10 @@ export default function App() {
       // 2. Obtém os dados do novo formato de destino
       const targetFormatData = updatedFormats[fmt] || extractFormatData(prev);
 
-      // Garante sincronização inteligente dos campos mestres do 16:9 que não foram individualizados no formato de destino
-      let resolvedProducts = targetFormatData.products && targetFormatData.products.length > 0
+      // Obtém os produtos salvos no formato de destino. Se ainda não existirem produtos nele, herda do 16:9 Mestre
+      const resolvedProducts = targetFormatData.products && targetFormatData.products.length > 0
         ? JSON.parse(JSON.stringify(targetFormatData.products))
         : (updatedFormats['16:9']?.products ? JSON.parse(JSON.stringify(updatedFormats['16:9'].products)) : prev.products);
-
-      if (fmt !== '16:9' && updatedFormats['16:9']?.products) {
-        const masterProducts = updatedFormats['16:9'].products;
-        resolvedProducts = resolvedProducts.map((p: ProductItem, pIdx: number) => {
-          const masterP = masterProducts[pIdx];
-          if (!masterP) return p;
-          const customized = p.customizedFields || [];
-          const merged = { ...p };
-          (Object.keys(masterP) as (keyof ProductItem)[]).forEach((prop) => {
-            if (prop === 'customizedFields' || prop === 'id') return;
-            // Se o campo NÃO foi individualizado pelo usuário neste formato, herda o valor atualizado do 16:9 Mestre
-            if (!customized.includes(prop as string)) {
-              (merged as any)[prop] = (masterP as any)[prop];
-            }
-          });
-          return merged;
-        });
-      }
 
       // 3. Aplica os dados do novo formato no campaign ativo
       const nextCampaign: BannerCampaign = {
@@ -888,21 +870,9 @@ export default function App() {
       const nextProducts = [...prev.products];
       const existingProduct = nextProducts[idx] || ({} as ProductItem);
 
-      // Se estamos em formato secundário (9:16, 1:1, 4:5, tabloid), registra os campos alterados como customizados
-      let nextCustomized = existingProduct.customizedFields ? [...existingProduct.customizedFields] : [];
-      if (!isMaster16x9) {
-        const modifiedKeys = Object.keys(updated).filter((k) => k !== 'customizedFields' && k !== 'id');
-        modifiedKeys.forEach((k) => {
-          if (!nextCustomized.includes(k)) {
-            nextCustomized.push(k);
-          }
-        });
-      }
-
       const updatedProduct: ProductItem = {
         ...existingProduct,
         ...updated,
-        ...(!isMaster16x9 ? { customizedFields: nextCustomized } : {}),
       };
       nextProducts[idx] = updatedProduct;
 
@@ -918,9 +888,9 @@ export default function App() {
         products: nextProducts,
       };
 
-      // SE ESTIVER NO PADRÃO 16:9 (MESTRE):
-      // Propaga automaticamente as alterações para TODOS os outros formatos de banners,
-      // RESPEITANDO os campos que o usuário eventualmente já tenha customizado individualmente!
+      // REGRA MESTRE 16:9:
+      // Se alterado no formato TV 16:9, altera os dados em TODOS os demais formatos de banner!
+      // Se alterado em OUTROS modelos de banners, a alteração fica salva apenas nele mesmo!
       if (isMaster16x9) {
         ALL_BANNER_FORMATS.forEach((fmt) => {
           if (fmt === '16:9') return;
@@ -930,21 +900,12 @@ export default function App() {
             : [...nextProducts];
 
           if (fmtProducts[idx]) {
-            const targetProd = fmtProducts[idx];
-            const targetCustomized = targetProd.customizedFields || [];
-            const mergedProd: ProductItem = { ...targetProd };
-
-            (Object.keys(updated) as (keyof ProductItem)[]).forEach((prop) => {
-              if (prop === 'customizedFields' || prop === 'id') return;
-              // Se o campo NÃO foi individualizado pelo usuário neste formato, recebe o novo dado do 16:9!
-              if (!targetCustomized.includes(prop as string)) {
-                (mergedProd as any)[prop] = (updated as any)[prop];
-              }
-            });
-
-            fmtProducts[idx] = mergedProd;
+            fmtProducts[idx] = {
+              ...fmtProducts[idx],
+              ...updated,
+            };
           } else {
-            fmtProducts[idx] = { ...updatedProduct, customizedFields: [] };
+            fmtProducts[idx] = { ...updatedProduct };
           }
 
           updatedFormats[fmt] = {
