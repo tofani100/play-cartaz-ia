@@ -4,8 +4,9 @@
 
 ### 1. SEPARAÇÃO TOTAL DE AMBIENTES:
 - **DEV (Desenvolvimento / Homologação):**
-  - **URL:** `https://cartaz-ia-dev-778bc.web.app` (e testes locais em `localhost`).
-  - **Projeto Firebase:** `cartaz-ia-dev-778bc`
+  - **URL Oficial DEV:** `https://play-cartaz-ia-dev.web.app`
+  - **URL Legada DEV:** `https://cartaz-ia-dev-778bc.web.app`
+  - **Projeto Firebase:** `cartaz-ia-dev-778bc` (Target Hosting: `dev`, Site: `play-cartaz-ia-dev`)
   - **Branch Git:** `dev`
   - **Comando Deploy DEV:** `npm run build:dev && firebase deploy --only hosting:dev --project cartaz-ia-dev-778bc`
   - **Uso:** Todas as novas funcionalidades, testes de layout, correções e experimentos devem ser feitos **EXCLUSIVAMENTE em DEV**.
