@@ -609,14 +609,6 @@ async function captureProductSlideLayers(
     }
   }
 
-  // Guarda transform do elemento pai (workspaceScale) para temporariamente desativar e garantir dimensões 100% canônicas nativas no celular
-  const parentWrapper = bannerEl.parentElement;
-  let originalParentTransform = '';
-  if (parentWrapper && parentWrapper.style.transform) {
-    originalParentTransform = parentWrapper.style.transform;
-    parentWrapper.style.setProperty('transform', 'none', 'important');
-  }
-
   // Garante estado de repouso perfeito nos elementos animados antes de qualquer captura
   const animatedNodes = bannerEl.querySelectorAll<HTMLElement>(
     '#tv-anim-title-block, #tv-anim-price-block, #tv-anim-product-card, #tv-anim-card-wrapper, #tv-badge-pill-1, #tv-badge-pill-2, #tv-anim-title-text'
@@ -732,15 +724,6 @@ async function captureProductSlideLayers(
     bannerEl.style.removeProperty('background-color');
     bannerEl.style.removeProperty('border-color');
     bannerEl.style.removeProperty('box-shadow');
-
-    // Restaura escala do elemento pai no workspace
-    if (parentWrapper) {
-      if (originalParentTransform) {
-        parentWrapper.style.transform = originalParentTransform;
-      } else {
-        parentWrapper.style.removeProperty('transform');
-      }
-    }
 
     // Restaura propriedades de estilo de todos os nós animados do banner
     animatedNodes.forEach((node) => {
