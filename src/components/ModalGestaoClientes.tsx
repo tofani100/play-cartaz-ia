@@ -15,7 +15,8 @@ import {
   Sparkles,
   ArrowRight,
   Play,
-  Loader2
+  Loader2,
+  FileText
 } from 'lucide-react';
 import { ClientProfile, ThemePresetId, BannerCampaign } from '../tiposGeradorBanner';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
@@ -65,6 +66,8 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
   const [formTicker, setFormTicker] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formAddress, setFormAddress] = useState('');
+  const [formLegalNotice, setFormLegalNotice] = useState('Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!');
+  const [formFooterBrandText, setFormFooterBrandText] = useState('Desenvolvido por: playcomunique.com.br');
   const [logoPreviewError, setLogoPreviewError] = useState(false);
   const [isCompressingLogo, setIsCompressingLogo] = useState(false);
 
@@ -83,6 +86,8 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
     setFormTicker('');
     setFormPhone('');
     setFormAddress('');
+    setFormLegalNotice('Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!');
+    setFormFooterBrandText('Desenvolvido por: playcomunique.com.br');
     setLogoPreviewError(false);
     setIsFormOpen(true);
   };
@@ -98,6 +103,8 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
     setFormTicker(client.defaultTickerText || '');
     setFormPhone(client.phoneWhatsapp || '');
     setFormAddress(client.storeAddress || '');
+    setFormLegalNotice(client.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!');
+    setFormFooterBrandText(client.footerBrandText || 'Desenvolvido por: playcomunique.com.br');
     setLogoPreviewError(false);
     setIsFormOpen(true);
   };
@@ -166,6 +173,8 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
       defaultTickerText: formTicker.trim(),
       phoneWhatsapp: formPhone.trim(),
       storeAddress: formAddress.trim(),
+      legalNotice: formLegalNotice.trim() || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+      footerBrandText: formFooterBrandText.trim() || 'Desenvolvido por: playcomunique.com.br',
       products: editingClient?.products || [],
     };
 
@@ -444,6 +453,40 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
                             Nenhum logo carregado. O banner exibirá o nome em texto.
                           </div>
                         )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rodapé Fixo da TV (Sub-Footer) */}
+                  <div className="p-3.5 bg-neutral-900 rounded-xl border border-neutral-800 space-y-2">
+                    <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" />
+                      Rodapé Fixo da TV (Sub-Footer)
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                          Texto Legal (Canto Esquerdo):
+                        </label>
+                        <input
+                          type="text"
+                          value={formLegalNotice}
+                          onChange={(e) => setFormLegalNotice(e.target.value)}
+                          placeholder="Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!"
+                          className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                          Site / Assinatura (Canto Direito):
+                        </label>
+                        <input
+                          type="text"
+                          value={formFooterBrandText}
+                          onChange={(e) => setFormFooterBrandText(e.target.value)}
+                          placeholder="Desenvolvido por: playcomunique.com.br"
+                          className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400 font-mono"
+                        />
                       </div>
                     </div>
                   </div>

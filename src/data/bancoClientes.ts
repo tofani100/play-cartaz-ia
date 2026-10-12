@@ -11,6 +11,8 @@ export const CLIENTES_PREDEFINIDOS: ClientProfile[] = [
     defaultTickerText: '★ BELÍSSIMA CASA DI FRUTAS - DESDE 2004 ★ QUALIDADE E FRESCOR NA SUA MESA ★ FRUTAS, LEGUMES E VERDURAS SELECIONADAS DIARIAMENTE ★ ACEITAMOS TODOS OS CARTÕES E PIX ★',
     phoneWhatsapp: '(11) 99999-1234',
     storeAddress: 'Rua das Frutas, 2004 - Centro Comercial',
+    legalNotice: 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+    footerBrandText: 'Desenvolvido por: playcomunique.com.br',
     products: [
       {
         id: 'prod-ai-1790482860935-0',
@@ -311,6 +313,8 @@ export const CLIENTES_PREDEFINIDOS: ClientProfile[] = [
     defaultTickerText: '★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS ★ BAIXE O NOSSO APLICATIVO E GANHE DESCONTOS EXCLUSIVOS ★ ACEITAMOS TODOS OS CARTÕES E PIX ★',
     phoneWhatsapp: '(31) 98888-7777',
     storeAddress: 'Av. Brasil, 1500 - Centro',
+    legalNotice: 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+    footerBrandText: 'Desenvolvido por: playcomunique.com.br',
     products: [
       {
         id: 'prod-cafe-caboclo-500g',
@@ -403,6 +407,8 @@ export const CLIENTES_PREDEFINIDOS: ClientProfile[] = [
     defaultTickerText: '★ CORTES NOBRES E SELECIONADOS PARA SEU CHURRASCO ★ CARNES RESFRIADAS COM PADRÃO PREMIUM ★ ENTREGAMOS NA SUA CASA ★',
     phoneWhatsapp: '(11) 97777-5555',
     storeAddress: 'Alameda dos Churrascos, 450',
+    legalNotice: 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+    footerBrandText: 'Desenvolvido por: playcomunique.com.br',
     products: [
       {
         id: 'prod-picanha-1kg',
@@ -465,6 +471,8 @@ export const CLIENTES_PREDEFINIDOS: ClientProfile[] = [
     defaultTickerText: '★ MEDICAMENTOS COM ATÉ 50% DE DESCONTO ★ FARMACÊUTICO PRESENTE EM TODO HORÁRIO ★ TELE-ENTREGA RÁPIDA ★',
     phoneWhatsapp: '(21) 96666-4444',
     storeAddress: 'Praça Central da Saúde, 80',
+    legalNotice: 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+    footerBrandText: 'Desenvolvido por: playcomunique.com.br',
     products: [
       {
         id: 'prod-fralda-pampers-mega',
@@ -527,6 +535,8 @@ export const CLIENTES_PREDEFINIDOS: ClientProfile[] = [
     defaultTickerText: '★ PÃO QUENTINHO SAINDO A TODA HORA ★ BOLOS, TORTAS E DOCES ARTESANAIS ★ VENHA TOMAR UM CAFÉ ESPECIAL CONOSCO ★',
     phoneWhatsapp: '(41) 95555-3333',
     storeAddress: 'Rua das Delícias, 120',
+    legalNotice: 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+    footerBrandText: 'Desenvolvido por: playcomunique.com.br',
     products: [
       {
         id: 'prod-pao-frances-1kg',

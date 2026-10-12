@@ -251,18 +251,18 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
           <button
             id="btn-open-ai-parser"
             onClick={onOpenAiParser}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-neutral-950 font-bold px-3 py-1.5 rounded-lg text-xs shadow-md shadow-amber-500/20 transition-transform active:scale-95"
-            title="Interpretar lista de produtos do WhatsApp com IA e corrigir erros"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-neutral-950 font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-md shadow-amber-500/20 transition-transform active:scale-95 shrink-0"
+            title="IA Lista - Interpretar lista de produtos do WhatsApp com IA e corrigir erros"
           >
             <Sparkles className="w-3.5 h-3.5 fill-black" />
-            <span className="font-extrabold">IA Corretor de Lista</span>
+            <span className="font-extrabold">IA Lista</span>
           </button>
 
           {/* Client & Colors Manager */}
           <button
             id="btn-open-clients"
             onClick={onOpenThemeModal}
-            className="p-1.5 sm:px-2.5 sm:py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg text-xs flex items-center gap-1.5 border border-neutral-700 transition-colors"
+            className="p-1.5 sm:px-2.5 sm:py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg text-xs flex items-center gap-1.5 border border-neutral-700 transition-colors shrink-0"
             title="Gerenciar Clientes, Logos e Cores da TV"
           >
             <Store className="w-3.5 h-3.5 text-amber-400" />
@@ -276,7 +276,7 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
             onClick={() => {
               window.dispatchEvent(new CustomEvent('tv-replay-animation'));
             }}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-sm shrink-0"
             title="Visualizar a animação profissional dos blocos no banner"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -287,19 +287,18 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
           <button
             id="btn-open-tv-player"
             onClick={onOpenTvPlayer}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-md shadow-emerald-600/20 transition-transform active:scale-95"
-            title="Abrir Modo TV Indoor (tv.playcomunique.com.br/player) com rotação automática"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-md shadow-emerald-600/20 transition-transform active:scale-95 shrink-0"
+            title="Modo TV Indoor (tv.playcomunique.com.br/player) com rotação automática"
           >
             <Play className="w-3.5 h-3.5 fill-white" />
-            <span className="hidden sm:inline">Modo TV Indoor</span>
-            <span className="sm:hidden">Player</span>
+            <span className="font-extrabold">TV</span>
           </button>
 
           {/* Export Button */}
           <button
             id="btn-open-export"
             onClick={onOpenExportModal}
-            className="flex items-center gap-1.5 bg-neutral-100 hover:bg-white text-black font-bold px-3 py-1.5 rounded-lg text-xs shadow transition-transform active:scale-95"
+            className="flex items-center gap-1.5 bg-neutral-100 hover:bg-white text-black font-bold px-2.5 py-1.5 rounded-lg text-xs shadow transition-transform active:scale-95 shrink-0"
             title="Baixar vídeo animado (WebM/MP4) ou imagem HD"
           >
             <Download className="w-3.5 h-3.5" />
@@ -309,15 +308,15 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
           {/* Cloud Sync Status Indicator */}
           <div
             id="badge-cloud-sync"
-            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors select-none ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors select-none shrink-0 ${
               cloudSyncStatus === 'syncing'
                 ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse'
                 : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
             }`}
-            title={`Sincronização em Nuvem ativa (Firebase Firestore - ${firebaseConfig.projectId})`}
+            title={cloudSyncStatus === 'syncing' ? 'Salvando na Nuvem...' : `Nuvem Conectada (Firestore - ${firebaseConfig.projectId})`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'syncing' ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
-            <span>{cloudSyncStatus === 'syncing' ? 'Salvando na Nuvem...' : 'Nuvem Conectada ☁️'}</span>
+            <span>{cloudSyncStatus === 'syncing' ? '... NC' : 'NC'}</span>
           </div>
 
           {/* Badge de Ambiente DEV */}

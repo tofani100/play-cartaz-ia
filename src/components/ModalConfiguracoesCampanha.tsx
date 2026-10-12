@@ -47,8 +47,8 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
     campaignSubtitle: campaign.campaignSubtitle || '',
     validityText: campaign.validityText,
     tickerText: campaign.tickerText,
-    legalNotice: campaign.legalNotice || '',
-    footerBrandText: campaign.footerBrandText || 'playcomunique.com.br',
+    legalNotice: campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+    footerBrandText: campaign.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
     animationStyle: campaign.animationStyle,
     slideDuration: campaign.slideDuration || 6,
     showClock: campaign.showClock,
@@ -68,8 +68,8 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
         campaignSubtitle: campaign.campaignSubtitle || '',
         validityText: campaign.validityText,
         tickerText: campaign.tickerText,
-        legalNotice: campaign.legalNotice || '',
-        footerBrandText: campaign.footerBrandText || 'playcomunique.com.br',
+        legalNotice: campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+        footerBrandText: campaign.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
         animationStyle: campaign.animationStyle,
         slideDuration: campaign.slideDuration || 6,
         showClock: campaign.showClock,
@@ -796,7 +796,7 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                       value={formData.legalNotice}
                       onChange={(e) => setFormData({ ...formData, legalNotice: e.target.value })}
                       className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                      placeholder="Ex: Imagens meramente ilustrativas. Produto estoqu de bebidas a menores de 18 anos."
+                      placeholder="Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!"
                     />
                   </div>
 
@@ -809,7 +809,7 @@ export const ModalConfiguracoesCampanha: React.FC<ModalConfiguracoesCampanhaProp
                       value={formData.footerBrandText}
                       onChange={(e) => setFormData({ ...formData, footerBrandText: e.target.value })}
                       className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
-                      placeholder="Ex: playcomunique.com.br"
+                      placeholder="Desenvolvido por: playcomunique.com.br"
                     />
                   </div>
                 </div>

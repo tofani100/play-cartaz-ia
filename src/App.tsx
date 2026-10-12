@@ -59,8 +59,8 @@ const DEFAULT_CAMPAIGN_RAW: BannerCampaign = {
   campaignTitle: 'FESTIVAL DE OFERTAS BELÍSSIMA CASA DI FRUTAS',
   campaignSubtitle: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
   validityText: 'Ofertas válidas de 10 a 22/09/2026 ou enquanto durarem os estoques',
-  legalNotice: 'Imagens meramente ilustrativas. Proibida venda de bebidas a menores de 18 anos.',
-  footerBrandText: 'playcomunique.com.br',
+  legalNotice: 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+  footerBrandText: 'Desenvolvido por: playcomunique.com.br',
   tickerText: '★★ OFERTAS IMBATÍVEIS EM TODAS AS LOJAS. ★ QUALIDADE BELÍSSIMA CASA DI FRUTAS ★ COMPRE PELO WHATSAPP ★ ACEITAMOS TODOS OS CARTÕES E PIX ★',
   format: '16:9',
   themeId: 'hortifruti-green',
@@ -106,9 +106,12 @@ export default function App() {
             (parsed.clientName === 'Belíssima Casa di Frutas' || parsed.id === 'camp-1'
               ? '/logos/belissima-casa-di-frutas.png'
               : ''),
-          footerBrandText: (!parsed.footerBrandText || parsed.footerBrandText === 'ts.playcomunique.com.br')
-            ? 'playcomunique.com.br'
+          footerBrandText: (!parsed.footerBrandText || parsed.footerBrandText === 'ts.playcomunique.com.br' || parsed.footerBrandText === 'playcomunique.com.br')
+            ? 'Desenvolvido por: playcomunique.com.br'
             : parsed.footerBrandText,
+          legalNotice: (!parsed.legalNotice || parsed.legalNotice.includes('Proibida venda'))
+            ? 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'
+            : parsed.legalNotice,
         };
         if (!restored.formatsData || Object.keys(restored.formatsData).length === 0) {
           restored.formatsData = initFormatsData(restored);
@@ -120,11 +123,15 @@ export default function App() {
             if (fmtData.campaignTitle !== undefined) restored.campaignTitle = fmtData.campaignTitle;
             if (fmtData.campaignSubtitle !== undefined) restored.campaignSubtitle = fmtData.campaignSubtitle;
             if (fmtData.validityText !== undefined) restored.validityText = fmtData.validityText;
-            if (fmtData.legalNotice !== undefined) restored.legalNotice = fmtData.legalNotice;
-            if (fmtData.footerBrandText !== undefined && fmtData.footerBrandText !== 'ts.playcomunique.com.br') {
+            if (fmtData.legalNotice !== undefined && !fmtData.legalNotice.includes('Proibida venda')) {
+              restored.legalNotice = fmtData.legalNotice;
+            } else {
+              restored.legalNotice = 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!';
+            }
+            if (fmtData.footerBrandText !== undefined && fmtData.footerBrandText !== 'ts.playcomunique.com.br' && fmtData.footerBrandText !== 'playcomunique.com.br') {
               restored.footerBrandText = fmtData.footerBrandText;
             } else {
-              restored.footerBrandText = 'playcomunique.com.br';
+              restored.footerBrandText = 'Desenvolvido por: playcomunique.com.br';
             }
             if (fmtData.tickerText !== undefined) restored.tickerText = fmtData.tickerText;
             if (fmtData.phoneWhatsapp !== undefined) restored.phoneWhatsapp = fmtData.phoneWhatsapp;
@@ -485,6 +492,19 @@ export default function App() {
     // Se o cliente editado for o ativo no banner, sincroniza imediatamente
     if (campaign.clientName.toLowerCase() === newOrUpdatedClient.name.toLowerCase() || campaign.clientId === newOrUpdatedClient.id) {
       setCampaign((prev) => {
+        const updatedFormats = prev.formatsData ? { ...prev.formatsData } : initFormatsData(prev);
+        ALL_BANNER_FORMATS.forEach((fmt) => {
+          if (updatedFormats[fmt]) {
+            updatedFormats[fmt] = {
+              ...updatedFormats[fmt]!,
+              phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp !== undefined ? newOrUpdatedClient.phoneWhatsapp : updatedFormats[fmt]!.phoneWhatsapp,
+              storeAddress: newOrUpdatedClient.storeAddress !== undefined ? newOrUpdatedClient.storeAddress : updatedFormats[fmt]!.storeAddress,
+              legalNotice: newOrUpdatedClient.legalNotice !== undefined ? newOrUpdatedClient.legalNotice : updatedFormats[fmt]!.legalNotice,
+              footerBrandText: newOrUpdatedClient.footerBrandText !== undefined ? newOrUpdatedClient.footerBrandText : updatedFormats[fmt]!.footerBrandText,
+            };
+          }
+        });
+
         const nextCamp: BannerCampaign = {
           ...prev,
           clientId: newOrUpdatedClient.id,
@@ -496,6 +516,9 @@ export default function App() {
           tickerText: newOrUpdatedClient.defaultTickerText !== undefined ? newOrUpdatedClient.defaultTickerText : prev.tickerText,
           phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp !== undefined ? newOrUpdatedClient.phoneWhatsapp : (prev.phoneWhatsapp || ''),
           storeAddress: newOrUpdatedClient.storeAddress !== undefined ? newOrUpdatedClient.storeAddress : (prev.storeAddress || ''),
+          legalNotice: newOrUpdatedClient.legalNotice !== undefined ? newOrUpdatedClient.legalNotice : (prev.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'),
+          footerBrandText: newOrUpdatedClient.footerBrandText !== undefined ? newOrUpdatedClient.footerBrandText : (prev.footerBrandText || 'Desenvolvido por: playcomunique.com.br'),
+          formatsData: updatedFormats,
         };
         try {
           localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCamp));
@@ -583,7 +606,8 @@ export default function App() {
         showClientLogo: Boolean(client.logoUrl),
         themeId: client.themeId,
         segment: client.segment,
-        footerBrandText: prev.footerBrandText || 'playcomunique.com.br',
+        footerBrandText: client.footerBrandText || target.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
+        legalNotice: client.legalNotice || target.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
         tickerText: client.defaultTickerText !== undefined ? client.defaultTickerText : (target.defaultTickerText || prev.tickerText),
         phoneWhatsapp: client.phoneWhatsapp !== undefined ? client.phoneWhatsapp : (target.phoneWhatsapp || ''),
         storeAddress: client.storeAddress !== undefined ? client.storeAddress : (target.storeAddress || ''),
@@ -610,6 +634,8 @@ export default function App() {
         campaignTitle: currentFmtData?.campaignTitle || initialTargetCampaign.campaignTitle,
         campaignSubtitle: currentFmtData?.campaignSubtitle || initialTargetCampaign.campaignSubtitle,
         validityText: currentFmtData?.validityText || initialTargetCampaign.validityText,
+        legalNotice: currentFmtData?.legalNotice || initialTargetCampaign.legalNotice,
+        footerBrandText: currentFmtData?.footerBrandText || initialTargetCampaign.footerBrandText,
         products: activeProducts,
         customStyles: currentFmtData?.customStyles || initialTargetCampaign.customStyles,
         formatsData: nextFormats,
@@ -703,7 +729,7 @@ export default function App() {
         campaignSubtitle: targetFormatData.campaignSubtitle !== undefined ? targetFormatData.campaignSubtitle : prev.campaignSubtitle,
         validityText: targetFormatData.validityText !== undefined ? targetFormatData.validityText : prev.validityText,
         legalNotice: targetFormatData.legalNotice !== undefined ? targetFormatData.legalNotice : prev.legalNotice,
-        footerBrandText: targetFormatData.footerBrandText || prev.footerBrandText || 'playcomunique.com.br',
+        footerBrandText: targetFormatData.footerBrandText || prev.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
         tickerText: targetFormatData.tickerText !== undefined ? targetFormatData.tickerText : prev.tickerText,
         phoneWhatsapp: targetFormatData.phoneWhatsapp !== undefined ? targetFormatData.phoneWhatsapp : prev.phoneWhatsapp,
         storeAddress: targetFormatData.storeAddress !== undefined ? targetFormatData.storeAddress : prev.storeAddress,

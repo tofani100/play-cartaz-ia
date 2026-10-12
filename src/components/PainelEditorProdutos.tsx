@@ -130,7 +130,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   };
 
   const productBgInputRef = useRef<HTMLInputElement>(null);
-  const clientLogoInputRef = useRef<HTMLInputElement>(null);
 
   const activeProduct = products[currentProductIndex] || products[0];
 
@@ -712,7 +711,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 1. Textos & Identidade (Topo do Banner)
               </span>
               <span className="text-[10px] text-neutral-400 block">
-                Título superior, validade, logotipo da empresa e rodapé fixo
+                Título superior e validade das ofertas
               </span>
             </div>
           </div>
@@ -724,80 +723,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
 
         {openSections.campanha && (
           <div className="space-y-3">
-            {/* 1. Logotipo & Nome do Cliente */}
-            <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-amber-300 flex items-center gap-1">
-                  <ImageIcon className="w-3 h-3 text-amber-400" />
-                  <span>Logotipo da Empresa / Loja</span>
-                </span>
-
-                {onToggleShowLogo && (
-                  <label className="flex items-center gap-1.5 text-[11px] text-neutral-300 cursor-pointer font-bold">
-                    <input
-                      type="checkbox"
-                      checked={showClientLogo !== false}
-                      onChange={onToggleShowLogo}
-                      className="rounded bg-neutral-800 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
-                    />
-                    <span>Exibir no Banner</span>
-                  </label>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={campaign?.clientLogoUrl?.startsWith('data:') ? 'Arquivo de logo carregado' : (campaign?.clientLogoUrl || '')}
-                  onChange={(e) => onUpdateCampaign && onUpdateCampaign({ clientLogoUrl: e.target.value, showClientLogo: true })}
-                  placeholder="/logos/empresa.png ou link..."
-                  className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono truncate"
-                />
-
-                <input
-                  ref={clientLogoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      compressImageToDataUrl(file, 800, 800, 0.88).then((compressed) => {
-                        if (compressed && onUpdateCampaign) {
-                          onUpdateCampaign({ clientLogoUrl: compressed, showClientLogo: true });
-                        }
-                      });
-                    }
-                  }}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = (ev: Event) => {
-                      const file = (ev.target as HTMLInputElement)?.files?.[0];
-                      if (file) {
-                        compressImageToDataUrl(file, 800, 800, 0.88).then((compressed) => {
-                          if (compressed && onUpdateCampaign) {
-                            onUpdateCampaign({ clientLogoUrl: compressed, showClientLogo: true });
-                          }
-                        });
-                      }
-                    };
-                    input.click();
-                  }}
-                  className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Logo</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Título Superior da Campanha + Fonte + Cor */}
+            {/* 1. Título Superior da Campanha + Fonte + Cor */}
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
                 Título Superior da Campanha (Cabeçalho)
@@ -897,7 +823,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
               </div>
             </div>
 
-            {/* 3. Texto de Validade das Ofertas + Fonte + Cor + Tamanho */}
+            {/* 2. Texto de Validade das Ofertas + Fonte + Cor + Tamanho */}
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
                 Texto de Validade das Ofertas
@@ -993,41 +919,6 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Rodapé Fixo da TV (Sub-Footer): Texto Legal e Site/Assinatura */}
-            <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
-              <span className="text-[10px] font-black uppercase text-amber-300 block">
-                Rodapé Fixo da TV (Sub-Footer)
-              </span>
-
-              <div className="space-y-1.5">
-                <div>
-                  <label className="block text-[9px] text-neutral-400 mb-0.5">
-                    Texto Legal (Canto Esquerdo):
-                  </label>
-                  <input
-                    type="text"
-                    value={campaign?.legalNotice || ''}
-                    onChange={(e) => onUpdateCampaign && onUpdateCampaign({ legalNotice: e.target.value })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                    placeholder="Imagens meramente ilustrativas..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] text-neutral-400 mb-0.5">
-                    Site / Assinatura (Canto Direito):
-                  </label>
-                  <input
-                    type="text"
-                    value={campaign?.footerBrandText || 'playcomunique.com.br'}
-                    onChange={(e) => onUpdateCampaign && onUpdateCampaign({ footerBrandText: e.target.value })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
-                    placeholder="playcomunique.com.br"
-                  />
                 </div>
               </div>
             </div>

@@ -168,10 +168,13 @@ export interface ClientProfile {
   tradeName?: string;
   segment: string;
   logoUrl?: string;
+  showLogo?: boolean;
   themeId: ThemePresetId;
   defaultTickerText?: string;
   phoneWhatsapp?: string;
   storeAddress?: string;
+  legalNotice?: string;
+  footerBrandText?: string;
   createdAt?: string;
   products?: ProductItem[]; // Banners e ofertas salvos exclusivamente para este cliente
   customStyles?: BannerCustomStyles;
@@ -209,8 +212,8 @@ export function extractFormatData(c: BannerCampaign): FormatCampaignData {
     campaignTitle: c.campaignTitle || '',
     campaignSubtitle: c.campaignSubtitle || '',
     validityText: c.validityText || '',
-    legalNotice: c.legalNotice || '',
-    footerBrandText: c.footerBrandText || 'playcomunique.com.br',
+    legalNotice: c.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+    footerBrandText: c.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
     tickerText: c.tickerText || '',
     phoneWhatsapp: c.phoneWhatsapp || '',
     storeAddress: c.storeAddress || '',

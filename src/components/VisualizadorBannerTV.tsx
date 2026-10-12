@@ -686,7 +686,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               key={`title-block-${product.id}-${animCycle}`}
               id="tv-anim-title-block" 
               {...getBlock1Props()}
-              className={`flex flex-col ${isVertical ? 'items-center text-center mt-0' : 'items-start text-left mt-3 sm:mt-5 md:mt-6'} w-full shrink-0 bg-transparent`}
+              className={`flex flex-col ${isVertical ? 'items-center text-center mt-0' : isFeedPortrait ? 'items-center text-center mt-0' : isSquare ? 'items-start text-left mt-1 sm:mt-1.5' : 'items-start text-left mt-3 sm:mt-5 md:mt-6'} w-full shrink-0 bg-transparent`}
             >
               {/* Nome Comercial do Produto com o 1º Selo Promocional ocupando o início da primeira linha à frente do texto */}
               <h2 
@@ -701,16 +701,16 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                     ? 'text-[15px] sm:text-[18px] md:text-[21px] leading-snug text-center'
                     : isSquare
                     ? (product.title || '').length > 40
-                      ? 'text-[17px] sm:text-[20px] md:text-[23px] leading-tight'
+                      ? 'text-[16px] sm:text-[18px] md:text-[21px] leading-tight'
                       : (product.title || '').length > 25
-                        ? 'text-[19px] sm:text-[22px] md:text-[26px] leading-tight'
-                        : 'text-[22px] sm:text-[26px] md:text-[30px] leading-tight'
+                        ? 'text-[18px] sm:text-[21px] md:text-[24px] leading-tight'
+                        : 'text-[21px] sm:text-[24px] md:text-[28px] leading-tight'
                     : (product.title || '').length > 40
                       ? 'text-[15px] sm:text-[18px] md:text-[22px] lg:text-[26px] xl:text-[28px] leading-[1.14]'
                       : (product.title || '').length > 25
                         ? 'text-[16px] sm:text-[19px] md:text-[23px] lg:text-[27px] xl:text-[31px] leading-[1.15]'
                         : 'text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[34px] leading-[1.16]'
-                } font-black tracking-tight break-words bg-transparent line-clamp-3`}
+                } font-black tracking-tight break-words bg-transparent line-clamp-4`}
               >
                 {product.badge && (
                   <motion.span 
@@ -1168,7 +1168,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 : 'truncate max-w-[75%] text-[9px] sm:text-[10px] md:text-[11px]'
             }`}
           >
-            {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibida a venda de bebidas alcoólicas a menores de 18 anos!'}
+            {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'}
           </span>
           <span 
             style={{ color: effectiveStyles.footerBrandColor || '#fbbf24' }}
@@ -1178,7 +1178,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                 : 'text-[9px] sm:text-[10px] md:text-[11px]'
             }`}
           >
-            {campaign.footerBrandText && campaign.footerBrandText !== 'ts.playcomunique.com.br' ? campaign.footerBrandText : 'playcomunique.com.br'}
+            {campaign.footerBrandText && campaign.footerBrandText !== 'ts.playcomunique.com.br' ? campaign.footerBrandText : 'Desenvolvido por: playcomunique.com.br'}
           </span>
         </div>
       </div>
