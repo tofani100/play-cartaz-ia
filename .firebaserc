@@ -3,5 +3,22 @@
     "default": "cartaz-ia-playcomunique",
     "prod": "cartaz-ia-playcomunique",
     "dev": "cartaz-ia-dev-778bc"
-  }
+  },
+  "targets": {
+    "cartaz-ia-playcomunique": {
+      "hosting": {
+        "prod": [
+          "play-cartaz-ia-prod"
+        ]
+      }
+    },
+    "cartaz-ia-dev-778bc": {
+      "hosting": {
+        "dev": [
+          "cartaz-ia-dev-778bc"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

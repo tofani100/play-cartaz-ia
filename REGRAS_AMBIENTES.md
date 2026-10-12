@@ -7,13 +7,20 @@
   - **URL:** `https://cartaz-ia-dev-778bc.web.app` (e testes locais em `localhost`).
   - **Projeto Firebase:** `cartaz-ia-dev-778bc`
   - **Branch Git:** `dev`
+  - **Comando Deploy DEV:** `npm run build:dev && firebase deploy --only hosting:dev --project cartaz-ia-dev-778bc`
   - **Uso:** Todas as novas funcionalidades, testes de layout, correções e experimentos devem ser feitos **EXCLUSIVAMENTE em DEV**.
   
-- **PROD (Produção Oficial):**
-  - **URL:** `https://cartaz-ia-playcomunique.web.app`
-  - **Projeto Firebase:** `cartaz-ia-playcomunique`
+- **PROD (Produção Oficial do Play Cartaz IA):**
+  - **URL:** `https://play-cartaz-ia-prod.web.app`
+  - **Projeto Firebase:** `cartaz-ia-playcomunique` (Target Hosting: `prod`, Site: `play-cartaz-ia-prod`)
   - **Branch Git:** `main`
+  - **Banco de Dados (Firestore):** Conectado ao Firestore oficial de `cartaz-ia-playcomunique` (clientes reais e campanhas).
+  - **Comando Deploy PROD:** `npm run build:prod && firebase deploy --only hosting:prod --project cartaz-ia-playcomunique`
   - **Uso:** Ambiente oficial dos clientes e campanhas reais em operação.
+
+- **PROJETO BASE44 (Mesa de Luz / BannerFlow v10):**
+  - **URL:** `https://cartaz-ia-playcomunique.web.app/mesa-de-luz`
+  - **Aviso Mandatório:** NÃO SOBRESCREVER. Este site hospeda o sistema isolado Base44.
 
 ---
 
