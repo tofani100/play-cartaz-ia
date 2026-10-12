@@ -1,9 +1,78 @@
 rules_version = '2';
-// DEV and PROD open rules for Play Cartaz IA
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ==========================================
+    // SISTEMA 1: PLAY CARTAZ IA (Coleções Web)
+    // ==========================================
+
+    // 1. Campanhas de cartazes
+    match /campaigns/{campaignId} {
+      allow read: if true;
+      allow create, update: if true;
+      // Proteger a campanha ativa central contra exclusão acidental
+      allow delete: if campaignId != 'active_campaign';
+    }
+
+    // 2. Perfis de clientes cadastrados no Play Cartaz IA
+    match /clients/{clientId} {
+      allow read: if true;
+      allow create, update: if true;
+      // Proteger a lista de clientes contra exclusão
+      allow delete: if false;
+    }
+
+    // 3. Imagens de produtos e logotipos otimizados
+    match /product_images/{imageId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // ==========================================
+    // SISTEMA 2: MESA DE LUZ / BASE44 (v10)
+    // ==========================================
+
+    // 4. Clientes da Mesa de Luz
+    match /Cliente/{clienteId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false; // Proteção contra exclusão em massa de clientes
+    }
+
+    // 5. Campanhas da Mesa de Luz
+    match /Campanha/{campanhaId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // 6. Banners gerados
+    match /BannerCampanha/{bannerId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // 7. Encartes de ofertas
+    match /Encarte/{encarteId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // 8. Catálogo base de produtos comerciais
+    match /ProdutoBase/{produtoId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // ==========================================
+    // 9. BLOQUEIO GLOBAL: Coleções desconhecidas
+    // ==========================================
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
