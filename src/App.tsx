@@ -1203,10 +1203,26 @@ export default function App() {
     const now = new Date().toISOString();
     setCampaign((prev) => {
       const currentFormat = prev.format || '16:9';
+      const isMaster16x9 = currentFormat === '16:9';
       const tempMerged = { ...prev, ...updated, _syncTimestamp: now };
 
       // Sincroniza as alterações no formatsData especificamente para o formato ativo
       const nextFormatsData = syncCurrentFormatToFormatsData(prev.formatsData, currentFormat, tempMerged);
+
+      // REGRA DE OURO 16:9 MESTRE PARA TÍTULO DA CAMPANHA E VALIDADE DAS OFERTAS:
+      // Se alterado no padrão TV 16:9: campaignTitle e validityText atualizam incondicionalmente todos os demais formatos (9:16, 1:1, 4:5, tabloid)!
+      // Se alterado em outros formatos: a alteração fica salva apenas nele mesmo!
+      if (isMaster16x9 && (updated.campaignTitle !== undefined || updated.validityText !== undefined)) {
+        ALL_BANNER_FORMATS.forEach((fmt) => {
+          if (fmt === '16:9') return;
+          const fmtData = nextFormatsData[fmt] || extractFormatData(prev);
+          nextFormatsData[fmt] = {
+            ...fmtData,
+            ...(updated.campaignTitle !== undefined ? { campaignTitle: updated.campaignTitle } : {}),
+            ...(updated.validityText !== undefined ? { validityText: updated.validityText } : {}),
+          };
+        });
+      }
 
       const next: BannerCampaign = {
         ...tempMerged,
