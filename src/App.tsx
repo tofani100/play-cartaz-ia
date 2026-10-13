@@ -532,6 +532,21 @@ export default function App() {
 
   const handleDeleteClient = (clientId: string) => {
     setClients((prev) => {
+      const clientToTrash = prev.find((c) => c.id === clientId);
+      if (clientToTrash) {
+        try {
+          const raw = localStorage.getItem('playcomunique_lixeira_clientes');
+          const trash: any[] = raw ? JSON.parse(raw) : [];
+          if (!trash.some((t: any) => t.client?.id === clientId)) {
+            trash.unshift({
+              client: clientToTrash,
+              deletedAt: new Date().toISOString(),
+            });
+            localStorage.setItem('playcomunique_lixeira_clientes', JSON.stringify(trash.slice(0, 50)));
+          }
+        } catch (e) {}
+      }
+
       const updated = prev.filter((c) => c.id !== clientId);
       try {
         localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   Check, 
@@ -10,18 +10,39 @@ import {
   Upload, 
   Image as ImageIcon, 
   Search, 
-  Store,
-  Phone,
-  Sparkles,
-  ArrowRight,
-  Play,
-  Loader2,
-  FileText
+  Store, 
+  Phone, 
+  Sparkles, 
+  ArrowRight, 
+  Play, 
+  Loader2, 
+  FileText,
+  RotateCcw,
+  AlertTriangle,
+  ShieldAlert,
+  Clock
 } from 'lucide-react';
 import { ClientProfile, ThemePresetId, BannerCampaign } from '../tiposGeradorBanner';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
 import { aplicarMascaraTelefoneInput } from '../utils/mascaraTelefone';
+
+export interface ClientTrashItem {
+  client: ClientProfile;
+  deletedAt: string;
+}
+
+const CLIENTS_TRASH_STORAGE_KEY = 'playcomunique_lixeira_clientes';
+const TRASH_RETENTION_DAYS = 15;
+const TRASH_RETENTION_MS = TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+function getClientRemainingDays(deletedAtStr: string): number {
+  const deletedTime = new Date(deletedAtStr).getTime();
+  const elapsed = Date.now() - deletedTime;
+  const remainingMs = TRASH_RETENTION_MS - elapsed;
+  if (remainingMs <= 0) return 0;
+  return Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+}
 
 interface ModalGestaoClientesProps {
   isOpen: boolean;
@@ -52,7 +73,35 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
   onToggleShowLogo,
   onOpenTvPlayer,
 }) => {
-  const [activeTab, setActiveTab] = useState<'clients' | 'themes'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'themes' | 'trash'>('clients');
+  const [trashClients, setTrashClients] = useState<ClientTrashItem[]>([]);
+  const [clientToDelete, setClientToDelete] = useState<ClientProfile | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+
+  const loadTrashClients = () => {
+    try {
+      const raw = localStorage.getItem(CLIENTS_TRASH_STORAGE_KEY);
+      if (!raw) {
+        setTrashClients([]);
+        return;
+      }
+      const parsed: ClientTrashItem[] = JSON.parse(raw);
+      const valid = parsed.filter((item) => getClientRemainingDays(item.deletedAt) > 0);
+      setTrashClients(valid);
+      if (valid.length !== parsed.length) {
+        localStorage.setItem(CLIENTS_TRASH_STORAGE_KEY, JSON.stringify(valid));
+      }
+    } catch {
+      setTrashClients([]);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadTrashClients();
+    }
+  }, [isOpen]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [editingClient, setEditingClient] = useState<ClientProfile | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -254,6 +303,21 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
             >
               <Palette className="w-3.5 h-3.5" />
               <span>Paletas de Cores</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('trash');
+                setIsFormOpen(false);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                activeTab === 'trash'
+                  ? 'bg-amber-500 text-neutral-950 shadow'
+                  : 'bg-neutral-800 text-neutral-300 hover:text-white'
+              }`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Lixeira ({trashClients.length})</span>
             </button>
           </div>
 
@@ -658,12 +722,11 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    if (confirm(`Tem certeza que deseja excluir o cliente "${cli.name}"?`)) {
-                                      onDeleteClient(cli.id);
-                                    }
+                                    setClientToDelete(cli);
+                                    setDeleteConfirmInput('');
                                   }}
                                   className="p-1.5 rounded-lg bg-neutral-900 hover:bg-red-900/40 text-neutral-400 hover:text-red-400 transition-colors"
-                                  title="Excluir cliente"
+                                  title="Excluir cliente com segurança (Lixeira de 15 dias)"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -781,8 +844,249 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
               </div>
             </div>
           )}
+
+          {/* TAB 3: LIXEIRA TEMPORÁRIA DE CLIENTES (15 DIAS) */}
+          {activeTab === 'trash' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-neutral-950/80 border border-neutral-800 rounded-xl">
+                <div>
+                  <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                    <RotateCcw className="w-4 h-4 text-amber-400" />
+                    <span>Lixeira de Clientes (Retenção de 15 Dias)</span>
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Clientes excluídos ficam protegidos aqui por 15 dias com todos os seus banners salvos intactos.
+                  </p>
+                </div>
+
+                {trashClients.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trashClients.forEach((t) => onSaveClient(t.client));
+                        setTrashClients([]);
+                        localStorage.removeItem(CLIENTS_TRASH_STORAGE_KEY);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Restaurar Todos</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Tem certeza que deseja esvaziar a lixeira de clientes? Todos os itens serão apagados definitivamente.')) {
+                          setTrashClients([]);
+                          localStorage.removeItem(CLIENTS_TRASH_STORAGE_KEY);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 bg-neutral-900 hover:bg-red-900/30 text-neutral-400 hover:text-red-400 border border-neutral-800 rounded-lg text-xs font-bold transition-all"
+                    >
+                      Esvaziar Lixeira
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {trashClients.length === 0 ? (
+                <div className="text-center py-16 px-4 bg-neutral-950/40 rounded-2xl border border-neutral-800/60">
+                  <RotateCcw className="w-12 h-12 text-neutral-600 mx-auto mb-3 opacity-40" />
+                  <h5 className="text-sm font-bold text-white">A Lixeira de Clientes está vazia</h5>
+                  <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
+                    Nenhum cliente foi excluído recentemente. Quando um cliente for removido, ele ficará protegido aqui por até 15 dias para recuperação em 1 clique.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-h-[60vh] overflow-y-auto pr-1">
+                  {trashClients.map((item, idx) => {
+                    const remainingDays = getClientRemainingDays(item.deletedAt);
+                    const formattedDate = new Date(item.deletedAt).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    });
+
+                    return (
+                      <div
+                        key={item.client.id || idx}
+                        className="p-4 rounded-xl border border-neutral-800 bg-neutral-950 flex flex-col justify-between gap-3 group hover:border-neutral-700 transition-all"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
+                            {item.client.logoUrl ? (
+                              <img
+                                src={item.client.logoUrl}
+                                alt={item.client.name}
+                                className="w-full h-full object-contain p-1"
+                              />
+                            ) : (
+                              <Store className="w-6 h-6 text-neutral-500" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <h5 className="text-sm font-black text-white truncate" title={item.client.name}>
+                              {item.client.name}
+                            </h5>
+                            <span className="text-[11px] text-neutral-400 block truncate">
+                              {item.client.tradeName || item.client.segment}
+                            </span>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                                {item.client.products?.length || 0} banner(s) salvos
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>Restam {remainingDays} dia(s)</span>
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-neutral-500 block mt-1">
+                              Excluído em: {formattedDate}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-900">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSaveClient(item.client);
+                              const updated = trashClients.filter((_, i) => i !== idx);
+                              setTrashClients(updated);
+                              localStorage.setItem(CLIENTS_TRASH_STORAGE_KEY, JSON.stringify(updated));
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black text-xs rounded-lg transition-all shadow"
+                            title="Restaurar este cliente e todos os seus banners de volta para a lista ativa"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Restaurar Cliente</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Excluir definitivamente o cliente "${item.client.name}" da lixeira? Esta ação não pode ser desfeita.`)) {
+                                const updated = trashClients.filter((_, i) => i !== idx);
+                                setTrashClients(updated);
+                                localStorage.setItem(CLIENTS_TRASH_STORAGE_KEY, JSON.stringify(updated));
+                              }
+                            }}
+                            className="p-1.5 bg-neutral-900 hover:bg-red-900/40 text-neutral-400 hover:text-red-400 rounded-lg transition-colors border border-neutral-800"
+                            title="Excluir permanentemente da lixeira"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Modal de Confirmação Rigorosa para Excluir Cliente */}
+      {clientToDelete && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md bg-neutral-900 border border-red-500/40 rounded-2xl shadow-2xl p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-base font-black text-white">
+                  Confirmar Exclusão do Cliente
+                </h4>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Ação com retenção de segurança na lixeira de 15 dias.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-400">Cliente a excluir:</span>
+                <span className="font-extrabold text-white truncate max-w-[200px]">{clientToDelete.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-400">Banners salvos:</span>
+                <span className="font-bold text-amber-400">{clientToDelete.products?.length || 0} banner(s)</span>
+              </div>
+              <p className="text-[11px] text-emerald-300/90 pt-1 border-t border-neutral-900 leading-relaxed flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                <span>Este cliente e seus banners irão para a <strong>Lixeira Temporária</strong> e ficarão protegidos por <strong>15 dias</strong> para restauração em 1 clique.</span>
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-neutral-300 mb-1.5">
+                Para confirmar a exclusão, digite exatamente o nome do cliente:
+              </label>
+              <div className="mb-2">
+                <code className="text-xs font-mono font-bold px-2 py-1 bg-neutral-950 border border-neutral-800 rounded text-amber-400 select-all inline-block">
+                  {clientToDelete.name}
+                </code>
+              </div>
+              <input
+                type="text"
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                placeholder={`Digite "${clientToDelete.name}" aqui...`}
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-red-500 rounded-xl px-3 py-2 text-xs text-white placeholder-neutral-600 outline-none font-semibold transition-all"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setClientToDelete(null);
+                  setDeleteConfirmInput('');
+                }}
+                className="px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                disabled={deleteConfirmInput.trim().toLowerCase() !== clientToDelete.name.trim().toLowerCase()}
+                onClick={() => {
+                  // Move para a lixeira de clientes
+                  const newTrashItem: ClientTrashItem = {
+                    client: clientToDelete,
+                    deletedAt: new Date().toISOString(),
+                  };
+                  const updatedTrash = [newTrashItem, ...trashClients.filter((t) => t.client.id !== clientToDelete.id)];
+                  setTrashClients(updatedTrash);
+                  try {
+                    localStorage.setItem(CLIENTS_TRASH_STORAGE_KEY, JSON.stringify(updatedTrash));
+                  } catch (e) {}
+
+                  // Executa exclusão da lista ativa
+                  onDeleteClient(clientToDelete.id);
+                  setClientToDelete(null);
+                  setDeleteConfirmInput('');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  deleteConfirmInput.trim().toLowerCase() === clientToDelete.name.trim().toLowerCase()
+                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 cursor-pointer active:scale-95'
+                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed opacity-60'
+                }`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Mover para Lixeira (15 Dias)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

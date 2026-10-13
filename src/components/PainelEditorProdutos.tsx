@@ -93,11 +93,30 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
   const [showTrashModal, setShowTrashModal] = useState<boolean>(false);
   const [trashItems, setTrashItems] = useState<Array<{ product: ProductItem; clientName: string; deletedAt: string }>>([]);
 
+  const BANNER_TRASH_RETENTION_MS = 15 * 24 * 60 * 60 * 1000;
+
+  const getBannerRemainingDays = (deletedAtStr?: string) => {
+    if (!deletedAtStr) return 15;
+    const deletedTime = new Date(deletedAtStr).getTime();
+    const elapsed = Date.now() - deletedTime;
+    const remainingMs = BANNER_TRASH_RETENTION_MS - elapsed;
+    if (remainingMs <= 0) return 0;
+    return Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+  };
+
   const loadTrash = () => {
     try {
       const raw = localStorage.getItem('playcomunique_lixeira_banners');
       if (raw) {
-        setTrashItems(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        const valid = parsed.filter((item: any) => {
+          if (!item.deletedAt) return true;
+          return getBannerRemainingDays(item.deletedAt) > 0;
+        });
+        setTrashItems(valid);
+        if (valid.length !== parsed.length) {
+          localStorage.setItem('playcomunique_lixeira_banners', JSON.stringify(valid));
+        }
       } else {
         setTrashItems([]);
       }
@@ -1581,9 +1600,9 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   <RotateCcw className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white">Lixeira de Banners</h3>
+                  <h3 className="text-base font-black text-white">Lixeira de Banners (Retenção de 15 Dias)</h3>
                   <p className="text-xs text-neutral-400">
-                    Recupere banners excluídos a qualquer momento com apenas 1 clique.
+                    Recupere banners excluídos a qualquer momento com apenas 1 clique. Itens protegidos por 15 dias.
                   </p>
                 </div>
               </div>
@@ -1602,7 +1621,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                   <RotateCcw className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   <p className="text-sm font-semibold">A Lixeira de Banners está vazia.</p>
                   <p className="text-xs text-neutral-600 mt-1">
-                    Nenhum banner foi removido recentemente. Quando você excluir um item, ele ficará protegido aqui.
+                    Nenhum banner foi removido recentemente. Quando você excluir um item, ele ficará protegido aqui por 15 dias.
                   </p>
                 </div>
               ) : (
@@ -1638,7 +1657,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                           <h4 className="text-xs font-bold text-white truncate" title={item.product.title}>
                             {item.product.title}
                           </h4>
-                          <div className="flex items-center gap-2 text-[10px] text-neutral-400 mt-0.5">
+                          <div className="flex items-center gap-2 text-[10px] text-neutral-400 mt-0.5 flex-wrap">
                             <span className="text-amber-400 font-bold">R$ {item.product.price}</span>
                             {item.product.originalPrice && (
                               <span className="line-through text-neutral-500">R$ {item.product.originalPrice}</span>
@@ -1648,6 +1667,9 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                                 {item.clientName}
                               </span>
                             )}
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                              Restam {getBannerRemainingDays(item.deletedAt)} dia(s)
+                            </span>
                           </div>
                         </div>
                       </div>
