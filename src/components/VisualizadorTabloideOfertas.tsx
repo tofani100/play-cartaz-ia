@@ -22,7 +22,8 @@ import {
   Star,
   ChevronLeft,
   ChevronRight,
-  GripVertical
+  GripVertical,
+  MapPin
 } from 'lucide-react';
 import { 
   BannerCampaign, 
@@ -1342,12 +1343,23 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
           }}
         >
           <div className="flex flex-wrap items-center justify-between gap-1">
-            {/* Accepted Payments */}
+            {/* Endereço da Loja ou Meios de Pagamento */}
             <div className="flex items-center gap-1 min-w-0">
-              <CreditCard className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
-              <span className={`${effectiveRows >= 4 ? 'text-[7.5px]' : 'text-[9px] sm:text-[9.5px]'} font-bold text-neutral-200 truncate`}>
-                Aceitamos PIX, Todos os Cartões e Vales Alimentação
-              </span>
+              {campaign.storeAddress ? (
+                <>
+                  <MapPin className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
+                  <span className={`${effectiveRows >= 4 ? 'text-[7.5px]' : 'text-[9px] sm:text-[9.5px]'} font-bold text-neutral-200 truncate`} title={campaign.storeAddress}>
+                    {campaign.storeAddress}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <CreditCard className={`${effectiveRows >= 4 ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400 shrink-0`} />
+                  <span className={`${effectiveRows >= 4 ? 'text-[7.5px]' : 'text-[9px] sm:text-[9.5px]'} font-bold text-neutral-200 truncate`}>
+                    Aceitamos PIX, Todos os Cartões e Vales Alimentação
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Direct Contact - WHATSAPP INTEGRAL EM LINHA ÚNICA SEM QUEBRA */}

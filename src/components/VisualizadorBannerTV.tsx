@@ -17,7 +17,8 @@ import {
   Wand2,
   Sparkles,
   ChevronDown,
-  MessageCircle
+  MessageCircle,
+  MapPin
 } from 'lucide-react';
 import { 
   BannerCampaign, 
@@ -1160,16 +1161,28 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
               : 'items-center justify-between text-left'
           } border-t border-neutral-800/80 shrink-0 w-full`}
         >
-          <span 
-            style={{ color: effectiveStyles.footerLegalColor || undefined }}
-            className={`font-medium ${
-              (isVertical || isSquare) 
-                ? 'text-[8.5px] sm:text-[9.5px] leading-tight text-neutral-300 text-center' 
-                : 'truncate max-w-[75%] text-[9px] sm:text-[10px] md:text-[11px]'
-            }`}
-          >
-            {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'}
-          </span>
+          <div className="flex items-center gap-2 truncate max-w-[75%]">
+            <span 
+              style={{ color: effectiveStyles.footerLegalColor || undefined }}
+              className={`font-medium ${
+                (isVertical || isSquare) 
+                  ? 'text-[8.5px] sm:text-[9.5px] leading-tight text-neutral-300 text-center' 
+                  : 'truncate text-[9px] sm:text-[10px] md:text-[11px]'
+              }`}
+            >
+              {campaign.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'}
+            </span>
+            {campaign.storeAddress && !isVertical && !isSquare && (
+              <span className="text-amber-400/90 text-[8.5px] sm:text-[9.5px] md:text-[10px] truncate flex items-center gap-1 shrink-0 font-medium">
+                • <MapPin className="w-2.5 h-2.5 shrink-0 inline text-amber-400" /> {campaign.storeAddress}
+              </span>
+            )}
+          </div>
+          {campaign.storeAddress && (isVertical || isSquare) && (
+            <span className="text-[7.5px] sm:text-[8.5px] text-amber-300/85 truncate flex items-center gap-1 justify-center font-medium">
+              <MapPin className="w-2.5 h-2.5 shrink-0 text-amber-400" /> {campaign.storeAddress}
+            </span>
+          )}
           <span 
             style={{ color: effectiveStyles.footerBrandColor || '#fbbf24' }}
             className={`font-bold shrink-0 ${

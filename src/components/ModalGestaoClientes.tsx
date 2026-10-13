@@ -22,7 +22,7 @@ import {
   ShieldAlert,
   Clock
 } from 'lucide-react';
-import { ClientProfile, ThemePresetId, BannerCampaign } from '../tiposGeradorBanner';
+import { ClientProfile, ThemePresetId, BannerCampaign, ALL_BANNER_FORMATS } from '../tiposGeradorBanner';
 import { BANCO_TEMAS_VISUAIS } from '../data/bancoTemasVisuais';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
 import { aplicarMascaraTelefoneInput } from '../utils/mascaraTelefone';
@@ -212,6 +212,23 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
       } catch (_) {}
     }
 
+    let formatsData = editingClient?.formatsData;
+    if (formatsData) {
+      const nextFmts = { ...formatsData };
+      ALL_BANNER_FORMATS.forEach((fmt) => {
+        if (nextFmts[fmt]) {
+          nextFmts[fmt] = {
+            ...nextFmts[fmt]!,
+            phoneWhatsapp: formPhone.trim(),
+            storeAddress: formAddress.trim(),
+            legalNotice: formLegalNotice.trim() || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+            footerBrandText: formFooterBrandText.trim() || 'Desenvolvido por: playcomunique.com.br',
+          };
+        }
+      });
+      formatsData = nextFmts;
+    }
+
     const clientToSave: ClientProfile = {
       id: editingClient ? editingClient.id : `cli-${Date.now()}`,
       name: formName.trim(),
@@ -225,6 +242,11 @@ export const ModalGestaoClientes: React.FC<ModalGestaoClientesProps> = ({
       legalNotice: formLegalNotice.trim() || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
       footerBrandText: formFooterBrandText.trim() || 'Desenvolvido por: playcomunique.com.br',
       products: editingClient?.products || [],
+      formatsData,
+      customStyles: editingClient?.customStyles,
+      campaignTitle: editingClient?.campaignTitle,
+      campaignSubtitle: editingClient?.campaignSubtitle,
+      validityText: editingClient?.validityText,
     };
 
     onSaveClient(clientToSave);

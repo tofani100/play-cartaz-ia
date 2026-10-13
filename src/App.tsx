@@ -97,9 +97,26 @@ export default function App() {
           products = INITIAL_PRODUCTS;
         }
 
+        // Garante que o telefone e endereço do cliente cadastrado estejam presentes
+        let matchedClientPhone = '';
+        let matchedClientAddress = '';
+        try {
+          const savedClientsRaw = localStorage.getItem('playcomunique_clientes');
+          if (savedClientsRaw) {
+            const savedClientsList = JSON.parse(savedClientsRaw);
+            const cMatch = savedClientsList.find((c: any) => c.id === parsed.clientId || (c.name && parsed.clientName && c.name.toLowerCase() === parsed.clientName.toLowerCase()));
+            if (cMatch) {
+              matchedClientPhone = cMatch.phoneWhatsapp || '';
+              matchedClientAddress = cMatch.storeAddress || '';
+            }
+          }
+        } catch (_) {}
+
         const restored: BannerCampaign = {
           ...DEFAULT_CAMPAIGN,
           ...parsed,
+          phoneWhatsapp: parsed.phoneWhatsapp || matchedClientPhone || '',
+          storeAddress: parsed.storeAddress || matchedClientAddress || '',
           products,
           clientLogoUrl:
             parsed.clientLogoUrl ||
@@ -134,13 +151,26 @@ export default function App() {
               restored.footerBrandText = 'Desenvolvido por: playcomunique.com.br';
             }
             if (fmtData.tickerText !== undefined) restored.tickerText = fmtData.tickerText;
-            if (fmtData.phoneWhatsapp !== undefined) restored.phoneWhatsapp = fmtData.phoneWhatsapp;
-            if (fmtData.storeAddress !== undefined) restored.storeAddress = fmtData.storeAddress;
+            restored.phoneWhatsapp = fmtData.phoneWhatsapp || matchedClientPhone || restored.phoneWhatsapp || '';
+            restored.storeAddress = fmtData.storeAddress || matchedClientAddress || restored.storeAddress || '';
             if (fmtData.themeId) restored.themeId = fmtData.themeId;
             if (fmtData.customStyles !== undefined) restored.customStyles = fmtData.customStyles;
             if (fmtData.products && fmtData.products.length > 0) restored.products = fmtData.products;
           }
         }
+
+        // Garante que todos os formatos tenham os contatos corretos
+        ALL_BANNER_FORMATS.forEach((fmt) => {
+          if (restored.formatsData && restored.formatsData[fmt]) {
+            if (!restored.formatsData[fmt]!.phoneWhatsapp && (matchedClientPhone || restored.phoneWhatsapp)) {
+              restored.formatsData[fmt]!.phoneWhatsapp = matchedClientPhone || restored.phoneWhatsapp;
+            }
+            if (!restored.formatsData[fmt]!.storeAddress && (matchedClientAddress || restored.storeAddress)) {
+              restored.formatsData[fmt]!.storeAddress = matchedClientAddress || restored.storeAddress;
+            }
+          }
+        });
+
         return restored;
       }
     } catch (e) {
@@ -165,12 +195,9 @@ export default function App() {
         setCampaign((prev) => {
           const localTs = (prev as any)._syncTimestamp || '';
           const remoteTs = (cloudCampaign as any)._syncTimestamp || '';
-
-          // PROTEÇÃO MÁXIMA CONTRA PERDA NO F5:
-          // Se houver alteração local recente (< 90s) ou se a versão local for mais recente ou igual à da nuvem,
-          // mantém os dados locais do usuário intactos e sincroniza de volta para a nuvem
+          const savedLastLocalEditTime = parseInt(localStorage.getItem('playcomunique_last_local_edit_time') || '0', 10);
+          const hadRecentLocalEdit = (Date.now() - Math.max(lastLocalEditTimeRef.current, savedLastLocalEditTime)) < 120000;
           const isLocalNewerOrEqual = localTs && remoteTs ? new Date(localTs).getTime() >= new Date(remoteTs).getTime() : false;
-          const hadRecentLocalEdit = Date.now() - lastLocalEditTimeRef.current < 90000;
 
           if (isLocalNewerOrEqual || hadRecentLocalEdit) {
             console.log('[CloudSync] Versão local é mais recente ou em edição ativa. Preservando estado local e gravando na nuvem.');
@@ -181,7 +208,25 @@ export default function App() {
           // Se a nuvem for genuinamente mais recente:
           const localProducts = prev.products || [];
           const remoteProducts = cloudCampaign.products || [];
-          let finalProducts = remoteProducts.length > 0 ? remoteProducts : localProducts;
+          let finalProducts = localProducts.length > 0 ? localProducts : remoteProducts;
+
+          // Busca perfil do cliente para garantir contatos completos
+          let clientPhone = '';
+          let clientAddress = '';
+          try {
+            const savedClientsRaw = localStorage.getItem('playcomunique_clientes');
+            if (savedClientsRaw) {
+              const savedClientsList: ClientProfile[] = JSON.parse(savedClientsRaw);
+              const matchedClient = savedClientsList.find((c) => c.id === (cloudCampaign.clientId || prev.clientId) || c.name.toLowerCase() === (cloudCampaign.clientName || prev.clientName).toLowerCase());
+              if (matchedClient) {
+                clientPhone = matchedClient.phoneWhatsapp || '';
+                clientAddress = matchedClient.storeAddress || '';
+              }
+            }
+          } catch (_) {}
+
+          const finalPhone = cloudCampaign.phoneWhatsapp || prev.phoneWhatsapp || clientPhone || '';
+          const finalAddress = cloudCampaign.storeAddress || prev.storeAddress || clientAddress || '';
 
           isRemoteUpdateRef.current = true;
           if ((cloudCampaign as any)._syncTimestamp) {
@@ -208,17 +253,27 @@ export default function App() {
             ? cloudCampaign.formatsData
             : (prev.formatsData && Object.keys(prev.formatsData).length > 0 ? prev.formatsData : initFormatsData(cloudCampaign));
 
+          // Garante que nenhum formato fique sem telefone e endereço
+          ALL_BANNER_FORMATS.forEach((fmt) => {
+            if (formatsData[fmt]) {
+              if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
+              if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
+            }
+          });
+
           const activeFormatData = formatsData[targetFormat] || extractFormatData(cloudCampaign);
 
           const mergedCampaign: BannerCampaign = {
             ...prev,
             ...cloudCampaign,
             format: targetFormat,
+            phoneWhatsapp: finalPhone,
+            storeAddress: finalAddress,
             campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : cloudCampaign.campaignTitle,
             campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
             validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
-            customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : cloudCampaign.customStyles,
-            products: activeFormatData.products && activeFormatData.products.length > 0 ? activeFormatData.products : finalProducts,
+            customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (prev.customStyles || cloudCampaign.customStyles),
+            products: (prev.products && prev.products.length > 0) ? prev.products : (activeFormatData.products && activeFormatData.products.length > 0 ? activeFormatData.products : finalProducts),
             clientLogoUrl: finalLogo,
             formatsData,
           };
@@ -252,16 +307,21 @@ export default function App() {
               finalLogo = lc.logoUrl;
             }
 
-            // Preserva produtos locais se tiver mais
-            let finalProducts = cc.products || [];
-            if (lc.products && lc.products.length > finalProducts.length) {
-              finalProducts = lc.products;
-            }
+            // Preserva produtos locais customizados se existirem
+            const finalProducts = (lc.products && lc.products.length > 0) ? lc.products : (cc.products || []);
+            const finalPhone = lc.phoneWhatsapp || cc.phoneWhatsapp || '';
+            const finalAddress = lc.storeAddress || cc.storeAddress || '';
+            const finalFormats = lc.formatsData || cc.formatsData;
+            const finalCustomStyles = lc.customStyles || cc.customStyles;
 
             return {
               ...cc,
               ...lc,
+              phoneWhatsapp: finalPhone,
+              storeAddress: finalAddress,
               products: finalProducts,
+              formatsData: finalFormats,
+              customStyles: finalCustomStyles,
               logoUrl: finalLogo,
             };
           });
@@ -306,9 +366,10 @@ export default function App() {
         return;
       }
 
-      // PROTEÇÃO CRÍTICA: Se o usuário fez uma alteração local recente (< 15s),
+      // PROTEÇÃO CRÍTICA: Se o usuário fez uma alteração local recente (< 30s),
       // não deixa um snapshot antigo sobrescrever o trabalho em andamento
-      if (Date.now() - lastLocalEditTimeRef.current < 15000) {
+      const savedLastLocalEditTime = parseInt(localStorage.getItem('playcomunique_last_local_edit_time') || '0', 10);
+      if (Date.now() - Math.max(lastLocalEditTimeRef.current, savedLastLocalEditTime) < 30000) {
         return;
       }
 
@@ -322,11 +383,19 @@ export default function App() {
           return prev;
         }
 
-        // Preserva imagens locais válidas de upload caso o snapshot ainda não as tenha propagado
+        // Preserva customizações e imagens locais válidas caso o snapshot ainda não as tenha propagado
         const mergedProducts = (updatedCampaign.products || []).map((remP) => {
           const locP = prev.products.find((lp) => lp.id === remP.id);
-          if (locP?.imageUrl && locP.imageUrl.startsWith('data:image') && (!remP.imageUrl || remP.imageUrl.startsWith('cloud-img:'))) {
-            return { ...remP, imageUrl: locP.imageUrl };
+          if (locP) {
+            return {
+              ...remP,
+              title: locP.title || remP.title,
+              price: locP.price || remP.price,
+              originalPrice: locP.originalPrice || remP.originalPrice,
+              unit: locP.unit || remP.unit,
+              customStyles: locP.customStyles || remP.customStyles,
+              imageUrl: (locP.imageUrl && locP.imageUrl.startsWith('data:image')) ? locP.imageUrl : (remP.imageUrl || locP.imageUrl),
+            };
           }
           return remP;
         });
@@ -337,15 +406,27 @@ export default function App() {
           : (prev.formatsData && Object.keys(prev.formatsData).length > 0 ? prev.formatsData : initFormatsData(updatedCampaign));
 
         const activeFormatData = formatsData[targetFormat] || extractFormatData(updatedCampaign);
+        const finalPhone = updatedCampaign.phoneWhatsapp || prev.phoneWhatsapp || '';
+        const finalAddress = updatedCampaign.storeAddress || prev.storeAddress || '';
+
+        // Garante que nenhum formato fique sem telefone e endereço
+        ALL_BANNER_FORMATS.forEach((fmt) => {
+          if (formatsData[fmt]) {
+            if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
+            if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
+          }
+        });
 
         const nextSynced: BannerCampaign = {
           ...prev,
           ...updatedCampaign,
           format: targetFormat,
+          phoneWhatsapp: finalPhone,
+          storeAddress: finalAddress,
           campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : updatedCampaign.campaignTitle,
           campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : updatedCampaign.campaignSubtitle,
           validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : updatedCampaign.validityText,
-          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : updatedCampaign.customStyles,
+          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (prev.customStyles || updatedCampaign.customStyles),
           products: activeFormatData.products && activeFormatData.products.length > 0 ? activeFormatData.products : mergedProducts,
           formatsData,
         };
@@ -456,7 +537,32 @@ export default function App() {
       const exists = prev.some((c) => c.id === newOrUpdatedClient.id);
       let updated: ClientProfile[];
       if (exists) {
-        updated = prev.map((c) => (c.id === newOrUpdatedClient.id ? { ...c, ...newOrUpdatedClient } : c));
+        updated = prev.map((c) => {
+          if (c.id === newOrUpdatedClient.id) {
+            const clientFormats = c.formatsData ? { ...c.formatsData } : undefined;
+            if (clientFormats) {
+              ALL_BANNER_FORMATS.forEach((fmt) => {
+                if (clientFormats[fmt]) {
+                  clientFormats[fmt] = {
+                    ...clientFormats[fmt]!,
+                    phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || '',
+                    storeAddress: newOrUpdatedClient.storeAddress || '',
+                    legalNotice: newOrUpdatedClient.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+                    footerBrandText: newOrUpdatedClient.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
+                  };
+                }
+              });
+            }
+            return {
+              ...c,
+              ...newOrUpdatedClient,
+              phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || '',
+              storeAddress: newOrUpdatedClient.storeAddress || '',
+              formatsData: clientFormats || newOrUpdatedClient.formatsData,
+            };
+          }
+          return c;
+        });
       } else {
         const withProducts: ClientProfile = {
           ...newOrUpdatedClient,
@@ -481,6 +587,7 @@ export default function App() {
       }
       try {
         localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {
         console.warn('Aviso: localStorage cheio, backup mantido no IndexedDB e Nuvem:', e);
       }
@@ -492,15 +599,16 @@ export default function App() {
     // Se o cliente editado for o ativo no banner, sincroniza imediatamente
     if (campaign.clientName.toLowerCase() === newOrUpdatedClient.name.toLowerCase() || campaign.clientId === newOrUpdatedClient.id) {
       setCampaign((prev) => {
+        const now = new Date().toISOString();
         const updatedFormats = prev.formatsData ? { ...prev.formatsData } : initFormatsData(prev);
         ALL_BANNER_FORMATS.forEach((fmt) => {
           if (updatedFormats[fmt]) {
             updatedFormats[fmt] = {
               ...updatedFormats[fmt]!,
-              phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp !== undefined ? newOrUpdatedClient.phoneWhatsapp : updatedFormats[fmt]!.phoneWhatsapp,
-              storeAddress: newOrUpdatedClient.storeAddress !== undefined ? newOrUpdatedClient.storeAddress : updatedFormats[fmt]!.storeAddress,
-              legalNotice: newOrUpdatedClient.legalNotice !== undefined ? newOrUpdatedClient.legalNotice : updatedFormats[fmt]!.legalNotice,
-              footerBrandText: newOrUpdatedClient.footerBrandText !== undefined ? newOrUpdatedClient.footerBrandText : updatedFormats[fmt]!.footerBrandText,
+              phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || '',
+              storeAddress: newOrUpdatedClient.storeAddress || '',
+              legalNotice: newOrUpdatedClient.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+              footerBrandText: newOrUpdatedClient.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
             };
           }
         });
@@ -514,17 +622,24 @@ export default function App() {
           themeId: newOrUpdatedClient.themeId,
           segment: newOrUpdatedClient.segment,
           tickerText: newOrUpdatedClient.defaultTickerText !== undefined ? newOrUpdatedClient.defaultTickerText : prev.tickerText,
-          phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp !== undefined ? newOrUpdatedClient.phoneWhatsapp : (prev.phoneWhatsapp || ''),
-          storeAddress: newOrUpdatedClient.storeAddress !== undefined ? newOrUpdatedClient.storeAddress : (prev.storeAddress || ''),
-          legalNotice: newOrUpdatedClient.legalNotice !== undefined ? newOrUpdatedClient.legalNotice : (prev.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!'),
-          footerBrandText: newOrUpdatedClient.footerBrandText !== undefined ? newOrUpdatedClient.footerBrandText : (prev.footerBrandText || 'Desenvolvido por: playcomunique.com.br'),
+          phoneWhatsapp: newOrUpdatedClient.phoneWhatsapp || '',
+          storeAddress: newOrUpdatedClient.storeAddress || '',
+          legalNotice: newOrUpdatedClient.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!',
+          footerBrandText: newOrUpdatedClient.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
           formatsData: updatedFormats,
+          _syncTimestamp: now,
         };
         try {
           localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCamp));
+          localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
         } catch (_) {}
         saveLocalCampaign(nextCamp).catch(() => {});
-        saveCampaignToCloud(nextCamp).catch(() => {});
+        saveCampaignToCloud(nextCamp).then((ok) => {
+          if (ok) {
+            lastSavedTimestampRef.current = now;
+            setCloudSyncStatus('saved');
+          }
+        }).catch(() => {});
         return nextCamp;
       });
     }
@@ -638,19 +753,36 @@ export default function App() {
         nextFormats = initFormatsData(initialTargetCampaign);
       }
 
+      // Propaga o telefone e endereço do cliente para todos os formatos salvos para nunca perder
+      ALL_BANNER_FORMATS.forEach((fmt) => {
+        if (nextFormats[fmt]) {
+          nextFormats[fmt] = {
+            ...nextFormats[fmt]!,
+            phoneWhatsapp: client.phoneWhatsapp || target.phoneWhatsapp || nextFormats[fmt]!.phoneWhatsapp || '',
+            storeAddress: client.storeAddress || target.storeAddress || nextFormats[fmt]!.storeAddress || '',
+            legalNotice: client.legalNotice || target.legalNotice || nextFormats[fmt]!.legalNotice || '',
+            footerBrandText: client.footerBrandText || target.footerBrandText || nextFormats[fmt]!.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
+          };
+        }
+      });
+
       // Se o formato atual já tiver customizações salvas para este cliente, aplica-as
       const currentFmtData = nextFormats[prev.format];
       const activeProducts = currentFmtData?.products && currentFmtData.products.length > 0
         ? currentFmtData.products
         : targetProducts;
 
+      const now = new Date().toISOString();
       const nextCampaign: BannerCampaign = {
         ...initialTargetCampaign,
+        _syncTimestamp: now,
         campaignTitle: currentFmtData?.campaignTitle || initialTargetCampaign.campaignTitle,
         campaignSubtitle: currentFmtData?.campaignSubtitle || initialTargetCampaign.campaignSubtitle,
         validityText: currentFmtData?.validityText || initialTargetCampaign.validityText,
-        legalNotice: currentFmtData?.legalNotice || initialTargetCampaign.legalNotice,
-        footerBrandText: currentFmtData?.footerBrandText || initialTargetCampaign.footerBrandText,
+        legalNotice: client.legalNotice || target.legalNotice || (currentFmtData?.legalNotice || initialTargetCampaign.legalNotice),
+        footerBrandText: client.footerBrandText || target.footerBrandText || (currentFmtData?.footerBrandText || initialTargetCampaign.footerBrandText),
+        phoneWhatsapp: client.phoneWhatsapp || target.phoneWhatsapp || (currentFmtData?.phoneWhatsapp || initialTargetCampaign.phoneWhatsapp || ''),
+        storeAddress: client.storeAddress || target.storeAddress || (currentFmtData?.storeAddress || initialTargetCampaign.storeAddress || ''),
         products: activeProducts,
         customStyles: currentFmtData?.customStyles || initialTargetCampaign.customStyles,
         formatsData: nextFormats,
@@ -659,10 +791,16 @@ export default function App() {
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_active_client_id', client.id);
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
 
       saveLocalCampaign(nextCampaign).catch(() => {});
-      saveCampaignToCloud(nextCampaign).catch(() => {});
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
       return nextCampaign;
     });
   };
@@ -717,6 +855,12 @@ export default function App() {
         ? JSON.parse(JSON.stringify(targetFormatData.products))
         : (updatedFormats['16:9']?.products ? JSON.parse(JSON.stringify(updatedFormats['16:9'].products)) : prev.products);
 
+      const activeClient = clients.find((c) => c.id === prev.clientId || c.name.toLowerCase() === prev.clientName.toLowerCase());
+      const resolvedPhone = targetFormatData.phoneWhatsapp || activeClient?.phoneWhatsapp || prev.phoneWhatsapp || '';
+      const resolvedAddress = targetFormatData.storeAddress || activeClient?.storeAddress || prev.storeAddress || '';
+      const resolvedLegal = targetFormatData.legalNotice || activeClient?.legalNotice || prev.legalNotice || 'Imagens meramente ilustrativas; Proibido a venda de bebidas alcoólicas a menores de 18 anos!';
+      const resolvedFooterBrand = targetFormatData.footerBrandText || activeClient?.footerBrandText || prev.footerBrandText || 'Desenvolvido por: playcomunique.com.br';
+
       // 3. Aplica os dados do novo formato no campaign ativo
       const nextCampaign: BannerCampaign = {
         ...prev,
@@ -725,11 +869,11 @@ export default function App() {
         campaignTitle: targetFormatData.campaignTitle !== undefined ? targetFormatData.campaignTitle : prev.campaignTitle,
         campaignSubtitle: targetFormatData.campaignSubtitle !== undefined ? targetFormatData.campaignSubtitle : prev.campaignSubtitle,
         validityText: targetFormatData.validityText !== undefined ? targetFormatData.validityText : prev.validityText,
-        legalNotice: targetFormatData.legalNotice !== undefined ? targetFormatData.legalNotice : prev.legalNotice,
-        footerBrandText: targetFormatData.footerBrandText || prev.footerBrandText || 'Desenvolvido por: playcomunique.com.br',
+        legalNotice: resolvedLegal,
+        footerBrandText: resolvedFooterBrand,
         tickerText: targetFormatData.tickerText !== undefined ? targetFormatData.tickerText : prev.tickerText,
-        phoneWhatsapp: targetFormatData.phoneWhatsapp !== undefined ? targetFormatData.phoneWhatsapp : prev.phoneWhatsapp,
-        storeAddress: targetFormatData.storeAddress !== undefined ? targetFormatData.storeAddress : prev.storeAddress,
+        phoneWhatsapp: resolvedPhone,
+        storeAddress: resolvedAddress,
         themeId: targetFormatData.themeId || prev.themeId,
         customColors: targetFormatData.customColors || prev.customColors,
         customStyles: targetFormatData.customStyles ? JSON.parse(JSON.stringify(targetFormatData.customStyles)) : prev.customStyles,
@@ -746,6 +890,10 @@ export default function App() {
           ...updatedFormats,
           [fmt]: {
             ...targetFormatData,
+            phoneWhatsapp: resolvedPhone,
+            storeAddress: resolvedAddress,
+            legalNotice: resolvedLegal,
+            footerBrandText: resolvedFooterBrand,
             products: resolvedProducts,
           },
         },
@@ -753,20 +901,27 @@ export default function App() {
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
-      saveCampaignToCloud(nextCampaign).catch(() => {});
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
           c.name.toLowerCase() === prev.clientName.toLowerCase() || c.id === prev.clientId
-            ? { ...c, formatsData: updatedFormats }
+            ? { ...c, formatsData: nextCampaign.formatsData }
             : c
         );
         try {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
+        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -939,8 +1094,15 @@ export default function App() {
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -952,6 +1114,7 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
+        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -990,8 +1153,15 @@ export default function App() {
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -1003,6 +1173,7 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
+        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -1134,8 +1305,15 @@ export default function App() {
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
+      saveCampaignToCloud(nextCampaign).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
 
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
@@ -1147,6 +1325,7 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
         } catch (e) {}
         saveLocalClients(updated).catch(() => {});
+        saveClientsToCloud(updated).catch(() => {});
         return updated;
       });
 
@@ -1185,6 +1364,7 @@ export default function App() {
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
 
@@ -1246,8 +1426,15 @@ export default function App() {
 
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(next));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(next).catch(() => {});
+      saveCampaignToCloud(next).then((ok) => {
+        if (ok) {
+          lastSavedTimestampRef.current = now;
+          setCloudSyncStatus('saved');
+        }
+      }).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -1268,6 +1455,7 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
+        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
