@@ -34,6 +34,7 @@ interface BarraSuperiorProps {
   showClientLogo?: boolean;
   onToggleShowLogo?: () => void;
   cloudSyncStatus?: 'syncing' | 'saved' | 'idle';
+  onForceCloudSync?: () => void;
   clients?: ClientProfile[];
   onSelectClient?: (client: ClientProfile) => void;
   activeProductCount?: number;
@@ -51,6 +52,7 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
   showClientLogo = true,
   onToggleShowLogo,
   cloudSyncStatus = 'saved',
+  onForceCloudSync,
   clients = [],
   onSelectClient,
   activeProductCount = 0,
@@ -306,18 +308,24 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
           </button>
 
           {/* Cloud Sync Status Indicator */}
-          <div
+          <button
             id="badge-cloud-sync"
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors select-none shrink-0 ${
+            type="button"
+            onClick={onForceCloudSync}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer active:scale-95 shrink-0 ${
               cloudSyncStatus === 'syncing'
                 ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse'
-                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30 hover:border-emerald-400'
             }`}
-            title={cloudSyncStatus === 'syncing' ? 'Salvando na Nuvem...' : `Nuvem Conectada (Firestore - ${firebaseConfig.projectId})`}
+            title={
+              cloudSyncStatus === 'syncing'
+                ? 'Sincronizando com a Nuvem...'
+                : `Nuvem Conectada (${firebaseConfig.projectId}) - Clique para sincronizar agora`
+            }
           >
             <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'syncing' ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
             <span>{cloudSyncStatus === 'syncing' ? '... NC' : 'NC'}</span>
-          </div>
+          </button>
 
           {/* Badge de Ambiente DEV */}
           {isDevEnvironment() && (

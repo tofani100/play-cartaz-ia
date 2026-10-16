@@ -208,7 +208,7 @@ export default function App() {
           // Se a nuvem for genuinamente mais recente:
           const localProducts = prev.products || [];
           const remoteProducts = cloudCampaign.products || [];
-          let finalProducts = localProducts.length > 0 ? localProducts : remoteProducts;
+          let finalProducts = remoteProducts.length > 0 ? remoteProducts : localProducts;
 
           // Busca perfil do cliente para garantir contatos completos
           let clientPhone = '';
@@ -272,8 +272,10 @@ export default function App() {
             campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : cloudCampaign.campaignTitle,
             campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
             validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
-            customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (prev.customStyles || cloudCampaign.customStyles),
-            products: (prev.products && prev.products.length > 0) ? prev.products : (activeFormatData.products && activeFormatData.products.length > 0 ? activeFormatData.products : finalProducts),
+            customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (cloudCampaign.customStyles || prev.customStyles),
+            products: (activeFormatData.products && activeFormatData.products.length > 0)
+              ? activeFormatData.products
+              : finalProducts,
             clientLogoUrl: finalLogo,
             formatsData,
           };
@@ -307,16 +309,18 @@ export default function App() {
               finalLogo = lc.logoUrl;
             }
 
-            // Preserva produtos locais customizados se existirem
-            const finalProducts = (lc.products && lc.products.length > 0) ? lc.products : (cc.products || []);
-            const finalPhone = lc.phoneWhatsapp || cc.phoneWhatsapp || '';
-            const finalAddress = lc.storeAddress || cc.storeAddress || '';
-            const finalFormats = lc.formatsData || cc.formatsData;
-            const finalCustomStyles = lc.customStyles || cc.customStyles;
+            // Se a nuvem tem produtos mais recentes ou mais completos, prioriza a nuvem
+            const finalProducts = (cc.products && cc.products.length > 0)
+              ? cc.products
+              : (lc.products || []);
+            const finalPhone = cc.phoneWhatsapp || lc.phoneWhatsapp || '';
+            const finalAddress = cc.storeAddress || lc.storeAddress || '';
+            const finalFormats = cc.formatsData || lc.formatsData;
+            const finalCustomStyles = cc.customStyles || lc.customStyles;
 
             return {
-              ...cc,
               ...lc,
+              ...cc,
               phoneWhatsapp: finalPhone,
               storeAddress: finalAddress,
               products: finalProducts,
@@ -383,18 +387,16 @@ export default function App() {
           return prev;
         }
 
-        // Preserva customizações e imagens locais válidas caso o snapshot ainda não as tenha propagado
+        // Integra os produtos da nuvem com prioridade remota (preserva apenas uploads locais em andamento)
         const mergedProducts = (updatedCampaign.products || []).map((remP) => {
           const locP = prev.products.find((lp) => lp.id === remP.id);
           if (locP) {
             return {
+              ...locP,
               ...remP,
-              title: locP.title || remP.title,
-              price: locP.price || remP.price,
-              originalPrice: locP.originalPrice || remP.originalPrice,
-              unit: locP.unit || remP.unit,
-              customStyles: locP.customStyles || remP.customStyles,
-              imageUrl: (locP.imageUrl && locP.imageUrl.startsWith('data:image')) ? locP.imageUrl : (remP.imageUrl || locP.imageUrl),
+              imageUrl: (locP.imageUrl && locP.imageUrl.startsWith('data:image') && remP.imageUrl?.startsWith('cloud-img:'))
+                ? locP.imageUrl
+                : (remP.imageUrl || locP.imageUrl),
             };
           }
           return remP;
@@ -525,6 +527,51 @@ export default function App() {
     }, 2500);
     return () => clearTimeout(timer);
   }, [clients]);
+
+  // Força sincronização imediata com a Nuvem (Firestore) ao clicar no botão NC
+  const handleForceCloudSync = async () => {
+    setCloudSyncStatus('syncing');
+    try {
+      const cloudCampaign = await loadCampaignFromCloud();
+      if (cloudCampaign) {
+        const targetFormat = cloudCampaign.format || campaign.format || '16:9';
+        const formatsData = cloudCampaign.formatsData && Object.keys(cloudCampaign.formatsData).length > 0
+          ? cloudCampaign.formatsData
+          : initFormatsData(cloudCampaign);
+        const activeFormatData = formatsData[targetFormat] || extractFormatData(cloudCampaign);
+
+        const updated: BannerCampaign = {
+          ...campaign,
+          ...cloudCampaign,
+          format: targetFormat,
+          campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : cloudCampaign.campaignTitle,
+          campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
+          validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
+          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (cloudCampaign.customStyles || campaign.customStyles),
+          products: (activeFormatData.products && activeFormatData.products.length > 0)
+            ? activeFormatData.products
+            : (cloudCampaign.products || campaign.products),
+          formatsData,
+        };
+        setCampaign(updated);
+        try {
+          localStorage.setItem('playcomunique_campanha', JSON.stringify(updated));
+        } catch (_) {}
+      }
+
+      const cloudClients = await loadClientsFromCloud();
+      if (cloudClients && cloudClients.length > 0) {
+        setClients(cloudClients);
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(cloudClients));
+        } catch (_) {}
+      }
+      setCloudSyncStatus('saved');
+    } catch (e) {
+      console.error('Erro ao forçar sincronização da Nuvem:', e);
+      setCloudSyncStatus('idle');
+    }
+  };
 
   const handleSaveClient = (newOrUpdatedClient: ClientProfile) => {
     // 1. Salva imediatamente o logotipo no IndexedDB e em documento dedicado do Firestore
@@ -1524,6 +1571,7 @@ export default function App() {
         showClientLogo={campaign.showClientLogo !== false}
         onToggleShowLogo={() => handleUpdateCampaign({ showClientLogo: !campaign.showClientLogo })}
         cloudSyncStatus={cloudSyncStatus}
+        onForceCloudSync={handleForceCloudSync}
         clients={clients}
         onSelectClient={handleSelectClient}
         activeProductCount={campaign.products.length}
