@@ -125,26 +125,43 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
       }
     }
 
-    // 2. Otimiza e salva cada imagem individualmente no IndexedDB e Firestore
+    // 2. Otimiza e salva cada imagem individualmente no IndexedDB e em documento dedicado no Firestore
     const processedProducts: ProductItem[] = await Promise.all(
       campaign.products.map(async (p) => {
         if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
           const compressed = await compressImageToDataUrl(p.imageUrl, 800, 800, 0.76);
           saveLocalImage(p.id, compressed).catch(() => {});
-          saveProductImageToCloud(p.id, compressed).catch(() => {});
+          await saveProductImageToCloud(p.id, compressed).catch(() => {});
           return {
             ...p,
-            imageUrl: compressed,
+            imageUrl: `cloud-img:${p.id}`,
           };
         }
         return p;
       })
     );
 
+    // 2.1 Limpa duplicações de imagens pesadas em formatsData para evitar ultrapassar o teto de 1MB do Firestore
+    const sanitizedFormatsData = campaign.formatsData ? JSON.parse(JSON.stringify(campaign.formatsData)) : undefined;
+    if (sanitizedFormatsData) {
+      Object.keys(sanitizedFormatsData).forEach((fmtKey) => {
+        const fmt = sanitizedFormatsData[fmtKey];
+        if (fmt && Array.isArray(fmt.products)) {
+          fmt.products = fmt.products.map((p: ProductItem) => {
+            if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
+              return { ...p, imageUrl: `cloud-img:${p.id}` };
+            }
+            return p;
+          });
+        }
+      });
+    }
+
     const payloadToSave: BannerCampaign = {
       ...campaign,
       clientLogoUrl: processedLogoUrl || campaign.clientLogoUrl,
       products: processedProducts,
+      formatsData: sanitizedFormatsData || campaign.formatsData,
     };
 
     // Salva cópia local integral no IndexedDB (gigabytes de capacidade)
@@ -222,11 +239,43 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
         }
       }
 
+      // Restaura quaisquer imagens referenciadas por 'cloud-img:' em formatsData
+      let restoredFormatsData = data.formatsData;
+      if (restoredFormatsData) {
+        restoredFormatsData = { ...restoredFormatsData };
+        for (const fmtKey of Object.keys(restoredFormatsData)) {
+          const fmt = restoredFormatsData[fmtKey];
+          if (fmt && Array.isArray(fmt.products)) {
+            const restoredFmtProducts = await Promise.all(
+              fmt.products.map(async (p: ProductItem) => {
+                if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
+                  const prodId = p.imageUrl.replace('cloud-img:', '');
+                  const local = await getLocalImage(prodId);
+                  if (local) return { ...p, imageUrl: local };
+                  const cloud = await loadProductImageFromCloud(prodId);
+                  if (cloud) return { ...p, imageUrl: cloud };
+                  const masterProd = restoredProducts.find((rp) => rp.id === p.id);
+                  if (masterProd && masterProd.imageUrl && !masterProd.imageUrl.startsWith('cloud-img:')) {
+                    return { ...p, imageUrl: masterProd.imageUrl };
+                  }
+                }
+                return p;
+              })
+            );
+            restoredFormatsData[fmtKey] = {
+              ...fmt,
+              products: restoredFmtProducts,
+            };
+          }
+        }
+      }
+
       console.log('[CloudSync] Campanha carregada com sucesso do Firebase Firestore na Nuvem! ✨');
       return {
         ...data,
         clientLogoUrl: restoredLogoUrl || data.clientLogoUrl,
         products: restoredProducts,
+        formatsData: restoredFormatsData || data.formatsData,
       };
     }
   } catch (err: any) {
@@ -304,10 +353,41 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
             }
           }
 
+          let restoredFormatsData = data.formatsData;
+          if (restoredFormatsData) {
+            restoredFormatsData = { ...restoredFormatsData };
+            for (const fmtKey of Object.keys(restoredFormatsData)) {
+              const fmt = restoredFormatsData[fmtKey];
+              if (fmt && Array.isArray(fmt.products)) {
+                const restoredFmtProducts = await Promise.all(
+                  fmt.products.map(async (p: ProductItem) => {
+                    if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
+                      const prodId = p.imageUrl.replace('cloud-img:', '');
+                      const local = await getLocalImage(prodId);
+                      if (local) return { ...p, imageUrl: local };
+                      const cloud = await loadProductImageFromCloud(prodId);
+                      if (cloud) return { ...p, imageUrl: cloud };
+                      const masterProd = restoredProducts.find((rp) => rp.id === p.id);
+                      if (masterProd && masterProd.imageUrl && !masterProd.imageUrl.startsWith('cloud-img:')) {
+                        return { ...p, imageUrl: masterProd.imageUrl };
+                      }
+                    }
+                    return p;
+                  })
+                );
+                restoredFormatsData[fmtKey] = {
+                  ...fmt,
+                  products: restoredFmtProducts,
+                };
+              }
+            }
+          }
+
           onUpdate({
             ...data,
             clientLogoUrl: restoredLogoUrl || data.clientLogoUrl,
             products: restoredProducts,
+            formatsData: restoredFormatsData || data.formatsData,
           });
         }
       },
