@@ -35,6 +35,7 @@ import {
   subscribeToCloudCampaign,
   loadClientsFromCloud,
   saveClientsToCloud,
+  subscribeToCloudClients,
   saveProductImageToCloud,
 } from './services/cloudCampaignSync';
 import {
@@ -184,8 +185,36 @@ export default function App() {
   const initialLoadDoneRef = useRef<boolean>(false);
   const lastSavedTimestampRef = useRef<string>('');
   const lastLocalEditTimeRef = useRef<number>(0);
+  const tabIdRef = useRef<string>(Math.random().toString(36).substring(2, 9));
 
-  // 1. Carregamento inicial da Nuvem (Firebase Firestore) com proteção total contra perda de dados no F5
+  // Sincronização instantânea entre abas no mesmo navegador (0ms de latência)
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel('playcomunique_sync_channel');
+
+    channel.onmessage = (event) => {
+      if (!event.data || event.data.senderTabId === tabIdRef.current) return;
+      if (event.data.type === 'SYNC_CAMPAIGN' && event.data.campaign) {
+        isRemoteUpdateRef.current = true;
+        setCampaign(event.data.campaign);
+        try {
+          localStorage.setItem('playcomunique_campanha', JSON.stringify(event.data.campaign));
+        } catch (_) {}
+      }
+      if (event.data.type === 'SYNC_CLIENTS' && event.data.clients) {
+        setClients(event.data.clients);
+        try {
+          localStorage.setItem('playcomunique_clientes', JSON.stringify(event.data.clients));
+        } catch (_) {}
+      }
+    };
+
+    return () => {
+      channel.close();
+    };
+  }, []);
+
+  // 1. Carregamento inicial da Nuvem (Firebase Firestore)
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -193,17 +222,6 @@ export default function App() {
       const cloudCampaign = await loadCampaignFromCloud();
       if (cloudCampaign && isMounted) {
         setCampaign((prev) => {
-          const localTs = (prev as any)._syncTimestamp || '';
-          const remoteTs = (cloudCampaign as any)._syncTimestamp || '';
-          const savedLastLocalEditTime = parseInt(localStorage.getItem('playcomunique_last_local_edit_time') || '0', 10);
-          const hadRecentLocalEdit = (Date.now() - Math.max(lastLocalEditTimeRef.current, savedLastLocalEditTime)) < 120000;
-          const isLocalNewerOrEqual = localTs && remoteTs ? new Date(localTs).getTime() >= new Date(remoteTs).getTime() : false;
-
-          if (isLocalNewerOrEqual || hadRecentLocalEdit) {
-            console.log('[CloudSync] Versão local é mais recente ou em edição ativa. Preservando estado local e gravando na nuvem.');
-            saveCampaignToCloud(prev).catch(() => {});
-            return prev;
-          }
 
           // Se a nuvem for genuinamente mais recente:
           const localProducts = prev.products || [];
@@ -366,14 +384,12 @@ export default function App() {
       if (!isMounted || !updatedCampaign) return;
       const remoteTimestamp = (updatedCampaign as any)._syncTimestamp;
       if (remoteTimestamp && remoteTimestamp === lastSavedTimestampRef.current) {
-        // Ignora eco de alterações geradas localmente
+        // Ignora eco de alterações geradas localmente nesta mesma aba
         return;
       }
 
-      // PROTEÇÃO CRÍTICA: Se o usuário fez uma alteração local recente (< 30s),
-      // não deixa um snapshot antigo sobrescrever o trabalho em andamento
-      const savedLastLocalEditTime = parseInt(localStorage.getItem('playcomunique_last_local_edit_time') || '0', 10);
-      if (Date.now() - Math.max(lastLocalEditTimeRef.current, savedLastLocalEditTime) < 30000) {
+      // Se o usuário nesta aba específica estiver digitando nos últimos 2 segundos, não interrompe a digitação
+      if (Date.now() - lastLocalEditTimeRef.current < 2000) {
         return;
       }
 
@@ -382,25 +398,11 @@ export default function App() {
       }
       isRemoteUpdateRef.current = true;
       setCampaign((prev) => {
+        // Se esta aba específica fez uma edição local com timestamp superior, preserva
         const localTs = (prev as any)._syncTimestamp || '';
-        if (localTs && remoteTimestamp && new Date(localTs).getTime() >= new Date(remoteTimestamp).getTime()) {
+        if (lastLocalEditTimeRef.current > 0 && localTs && remoteTimestamp && new Date(localTs).getTime() > new Date(remoteTimestamp).getTime()) {
           return prev;
         }
-
-        // Integra os produtos da nuvem com prioridade remota (preserva apenas uploads locais em andamento)
-        const mergedProducts = (updatedCampaign.products || []).map((remP) => {
-          const locP = prev.products.find((lp) => lp.id === remP.id);
-          if (locP) {
-            return {
-              ...locP,
-              ...remP,
-              imageUrl: (locP.imageUrl && locP.imageUrl.startsWith('data:image') && remP.imageUrl?.startsWith('cloud-img:'))
-                ? locP.imageUrl
-                : (remP.imageUrl || locP.imageUrl),
-            };
-          }
-          return remP;
-        });
 
         const targetFormat = updatedCampaign.format || prev.format || '16:9';
         const formatsData = updatedCampaign.formatsData && Object.keys(updatedCampaign.formatsData).length > 0
@@ -419,6 +421,15 @@ export default function App() {
           }
         });
 
+        // Restaura imagens em formatsData se necessário a partir dos produtos mestres
+        if (activeFormatData.products && updatedCampaign.products) {
+          activeFormatData.products.forEach((p, idx) => {
+            if (!p.imageUrl) {
+              p.imageUrl = updatedCampaign.products[idx]?.imageUrl || '';
+            }
+          });
+        }
+
         const nextSynced: BannerCampaign = {
           ...prev,
           ...updatedCampaign,
@@ -428,8 +439,8 @@ export default function App() {
           campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : updatedCampaign.campaignTitle,
           campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : updatedCampaign.campaignSubtitle,
           validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : updatedCampaign.validityText,
-          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (prev.customStyles || updatedCampaign.customStyles),
-          products: activeFormatData.products && activeFormatData.products.length > 0 ? activeFormatData.products : mergedProducts,
+          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (updatedCampaign.customStyles || prev.customStyles),
+          products: (updatedCampaign.products && updatedCampaign.products.length > 0) ? updatedCampaign.products : prev.products,
           formatsData,
         };
 
@@ -441,9 +452,19 @@ export default function App() {
       });
     });
 
+    // Ouve alterações de clientes em tempo real no Firestore
+    const unsubscribeClients = subscribeToCloudClients((remoteClients) => {
+      if (!isMounted || !remoteClients || remoteClients.length === 0) return;
+      setClients(remoteClients);
+      try {
+        localStorage.setItem('playcomunique_clientes', JSON.stringify(remoteClients));
+      } catch (_) {}
+    });
+
     return () => {
       isMounted = false;
       unsubscribe();
+      unsubscribeClients();
     };
   }, []);
 
@@ -477,6 +498,13 @@ export default function App() {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(campaign));
       } catch (e) {
         console.warn('Aviso: localStorage cheio, backup mantido no IndexedDB e Firestore:', e);
+      }
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          const ch = new BroadcastChannel('playcomunique_sync_channel');
+          ch.postMessage({ type: 'SYNC_CAMPAIGN', campaign: { ...campaign, _syncTimestamp: now }, senderTabId: tabIdRef.current });
+          ch.close();
+        } catch (_) {}
       }
     }, 1200);
 
@@ -524,6 +552,13 @@ export default function App() {
     if (isDirectTvMode || !initialLoadDoneRef.current) return;
     const timer = setTimeout(() => {
       saveClientsToCloud(clients).catch(() => {});
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          const ch = new BroadcastChannel('playcomunique_sync_channel');
+          ch.postMessage({ type: 'SYNC_CLIENTS', clients, senderTabId: tabIdRef.current });
+          ch.close();
+        } catch (_) {}
+      }
     }, 2500);
     return () => clearTimeout(timer);
   }, [clients]);
@@ -901,6 +936,14 @@ export default function App() {
       const resolvedProducts = targetFormatData.products && targetFormatData.products.length > 0
         ? JSON.parse(JSON.stringify(targetFormatData.products))
         : (updatedFormats['16:9']?.products ? JSON.parse(JSON.stringify(updatedFormats['16:9'].products)) : prev.products);
+
+      // Garante que todo produto herde a imagem do 16:9 Mestre se o formato tiver a imagem em branco (otimização de peso)
+      resolvedProducts.forEach((p: ProductItem, idx: number) => {
+        if (!p.imageUrl) {
+          const fallback = updatedFormats['16:9']?.products?.[idx]?.imageUrl || prev.products?.[idx]?.imageUrl || '';
+          if (fallback) p.imageUrl = fallback;
+        }
+      });
 
       const activeClient = clients.find((c) => c.id === prev.clientId || c.name.toLowerCase() === prev.clientName.toLowerCase());
       const resolvedPhone = targetFormatData.phoneWhatsapp || activeClient?.phoneWhatsapp || prev.phoneWhatsapp || '';

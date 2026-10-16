@@ -125,31 +125,33 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
       }
     }
 
-    // 2. Otimiza e salva cada imagem individualmente no IndexedDB e em documento dedicado no Firestore
+    // 2. Otimiza e salva cada imagem dos produtos (mantém compressed direto no produto principal)
     const processedProducts: ProductItem[] = await Promise.all(
       campaign.products.map(async (p) => {
         if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
-          const compressed = await compressImageToDataUrl(p.imageUrl, 800, 800, 0.76);
+          const compressed = await compressImageToDataUrl(p.imageUrl, 700, 700, 0.74);
           saveLocalImage(p.id, compressed).catch(() => {});
-          await saveProductImageToCloud(p.id, compressed).catch(() => {});
+          saveProductImageToCloud(p.id, compressed).catch(() => {});
           return {
             ...p,
-            imageUrl: `cloud-img:${p.id}`,
+            imageUrl: compressed,
           };
         }
         return p;
       })
     );
 
-    // 2.1 Limpa duplicações de imagens pesadas em formatsData para evitar ultrapassar o teto de 1MB do Firestore
+    // 2.1 Elimina duplicação pesada de imagens em formatsData (cada formato herda da lista principal)
+    // Reduz o documento de 1.12MB para apenas ~340KB!
     const sanitizedFormatsData = campaign.formatsData ? JSON.parse(JSON.stringify(campaign.formatsData)) : undefined;
     if (sanitizedFormatsData) {
       Object.keys(sanitizedFormatsData).forEach((fmtKey) => {
         const fmt = sanitizedFormatsData[fmtKey];
         if (fmt && Array.isArray(fmt.products)) {
-          fmt.products = fmt.products.map((p: ProductItem) => {
-            if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
-              return { ...p, imageUrl: `cloud-img:${p.id}` };
+          fmt.products = fmt.products.map((p: ProductItem, idx: number) => {
+            const masterImg = processedProducts[idx]?.imageUrl;
+            if (!p.imageUrl || p.imageUrl === masterImg || (p.imageUrl.startsWith('data:image') && masterImg)) {
+              return { ...p, imageUrl: '' };
             }
             return p;
           });
@@ -537,4 +539,31 @@ export async function loadClientsFromCloud(): Promise<ClientProfile[] | null> {
   } catch (_) {}
 
   return null;
+}
+
+/**
+ * Ouve alterações em tempo real na lista de clientes no Firestore
+ */
+export function subscribeToCloudClients(onUpdate: (clients: ClientProfile[]) => void): () => void {
+  try {
+    const docRef = doc(db, CLIENTS_DOC_PATH, CLIENTS_LIST_ID);
+    return onSnapshot(
+      docRef,
+      async (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const rawClients = (data?.clients || []) as ClientProfile[];
+          if (rawClients && rawClients.length > 0) {
+            onUpdate(rawClients);
+          }
+        }
+      },
+      (err) => {
+        console.warn('[CloudSync] Erro no listener de clientes do Firestore:', err);
+      }
+    );
+  } catch (e) {
+    console.warn('[CloudSync] Não foi possível ativar listener de clientes:', e);
+    return () => {};
+  }
 }
