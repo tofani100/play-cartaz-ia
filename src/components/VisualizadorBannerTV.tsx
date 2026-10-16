@@ -1059,7 +1059,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           <img
                             id="tv-anim-product-img"
                             crossOrigin="anonymous"
-                            src={product.imageUrl}
+                            src={(product.imageUrl && !product.imageUrl.startsWith('cloud-img:')) ? product.imageUrl : getProductFallbackImage(product.title, product.category)}
                             alt={product.title}
                             onError={(e) => handleImageError(e, product.title, product.category)}
                             className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 pointer-events-none"
@@ -1075,7 +1075,7 @@ export const VisualizadorBannerTV: React.FC<VisualizadorBannerTVProps> = ({
                           <img
                             id="tv-anim-product-img"
                             crossOrigin="anonymous"
-                            src={product.imageUrl}
+                            src={(product.imageUrl && !product.imageUrl.startsWith('cloud-img:')) ? product.imageUrl : getProductFallbackImage(product.title, product.category)}
                             alt={product.title}
                             onError={(e) => handleImageError(e, product.title, product.category)}
                             className="relative z-10 max-h-full max-w-full object-contain object-center transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"

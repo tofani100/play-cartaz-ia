@@ -271,11 +271,17 @@ export default function App() {
             ? cloudCampaign.formatsData
             : (prev.formatsData && Object.keys(prev.formatsData).length > 0 ? prev.formatsData : initFormatsData(cloudCampaign));
 
-          // Garante que nenhum formato fique sem telefone e endereço
+          // Garante que nenhum formato fique sem telefone e endereço e que produtos herdem as imagens da lista mestre
           ALL_BANNER_FORMATS.forEach((fmt) => {
             if (formatsData[fmt]) {
               if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
               if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
+              if (Array.isArray(formatsData[fmt]!.products)) {
+                formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
+                  ...p,
+                  imageUrl: p.imageUrl || finalProducts[idx]?.imageUrl || getProductFallbackImage(p.title, p.category)
+                }));
+              }
             }
           });
 
@@ -291,9 +297,7 @@ export default function App() {
             campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
             validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
             customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (cloudCampaign.customStyles || prev.customStyles),
-            products: (activeFormatData.products && activeFormatData.products.length > 0)
-              ? activeFormatData.products
-              : finalProducts,
+            products: finalProducts,
             clientLogoUrl: finalLogo,
             formatsData,
           };
@@ -413,22 +417,20 @@ export default function App() {
         const finalPhone = updatedCampaign.phoneWhatsapp || prev.phoneWhatsapp || '';
         const finalAddress = updatedCampaign.storeAddress || prev.storeAddress || '';
 
-        // Garante que nenhum formato fique sem telefone e endereço
+        // Garante que nenhum formato fique sem telefone e endereço e que produtos herdem as imagens da lista mestre
+        const masterProducts = (updatedCampaign.products && updatedCampaign.products.length > 0) ? updatedCampaign.products : prev.products;
         ALL_BANNER_FORMATS.forEach((fmt) => {
           if (formatsData[fmt]) {
             if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
             if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
+            if (Array.isArray(formatsData[fmt]!.products)) {
+              formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
+                ...p,
+                imageUrl: p.imageUrl || masterProducts[idx]?.imageUrl || getProductFallbackImage(p.title, p.category)
+              }));
+            }
           }
         });
-
-        // Restaura imagens em formatsData se necessário a partir dos produtos mestres
-        if (activeFormatData.products && updatedCampaign.products) {
-          activeFormatData.products.forEach((p, idx) => {
-            if (!p.imageUrl) {
-              p.imageUrl = updatedCampaign.products[idx]?.imageUrl || '';
-            }
-          });
-        }
 
         const nextSynced: BannerCampaign = {
           ...prev,
@@ -574,6 +576,17 @@ export default function App() {
           ? cloudCampaign.formatsData
           : initFormatsData(cloudCampaign);
         const activeFormatData = formatsData[targetFormat] || extractFormatData(cloudCampaign);
+        const masterProducts = (cloudCampaign.products && cloudCampaign.products.length > 0) ? cloudCampaign.products : campaign.products;
+
+        // Garante que todo formato tenha as imagens dos produtos mestres
+        ALL_BANNER_FORMATS.forEach((fmt) => {
+          if (formatsData[fmt] && Array.isArray(formatsData[fmt]!.products)) {
+            formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
+              ...p,
+              imageUrl: p.imageUrl || masterProducts[idx]?.imageUrl || getProductFallbackImage(p.title, p.category)
+            }));
+          }
+        });
 
         const updated: BannerCampaign = {
           ...campaign,
@@ -583,9 +596,7 @@ export default function App() {
           campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
           validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
           customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (cloudCampaign.customStyles || campaign.customStyles),
-          products: (activeFormatData.products && activeFormatData.products.length > 0)
-            ? activeFormatData.products
-            : (cloudCampaign.products || campaign.products),
+          products: masterProducts,
           formatsData,
         };
         setCampaign(updated);

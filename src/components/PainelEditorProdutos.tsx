@@ -41,7 +41,7 @@ import {
   OPCOES_TAMANHO_VALIDADE
 } from '../tiposGeradorBanner';
 import { MODELOS_BANNERS_MERCADO, FONTES_COMERCIAIS_RECOMENDADAS } from '../data/modelosBannersMercado';
-import { handleImageError } from '../utils/imageFallback';
+import { handleImageError, getProductFallbackImage } from '../utils/imageFallback';
 import { downloadElementAsPng, gerarVideoAnimadoProdutoIndividual, buildExportFilename } from '../utils/ajudanteExportacao';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
 import { aplicarMascaraTelefoneInput } from '../utils/mascaraTelefone';
@@ -430,7 +430,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
             >
               {/* Imagem do produto ampliada para identificação imediata */}
               <img
-                src={item.imageUrl}
+                src={(item.imageUrl && !item.imageUrl.startsWith('cloud-img:')) ? item.imageUrl : getProductFallbackImage(item.title, item.category)}
                 alt={item.title}
                 onError={(e) => handleImageError(e, item.title, item.category)}
                 className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-lg bg-neutral-950 border border-neutral-800 p-1 shrink-0 shadow-inner"
@@ -1648,7 +1648,7 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <img
-                          src={item.product.imageUrl}
+                          src={(item.product.imageUrl && !item.product.imageUrl.startsWith('cloud-img:')) ? item.product.imageUrl : getProductFallbackImage(item.product.title, item.product.category)}
                           alt={item.product.title}
                           onError={(e) => handleImageError(e, item.product.title, item.product.category)}
                           className="w-12 h-12 object-contain rounded bg-neutral-900 border border-neutral-800 p-0.5 shrink-0"

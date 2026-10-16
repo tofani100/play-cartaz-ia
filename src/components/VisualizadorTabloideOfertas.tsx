@@ -34,7 +34,7 @@ import {
   getScaledValidityFontSize
 } from '../tiposGeradorBanner';
 import { EtiquetaPrecoPromocional } from './EtiquetaPrecoPromocional';
-import { handleImageError } from '../utils/imageFallback';
+import { handleImageError, getProductFallbackImage } from '../utils/imageFallback';
 import { downloadElementAsPng, buildExportFilename } from '../utils/ajudanteExportacao';
 import { toCanvas } from 'html-to-image';
 import { gerarPaletaHarmonicaTabloide } from '../utils/coloristaHarmonizadorTabloide';
@@ -1090,7 +1090,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                               <img
                                 crossOrigin="anonymous"
-                                src={item.imageUrl}
+                                src={(item.imageUrl && !item.imageUrl.startsWith('cloud-img:')) ? item.imageUrl : getProductFallbackImage(item.title, item.category)}
                                 alt={item.title}
                                 onError={(e) => handleImageError(e, item.title, item.category)}
                                 className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500 pointer-events-none"
@@ -1107,7 +1107,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                               <div className="absolute bottom-1 w-3/4 h-2 bg-black/30 rounded-full blur-sm pointer-events-none" />
                               <img
                                 crossOrigin="anonymous"
-                                src={item.imageUrl}
+                                src={(item.imageUrl && !item.imageUrl.startsWith('cloud-img:')) ? item.imageUrl : getProductFallbackImage(item.title, item.category)}
                                 alt={item.title}
                                 onError={(e) => handleImageError(e, item.title, item.category)}
                                 className="relative z-10 w-auto h-auto max-h-full max-w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)] transform group-hover:scale-105 transition-transform duration-300 pointer-events-none"
@@ -1235,7 +1235,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
 
                       <img
                         crossOrigin="anonymous"
-                        src={item.imageUrl}
+                        src={(item.imageUrl && !item.imageUrl.startsWith('cloud-img:')) ? item.imageUrl : getProductFallbackImage(item.title, item.category)}
                         alt={item.title}
                         onError={(e) => handleImageError(e, item.title, item.category)}
                         className="relative z-10 w-auto h-auto max-h-full max-w-[90%] object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.65)] transform group-hover:scale-105 transition-transform duration-200"
@@ -1549,7 +1549,7 @@ export const VisualizadorTabloideOfertas: React.FC<VisualizadorTabloideOfertasPr
                     <div className="h-20 w-full flex items-center justify-center mb-2">
                       <img
                         crossOrigin="anonymous"
-                        src={prod.imageUrl}
+                        src={(prod.imageUrl && !prod.imageUrl.startsWith('cloud-img:')) ? prod.imageUrl : getProductFallbackImage(prod.title, prod.category)}
                         alt={prod.title}
                         onError={(e) => handleImageError(e, prod.title, prod.category)}
                         className="max-h-full max-w-full object-contain drop-shadow"

@@ -126,12 +126,12 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
     }
 
     // 2. Otimiza e salva cada imagem dos produtos (mantém compressed direto no produto principal)
-    const processedProducts: ProductItem[] = await Promise.all(
+    let processedProducts: ProductItem[] = await Promise.all(
       campaign.products.map(async (p) => {
         if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
           const compressed = await compressImageToDataUrl(p.imageUrl, 700, 700, 0.74);
           saveLocalImage(p.id, compressed).catch(() => {});
-          saveProductImageToCloud(p.id, compressed).catch(() => {});
+          await saveProductImageToCloud(p.id, compressed).catch(() => {});
           return {
             ...p,
             imageUrl: compressed,
@@ -142,21 +142,44 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
     );
 
     // 2.1 Elimina duplicação pesada de imagens em formatsData (cada formato herda da lista principal)
-    // Reduz o documento de 1.12MB para apenas ~340KB!
+    // Reduz o documento drasticamente de 1.12MB para apenas ~300KB!
     const sanitizedFormatsData = campaign.formatsData ? JSON.parse(JSON.stringify(campaign.formatsData)) : undefined;
     if (sanitizedFormatsData) {
       Object.keys(sanitizedFormatsData).forEach((fmtKey) => {
         const fmt = sanitizedFormatsData[fmtKey];
         if (fmt && Array.isArray(fmt.products)) {
-          fmt.products = fmt.products.map((p: ProductItem, idx: number) => {
-            const masterImg = processedProducts[idx]?.imageUrl;
-            if (!p.imageUrl || p.imageUrl === masterImg || (p.imageUrl.startsWith('data:image') && masterImg)) {
+          fmt.products = fmt.products.filter(Boolean).map((p: ProductItem) => {
+            if (p.imageUrl && (p.imageUrl.startsWith('data:image') || p.imageUrl.startsWith('cloud-img:'))) {
               return { ...p, imageUrl: '' };
             }
             return p;
           });
         }
       });
+    }
+
+    // 2.2 Blindagem contra o teto rígido de 1MB do Firestore:
+    // Se o documento ultrapassar 650KB, converte imagens de produtos excedentes para 'cloud-img:${p.id}'
+    // (a imagem continua 100% salva na coleção dedicada product_images e no IndexedDB)
+    let testPayload = {
+      ...campaign,
+      clientLogoUrl: processedLogoUrl || campaign.clientLogoUrl,
+      products: processedProducts,
+      formatsData: sanitizedFormatsData || campaign.formatsData,
+    };
+    let jsonSize = JSON.stringify(testPayload).length;
+    if (jsonSize > 650000) {
+      // Converte imagens dos produtos mais antigos para ponteiro cloud-img:
+      for (let i = 0; i < processedProducts.length && jsonSize > 650000; i++) {
+        if (processedProducts[i].imageUrl && processedProducts[i].imageUrl.startsWith('data:image')) {
+          processedProducts[i] = {
+            ...processedProducts[i],
+            imageUrl: `cloud-img:${processedProducts[i].id}`,
+          };
+          testPayload.products = processedProducts;
+          jsonSize = JSON.stringify(testPayload).length;
+        }
+      }
     }
 
     const payloadToSave: BannerCampaign = {
@@ -174,7 +197,7 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
       JSON.stringify({
         ...payloadToSave,
         _syncTimestamp: (payloadToSave as any)._syncTimestamp || new Date().toISOString(),
-        _version: '2.6.0',
+        _version: '2.6.1',
       })
     );
 
@@ -208,9 +231,9 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
     if (snap.exists()) {
       const data = snap.data() as BannerCampaign;
 
-      // Restaura quaisquer imagens referenciadas por 'cloud-img:' legado
+      // Restaura quaisquer imagens referenciadas por 'cloud-img:'
       const restoredProducts = await Promise.all(
-        (data.products || []).map(async (p) => {
+        (data.products || []).filter(Boolean).map(async (p) => {
           if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
             const prodId = p.imageUrl.replace('cloud-img:', '');
             const local = await getLocalImage(prodId);
@@ -221,6 +244,9 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
               saveLocalImage(prodId, cloud).catch(() => {});
               return { ...p, imageUrl: cloud };
             }
+            return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
+          }
+          if (!p.imageUrl) {
             return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
           }
           return p;
@@ -241,7 +267,7 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
         }
       }
 
-      // Restaura quaisquer imagens referenciadas por 'cloud-img:' em formatsData
+      // Restaura imagens em formatsData garantindo que NENHUM formato fique com fotos vazias
       let restoredFormatsData = data.formatsData;
       if (restoredFormatsData) {
         restoredFormatsData = { ...restoredFormatsData };
@@ -249,21 +275,37 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
           const fmt = restoredFormatsData[fmtKey];
           if (fmt && Array.isArray(fmt.products)) {
             const restoredFmtProducts = await Promise.all(
-              fmt.products.map(async (p: ProductItem) => {
-                if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
-                  const prodId = p.imageUrl.replace('cloud-img:', '');
-                  const local = await getLocalImage(prodId);
-                  if (local) return { ...p, imageUrl: local };
-                  const cloud = await loadProductImageFromCloud(prodId);
-                  if (cloud) return { ...p, imageUrl: cloud };
-                  const masterProd = restoredProducts.find((rp) => rp.id === p.id);
-                  if (masterProd && masterProd.imageUrl && !masterProd.imageUrl.startsWith('cloud-img:')) {
-                    return { ...p, imageUrl: masterProd.imageUrl };
+              fmt.products.filter(Boolean).map(async (p: ProductItem, pIdx: number) => {
+                const masterProd = restoredProducts.find((rp) => rp.id === p.id) || restoredProducts[pIdx];
+                const masterImg = masterProd?.imageUrl || '';
+
+                if (!p.imageUrl || p.imageUrl.startsWith('cloud-img:')) {
+                  if (masterImg && !masterImg.startsWith('cloud-img:')) {
+                    return { ...p, imageUrl: masterImg };
                   }
+                  if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
+                    const prodId = p.imageUrl.replace('cloud-img:', '');
+                    const local = await getLocalImage(prodId);
+                    if (local) return { ...p, imageUrl: local };
+                    const cloud = await loadProductImageFromCloud(prodId);
+                    if (cloud) return { ...p, imageUrl: cloud };
+                  }
+                  return { ...p, imageUrl: masterImg || getProductFallbackImage(p.title, p.category) };
                 }
                 return p;
               })
             );
+
+            // Se o formato tem menos produtos do que a lista mestre (ex: novo produto adicionado), sincroniza
+            if (restoredFmtProducts.length < restoredProducts.length) {
+              const existingIds = new Set(restoredFmtProducts.map((p) => p.id));
+              restoredProducts.forEach((mp) => {
+                if (!existingIds.has(mp.id)) {
+                  restoredFmtProducts.push({ ...mp });
+                }
+              });
+            }
+
             restoredFormatsData[fmtKey] = {
               ...fmt,
               products: restoredFmtProducts,
@@ -328,9 +370,9 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
         if (snap.exists()) {
           const data = snap.data() as BannerCampaign;
 
-          // Restaura imagens referenciadas por 'cloud-img:' legado
+          // Restaura imagens referenciadas por 'cloud-img:'
           const restoredProducts = await Promise.all(
-            (data.products || []).map(async (p) => {
+            (data.products || []).filter(Boolean).map(async (p) => {
               if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
                 const prodId = p.imageUrl.replace('cloud-img:', '');
                 const local = await getLocalImage(prodId);
@@ -341,6 +383,9 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
                   saveLocalImage(prodId, cloud).catch(() => {});
                   return { ...p, imageUrl: cloud };
                 }
+                return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
+              }
+              if (!p.imageUrl) {
                 return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
               }
               return p;
@@ -362,21 +407,36 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
               const fmt = restoredFormatsData[fmtKey];
               if (fmt && Array.isArray(fmt.products)) {
                 const restoredFmtProducts = await Promise.all(
-                  fmt.products.map(async (p: ProductItem) => {
-                    if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
-                      const prodId = p.imageUrl.replace('cloud-img:', '');
-                      const local = await getLocalImage(prodId);
-                      if (local) return { ...p, imageUrl: local };
-                      const cloud = await loadProductImageFromCloud(prodId);
-                      if (cloud) return { ...p, imageUrl: cloud };
-                      const masterProd = restoredProducts.find((rp) => rp.id === p.id);
-                      if (masterProd && masterProd.imageUrl && !masterProd.imageUrl.startsWith('cloud-img:')) {
-                        return { ...p, imageUrl: masterProd.imageUrl };
+                  fmt.products.filter(Boolean).map(async (p: ProductItem, pIdx: number) => {
+                    const masterProd = restoredProducts.find((rp) => rp.id === p.id) || restoredProducts[pIdx];
+                    const masterImg = masterProd?.imageUrl || '';
+
+                    if (!p.imageUrl || p.imageUrl.startsWith('cloud-img:')) {
+                      if (masterImg && !masterImg.startsWith('cloud-img:')) {
+                        return { ...p, imageUrl: masterImg };
                       }
+                      if (p.imageUrl && p.imageUrl.startsWith('cloud-img:')) {
+                        const prodId = p.imageUrl.replace('cloud-img:', '');
+                        const local = await getLocalImage(prodId);
+                        if (local) return { ...p, imageUrl: local };
+                        const cloud = await loadProductImageFromCloud(prodId);
+                        if (cloud) return { ...p, imageUrl: cloud };
+                      }
+                      return { ...p, imageUrl: masterImg || getProductFallbackImage(p.title, p.category) };
                     }
                     return p;
                   })
                 );
+
+                if (restoredFmtProducts.length < restoredProducts.length) {
+                  const existingIds = new Set(restoredFmtProducts.map((p) => p.id));
+                  restoredProducts.forEach((mp) => {
+                    if (!existingIds.has(mp.id)) {
+                      restoredFmtProducts.push({ ...mp });
+                    }
+                  });
+                }
+
                 restoredFormatsData[fmtKey] = {
                   ...fmt,
                   products: restoredFmtProducts,
@@ -439,10 +499,27 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
           })
         );
 
+        let sanitizedClientFormats = c.formatsData;
+        if (sanitizedClientFormats) {
+          sanitizedClientFormats = JSON.parse(JSON.stringify(sanitizedClientFormats));
+          Object.keys(sanitizedClientFormats).forEach((fmtKey) => {
+            const fmt = sanitizedClientFormats[fmtKey];
+            if (fmt && Array.isArray(fmt.products)) {
+              fmt.products = fmt.products.filter(Boolean).map((p: ProductItem) => {
+                if (p && p.imageUrl && (p.imageUrl.startsWith('data:image') || p.imageUrl.startsWith('cloud-img:'))) {
+                  return { ...p, imageUrl: '' };
+                }
+                return p;
+              });
+            }
+          });
+        }
+
         return {
           ...c,
           logoUrl: clientLogo,
           products: sanitizedProducts,
+          formatsData: sanitizedClientFormats,
         };
       })
     );
