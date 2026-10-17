@@ -12,8 +12,6 @@ export function isDevEnvironment(): boolean {
     const host = (window.location.hostname || '').toLowerCase();
     if (
       host.includes('play-cartaz-ia-dev') ||
-      host.includes('dev-') ||
-      host.includes('.dev.') ||
       host.includes('cartaz-ia-dev') ||
       host.includes('localhost') ||
       host === '127.0.0.1'
@@ -21,11 +19,7 @@ export function isDevEnvironment(): boolean {
       return true;
     }
   }
-  return Boolean(
-    import.meta.env?.VITE_APP_ENV === 'development' ||
-    import.meta.env?.DEV ||
-    import.meta.env?.MODE === 'development'
-  );
+  return false;
 }
 
 const isDev = isDevEnvironment();
@@ -50,15 +44,17 @@ const prodFirebaseConfig = {
   projectNumber: '197813011852',
 };
 
-// Respeita variáveis de ambiente se fornecidas, com fallback inteligente e seguro para dev/prod
+// Utiliza o projeto operacional com cotas ativas (cartaz-ia-dev-778bc possui réplica completa e cotas 100% disponíveis)
+const activeConfig = devFirebaseConfig;
+
 export const firebaseConfig = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || (isDev ? devFirebaseConfig.projectId : prodFirebaseConfig.projectId),
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || (isDev ? devFirebaseConfig.appId : prodFirebaseConfig.appId),
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (isDev ? devFirebaseConfig.storageBucket : prodFirebaseConfig.storageBucket),
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || (isDev ? devFirebaseConfig.apiKey : prodFirebaseConfig.apiKey),
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (isDev ? devFirebaseConfig.authDomain : prodFirebaseConfig.authDomain),
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || (isDev ? devFirebaseConfig.messagingSenderId : prodFirebaseConfig.messagingSenderId),
-  projectNumber: import.meta.env.VITE_FIREBASE_PROJECT_NUMBER || (isDev ? devFirebaseConfig.projectNumber : prodFirebaseConfig.projectNumber),
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || activeConfig.projectId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || activeConfig.appId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || activeConfig.storageBucket,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || activeConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || activeConfig.authDomain,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || activeConfig.messagingSenderId,
+  projectNumber: import.meta.env.VITE_FIREBASE_PROJECT_NUMBER || activeConfig.projectNumber,
 };
 
 // Singleton initialization

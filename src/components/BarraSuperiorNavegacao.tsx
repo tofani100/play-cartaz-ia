@@ -312,19 +312,19 @@ export const BarraSuperiorNavegacao: React.FC<BarraSuperiorProps> = ({
             id="badge-cloud-sync"
             type="button"
             onClick={onForceCloudSync}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer active:scale-95 shrink-0 ${
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer active:scale-95 shrink-0 ${
               cloudSyncStatus === 'syncing'
                 ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse'
                 : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30 hover:border-emerald-400'
             }`}
             title={
               cloudSyncStatus === 'syncing'
-                ? 'Sincronizando com a Nuvem...'
-                : `Nuvem Conectada (${firebaseConfig.projectId}) - Clique para sincronizar agora`
+                ? 'Salvando alterações na Nuvem...'
+                : 'Campanha e banners 100% salvos na Nuvem e no Navegador. Clique para sincronizar agora.'
             }
           >
             <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'syncing' ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
-            <span>{cloudSyncStatus === 'syncing' ? '... NC' : 'NC'}</span>
+            <span>{cloudSyncStatus === 'syncing' ? 'Salvando...' : 'Nuvem Salva'}</span>
           </button>
 
           {/* Badge de Ambiente DEV */}

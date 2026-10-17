@@ -124,21 +124,8 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
       }
     }
 
-    // 2. Otimiza e salva cada imagem dos produtos (mantém compressed direto no produto principal)
-    let processedProducts: ProductItem[] = await Promise.all(
-      campaign.products.map(async (p) => {
-        if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
-          const compressed = await compressImageToDataUrl(p.imageUrl, 700, 700, 0.74);
-          saveLocalImage(p.id, compressed).catch(() => {});
-          await saveProductImageToCloud(p.id, compressed).catch(() => {});
-          return {
-            ...p,
-            imageUrl: compressed,
-          };
-        }
-        return p;
-      })
-    );
+    // 2. Utiliza os produtos atuais diretamente (fotos são tratadas individualmente no upload)
+    let processedProducts: ProductItem[] = (campaign.products || []).filter(Boolean);
 
     // 2.1 Elimina duplicação pesada de imagens em formatsData (cada formato herda da lista principal)
     // Reduz o documento drasticamente de 1.12MB para apenas ~300KB!
@@ -203,7 +190,11 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
     );
 
     const campaignDocRef = doc(db, CAMPAIGN_DOC_PATH, ACTIVE_CAMPAIGN_ID);
-    await setDoc(campaignDocRef, sanitizedPayload);
+    const savePromise = setDoc(campaignDocRef, sanitizedPayload);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout de gravação Firestore')), 4000)
+    );
+    await Promise.race([savePromise, timeoutPromise]);
 
     // 4. Backup no servidor Express local (se estiver rodando)
     try {
@@ -479,20 +470,15 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
           clientLogo = compressedLogo;
         }
 
-        const sanitizedProducts = await Promise.all(
-          (c.products || []).map(async (p) => {
-            if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
-              const compressed = await compressImageToDataUrl(p.imageUrl, 800, 800, 0.76);
-              saveLocalImage(p.id, compressed).catch(() => {});
-              await saveProductImageToCloud(p.id, compressed).catch(() => {});
-              return {
-                ...p,
-                imageUrl: `cloud-img:${p.id}`,
-              };
-            }
-            return p;
-          })
-        );
+        const sanitizedProducts = (c.products || []).map((p) => {
+          if (p.imageUrl && p.imageUrl.startsWith('data:image')) {
+            return {
+              ...p,
+              imageUrl: `cloud-img:${p.id}`,
+            };
+          }
+          return p;
+        });
 
         let sanitizedClientFormats = c.formatsData;
         if (sanitizedClientFormats) {
@@ -527,7 +513,11 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
         updatedAt: new Date().toISOString(),
       })
     );
-    await setDoc(docRef, sanitizedClientsPayload);
+    const savePromise = setDoc(docRef, sanitizedClientsPayload);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout de gravação de clientes')), 4000)
+    );
+    await Promise.race([savePromise, timeoutPromise]);
     return true;
   } catch (err) {
     console.error('[CloudSync] Erro ao salvar clientes no Firestore:', err);

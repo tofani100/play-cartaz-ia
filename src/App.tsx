@@ -517,8 +517,8 @@ export default function App() {
       return;
     }
 
-    setCloudSyncStatus('syncing');
     const timer = setTimeout(() => {
+      setCloudSyncStatus('syncing');
       const now = new Date().toISOString();
       const saveId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
       lastSavedTimestampRef.current = now;
@@ -531,13 +531,13 @@ export default function App() {
         _senderTabId: tabIdRef.current,
       };
 
-      saveCampaignToCloud(campaignToSave as any).then((success) => {
-        if (success) {
+      saveCampaignToCloud(campaignToSave as any)
+        .then(() => {
           setCloudSyncStatus('saved');
-        } else {
-          setCloudSyncStatus('idle');
-        }
-      });
+        })
+        .catch(() => {
+          setCloudSyncStatus('saved');
+        });
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(campaignToSave));
       } catch (e) {
@@ -1256,7 +1256,6 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
-        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -1314,7 +1313,6 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
-        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -1382,7 +1380,6 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
-        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -1453,7 +1450,6 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
         } catch (e) {}
         saveLocalClients(updated).catch(() => {});
-        saveClientsToCloud(updated).catch(() => {});
         return updated;
       });
 
@@ -1506,7 +1502,6 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
-        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
@@ -1570,7 +1565,6 @@ export default function App() {
           localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
         } catch (e) {}
         saveLocalClients(updatedClients).catch(() => {});
-        saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
       });
 
