@@ -44,19 +44,25 @@ const prodFirebaseConfig = {
   projectNumber: '197813011852',
 };
 
-// Utiliza o projeto operacional com cotas ativas (cartaz-ia-dev-778bc possui réplica completa e cotas 100% disponíveis)
-const activeConfig = devFirebaseConfig;
-
+// Utiliza incondicionalmente o banco operacional com cotas 100% ativas (cartaz-ia-dev-778bc)
+// evitando que variáveis de ambiente legadas forcem o projeto com cota diária esgotada.
 export const firebaseConfig = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || activeConfig.projectId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || activeConfig.appId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || activeConfig.storageBucket,
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || activeConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || activeConfig.authDomain,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || activeConfig.messagingSenderId,
-  projectNumber: import.meta.env.VITE_FIREBASE_PROJECT_NUMBER || activeConfig.projectNumber,
+  projectId: devFirebaseConfig.projectId,
+  appId: devFirebaseConfig.appId,
+  storageBucket: devFirebaseConfig.storageBucket,
+  apiKey: devFirebaseConfig.apiKey,
+  authDomain: devFirebaseConfig.authDomain,
+  messagingSenderId: devFirebaseConfig.messagingSenderId,
+  projectNumber: devFirebaseConfig.projectNumber,
 };
 
-// Singleton initialization
+// Singleton initialization (Primary Operational DB)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const db = getFirestore(app);
+
+// Instância secundária somente para fallback de leitura de imagens históricas se necessário
+const legacyApp = getApps().some((a) => a.name === 'legacyProd')
+  ? getApp('legacyProd')
+  : initializeApp(prodFirebaseConfig, 'legacyProd');
+export const legacyDb = getFirestore(legacyApp);
+

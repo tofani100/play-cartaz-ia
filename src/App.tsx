@@ -31,12 +31,14 @@ import { ClientProfile } from './tiposGeradorBanner';
 import { Sparkles, Tv, Smartphone, Square, Newspaper, Layers, Play, Download, Eye, Store, Image as ImageIcon } from 'lucide-react';
 import {
   loadCampaignFromCloud,
+  loadClientCampaignFromCloud,
   saveCampaignToCloud,
   subscribeToCloudCampaign,
   loadClientsFromCloud,
   saveClientsToCloud,
   subscribeToCloudClients,
   saveProductImageToCloud,
+  restoreCampaignData,
 } from './services/cloudCampaignSync';
 import {
   saveLocalImage,
@@ -45,6 +47,8 @@ import {
   getLocalCampaign,
   saveLocalClients,
   getLocalClients,
+  safeSaveCampaignToLocalStorage,
+  safeSaveClientsToLocalStorage,
 } from './services/localImageDb';
 
 const BELISSIMA_CLIENT = CLIENTES_PREDEFINIDOS.find((c) => c.id === 'cli-belissima') || CLIENTES_PREDEFINIDOS[0];
@@ -91,7 +95,7 @@ export default function App() {
       const saved = localStorage.getItem('playcomunique_campanha');
       if (saved) {
         const parsed = JSON.parse(saved);
-        let products = parsed.products || [];
+        let products: ProductItem[] = parsed.products || [];
         // Proteção contra perda acidental: se Belíssima tiver menos de 15 produtos, recupera o acervo de 22 produtos
         if ((parsed.clientName === 'Belíssima Casa di Frutas' || parsed.clientId === 'cli-belissima' || !parsed.clientId) && products.length < 15) {
           console.log('[Recuperação] Restaurando 22 produtos autênticos da Belíssima no carregamento inicial.');
@@ -159,7 +163,7 @@ export default function App() {
           }
         }
 
-        // Garante que todos os formatos tenham os contatos corretos
+        // Garante que todos os formatos tenham os contatos corretos e herdem imagens da lista mestre
         ALL_BANNER_FORMATS.forEach((fmt) => {
           if (restored.formatsData && restored.formatsData[fmt]) {
             if (!restored.formatsData[fmt]!.phoneWhatsapp && (matchedClientPhone || restored.phoneWhatsapp)) {
@@ -167,6 +171,17 @@ export default function App() {
             }
             if (!restored.formatsData[fmt]!.storeAddress && (matchedClientAddress || restored.storeAddress)) {
               restored.formatsData[fmt]!.storeAddress = matchedClientAddress || restored.storeAddress;
+            }
+            if (Array.isArray(restored.formatsData[fmt]!.products)) {
+              restored.formatsData[fmt]!.products = restored.products.map((mp, idx) => {
+                const fp = restored.formatsData![fmt]!.products!.find((p) => p && p.id === mp.id) || restored.formatsData![fmt]!.products![idx];
+                if (!fp || fp.id !== mp.id) return { ...mp };
+                return {
+                  ...mp,
+                  ...fp,
+                  imageUrl: (fp.imageUrl && !fp.imageUrl.startsWith('cloud-img:')) ? fp.imageUrl : mp.imageUrl,
+                };
+              });
             }
           }
         });
@@ -179,394 +194,14 @@ export default function App() {
     return DEFAULT_CAMPAIGN;
   });
 
-  const [cloudSyncStatus, setCloudSyncStatus] = useState<'syncing' | 'saved' | 'idle'>('saved');
-  const isRemoteUpdateRef = useRef<boolean>(false);
-  const initialLoadDoneRef = useRef<boolean>(false);
-  const lastSavedTimestampRef = useRef<string>('');
-  const lastSavedIdRef = useRef<string>('');
-  const lastLocalEditTimeRef = useRef<number>(0);
-  const tabIdRef = useRef<string>(Math.random().toString(36).substring(2, 9));
-
-  // Sincronização instantânea entre abas no mesmo navegador (0ms de latência)
-  useEffect(() => {
-    if (typeof BroadcastChannel === 'undefined') return;
-    const channel = new BroadcastChannel('playcomunique_sync_channel');
-
-    channel.onmessage = (event) => {
-      if (!event.data || event.data.senderTabId === tabIdRef.current) return;
-      if (event.data.type === 'SYNC_CAMPAIGN' && event.data.campaign) {
-        isRemoteUpdateRef.current = true;
-        setCampaign(event.data.campaign);
-        try {
-          localStorage.setItem('playcomunique_campanha', JSON.stringify(event.data.campaign));
-        } catch (_) {}
-      }
-      if (event.data.type === 'SYNC_CLIENTS' && event.data.clients) {
-        setClients(event.data.clients);
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(event.data.clients));
-        } catch (_) {}
-      }
-    };
-
-    return () => {
-      channel.close();
-    };
-  }, []);
-
-  // 1. Carregamento inicial da Nuvem (Firebase Firestore)
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      setCloudSyncStatus('syncing');
-      const cloudCampaign = await loadCampaignFromCloud();
-      if (cloudCampaign && isMounted) {
-        setCampaign((prev) => {
-
-          // Se a nuvem for genuinamente mais recente:
-          const localProducts = prev.products || [];
-          const remoteProducts = cloudCampaign.products || [];
-          let finalProducts = remoteProducts.length > 0 ? remoteProducts : localProducts;
-
-          // Busca perfil do cliente para garantir contatos completos
-          let clientPhone = '';
-          let clientAddress = '';
-          try {
-            const savedClientsRaw = localStorage.getItem('playcomunique_clientes');
-            if (savedClientsRaw) {
-              const savedClientsList: ClientProfile[] = JSON.parse(savedClientsRaw);
-              const matchedClient = savedClientsList.find((c) => c.id === (cloudCampaign.clientId || prev.clientId) || c.name.toLowerCase() === (cloudCampaign.clientName || prev.clientName).toLowerCase());
-              if (matchedClient) {
-                clientPhone = matchedClient.phoneWhatsapp || '';
-                clientAddress = matchedClient.storeAddress || '';
-              }
-            }
-          } catch (_) {}
-
-          const finalPhone = cloudCampaign.phoneWhatsapp || prev.phoneWhatsapp || clientPhone || '';
-          const finalAddress = cloudCampaign.storeAddress || prev.storeAddress || clientAddress || '';
-
-          isRemoteUpdateRef.current = true;
-          if ((cloudCampaign as any)._syncTimestamp) {
-            lastSavedTimestampRef.current = (cloudCampaign as any)._syncTimestamp;
-          }
-
-          // Prioriza logo customizado já presente localmente se a nuvem estiver sem ou com o default
-          let finalLogo = cloudCampaign.clientLogoUrl || prev.clientLogoUrl || '';
-          if (
-            prev.clientLogoUrl &&
-            !prev.clientLogoUrl.startsWith('/logos/belissima') &&
-            (!cloudCampaign.clientLogoUrl || cloudCampaign.clientLogoUrl.startsWith('/logos/belissima'))
-          ) {
-            finalLogo = prev.clientLogoUrl;
-          } else if (
-            !finalLogo &&
-            (cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1')
-          ) {
-            finalLogo = '/logos/belissima-casa-di-frutas.png';
-          }
-
-          const targetFormat = cloudCampaign.format || prev.format || '16:9';
-          const formatsData = cloudCampaign.formatsData && Object.keys(cloudCampaign.formatsData).length > 0
-            ? cloudCampaign.formatsData
-            : (prev.formatsData && Object.keys(prev.formatsData).length > 0 ? prev.formatsData : initFormatsData(cloudCampaign));
-
-          // Garante que nenhum formato fique sem telefone e endereço e que produtos herdem as imagens da lista mestre
-          ALL_BANNER_FORMATS.forEach((fmt) => {
-            if (formatsData[fmt]) {
-              if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
-              if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
-              if (Array.isArray(formatsData[fmt]!.products)) {
-                formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
-                  ...p,
-                  imageUrl: p.imageUrl || finalProducts[idx]?.imageUrl || ''
-                }));
-              }
-            }
-          });
-
-          const activeFormatData = formatsData[targetFormat] || extractFormatData(cloudCampaign);
-
-          const mergedCampaign: BannerCampaign = {
-            ...prev,
-            ...cloudCampaign,
-            format: targetFormat,
-            phoneWhatsapp: finalPhone,
-            storeAddress: finalAddress,
-            campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : cloudCampaign.campaignTitle,
-            campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
-            validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
-            customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (cloudCampaign.customStyles || prev.customStyles),
-            products: finalProducts,
-            clientLogoUrl: finalLogo,
-            formatsData,
-          };
-
-          try {
-            localStorage.setItem('playcomunique_campanha', JSON.stringify(mergedCampaign));
-          } catch (_) {}
-
-          return mergedCampaign;
-        });
-      }
-      initialLoadDoneRef.current = true;
-      setCloudSyncStatus('saved');
-    })();
-
-    // Carrega clientes da nuvem com merge seguro de produtos e logos
-    loadClientsFromCloud().then((cloudClients) => {
-      if (cloudClients && cloudClients.length > 0 && isMounted) {
-        setClients((prev) => {
-          const mergedCloud = cloudClients.map((cc) => {
-            const lc = prev.find((p) => p.id === cc.id || p.name.toLowerCase() === cc.name.toLowerCase());
-            if (!lc) return cc;
-
-            // Preserva logo local customizado se a nuvem tiver logo padrão ou vazio
-            let finalLogo = cc.logoUrl || lc.logoUrl || '';
-            if (
-              lc.logoUrl &&
-              !lc.logoUrl.startsWith('/logos/belissima') &&
-              (!cc.logoUrl || cc.logoUrl.startsWith('/logos/belissima'))
-            ) {
-              finalLogo = lc.logoUrl;
-            }
-
-            // Se a nuvem tem produtos mais recentes ou mais completos, prioriza a nuvem
-            const finalProducts = (cc.products && cc.products.length > 0)
-              ? cc.products
-              : (lc.products || []);
-            const finalPhone = cc.phoneWhatsapp || lc.phoneWhatsapp || '';
-            const finalAddress = cc.storeAddress || lc.storeAddress || '';
-            const finalFormats = cc.formatsData || lc.formatsData;
-            const finalCustomStyles = cc.customStyles || lc.customStyles;
-
-            return {
-              ...lc,
-              ...cc,
-              phoneWhatsapp: finalPhone,
-              storeAddress: finalAddress,
-              products: finalProducts,
-              formatsData: finalFormats,
-              customStyles: finalCustomStyles,
-              logoUrl: finalLogo,
-            };
-          });
-
-          // Preserva clientes criados localmente que ainda não subiram para a nuvem
-          const localOnlyClients = prev.filter(
-            (lc) => !cloudClients.some((cc) => cc.id === lc.id || cc.name.toLowerCase() === lc.name.toLowerCase())
-          );
-
-          const finalClients = [...mergedCloud, ...localOnlyClients];
-
-          try {
-            localStorage.setItem('playcomunique_clientes', JSON.stringify(finalClients));
-          } catch (e) {}
-          saveLocalClients(finalClients).catch(() => {});
-          return finalClients;
-        });
-      }
-    });
-
-    // 2. Restaura logotipos e clientes do IndexedDB local (redundância instantânea)
-    getLocalClients().then((cachedClients) => {
-      if (cachedClients && cachedClients.length > 0 && isMounted) {
-        setClients((prev) => {
-          return prev.map((c) => {
-            const cached = cachedClients.find((ic) => ic.id === c.id || ic.name.toLowerCase() === c.name.toLowerCase());
-            if (cached && cached.logoUrl && (!c.logoUrl || c.logoUrl.startsWith('/logos/belissima'))) {
-              return { ...c, logoUrl: cached.logoUrl };
-            }
-            return c;
-          });
-        });
-      }
-    });
-
-    // Ouve alterações em tempo real do Firestore (para múltiplos computadores e TVs sincronizarem sem loop)
-    const unsubscribe = subscribeToCloudCampaign((updatedCampaign) => {
-      if (!isMounted || !updatedCampaign) return;
-      const remoteTimestamp = (updatedCampaign as any)._syncTimestamp;
-      const remoteSaveId = (updatedCampaign as any)._lastSaveId;
-      const remoteSenderTabId = (updatedCampaign as any)._senderTabId;
-
-      // 1. Ignora eco de alterações geradas nesta mesma aba/sessão
-      if (remoteSaveId && remoteSaveId === lastSavedIdRef.current) {
-        return;
-      }
-      if (remoteSenderTabId && remoteSenderTabId === tabIdRef.current) {
-        return;
-      }
-      if (remoteTimestamp && remoteTimestamp === lastSavedTimestampRef.current) {
-        return;
-      }
-
-      // 2. Proteção de digitação e edição local ativa:
-      // Se o usuário nesta aba fez qualquer alteração nos últimos 5 segundos, NÃO sobrescreve!
-      if (Date.now() - lastLocalEditTimeRef.current < 5000) {
-        return;
-      }
-
-      if (remoteTimestamp) {
-        lastSavedTimestampRef.current = remoteTimestamp;
-      }
-      if (remoteSaveId) {
-        lastSavedIdRef.current = remoteSaveId;
-      }
-      isRemoteUpdateRef.current = true;
-      setCampaign((prev) => {
-        // Se esta aba específica fez uma edição local com timestamp superior, preserva
-        const localTs = (prev as any)._syncTimestamp || '';
-        if (lastLocalEditTimeRef.current > 0 && localTs && remoteTimestamp && new Date(localTs).getTime() > new Date(remoteTimestamp).getTime()) {
-          return prev;
-        }
-
-        const targetFormat = updatedCampaign.format || prev.format || '16:9';
-        const formatsData = updatedCampaign.formatsData && Object.keys(updatedCampaign.formatsData).length > 0
-          ? updatedCampaign.formatsData
-          : (prev.formatsData && Object.keys(prev.formatsData).length > 0 ? prev.formatsData : initFormatsData(updatedCampaign));
-
-        const activeFormatData = formatsData[targetFormat] || extractFormatData(updatedCampaign);
-        const finalPhone = updatedCampaign.phoneWhatsapp || prev.phoneWhatsapp || '';
-        const finalAddress = updatedCampaign.storeAddress || prev.storeAddress || '';
-
-        // RECONCILIAÇÃO SEGURA DE PRODUTOS:
-        // Garante que NENHUM produto criado ou editado localmente seja apagado por snapshot remoto defasado!
-        const remoteProducts = (updatedCampaign.products && updatedCampaign.products.length > 0) ? updatedCampaign.products : [];
-        const localProducts = prev.products || [];
-
-        const remoteIds = new Set(remoteProducts.map((p) => p.id));
-        const localOnlyProducts = localProducts.filter((p) => !remoteIds.has(p.id));
-
-        const mergedProducts = remoteProducts.map((rp) => {
-          const lp = localProducts.find((p) => p.id === rp.id);
-          if (!lp) return rp;
-          // Se o produto local possui imagem válida (base64 ou caminho estático) e a remota veio vazia ou cloud-img, preserva local
-          const bestImage = (lp.imageUrl && !lp.imageUrl.startsWith('cloud-img:'))
-            ? lp.imageUrl
-            : (rp.imageUrl || lp.imageUrl || '');
-          return {
-            ...rp,
-            imageUrl: bestImage,
-          };
-        });
-
-        const finalProducts = [...mergedProducts, ...localOnlyProducts];
-
-        // Garante que nenhum formato fique sem telefone e endereço e que produtos herdem as imagens da lista mestre
-        ALL_BANNER_FORMATS.forEach((fmt) => {
-          if (formatsData[fmt]) {
-            if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
-            if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
-            if (Array.isArray(formatsData[fmt]!.products)) {
-              formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
-                ...p,
-                imageUrl: p.imageUrl || finalProducts[idx]?.imageUrl || ''
-              }));
-            }
-          }
-        });
-
-        const nextSynced: BannerCampaign = {
-          ...prev,
-          ...updatedCampaign,
-          format: targetFormat,
-          phoneWhatsapp: finalPhone,
-          storeAddress: finalAddress,
-          campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : updatedCampaign.campaignTitle,
-          campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : updatedCampaign.campaignSubtitle,
-          validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : updatedCampaign.validityText,
-          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (updatedCampaign.customStyles || prev.customStyles),
-          products: finalProducts,
-          formatsData,
-        };
-
-        try {
-          localStorage.setItem('playcomunique_campanha', JSON.stringify(nextSynced));
-        } catch (_) {}
-
-        return nextSynced;
-      });
-    });
-
-    // Ouve alterações de clientes em tempo real no Firestore
-    const unsubscribeClients = subscribeToCloudClients((remoteClients) => {
-      if (!isMounted || !remoteClients || remoteClients.length === 0) return;
-      setClients(remoteClients);
-      try {
-        localStorage.setItem('playcomunique_clientes', JSON.stringify(remoteClients));
-      } catch (_) {}
-    });
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-      unsubscribeClients();
-    };
-  }, []);
-
-  // 2. Persistência contínua na Nuvem (Firebase) + Backup Local
-  useEffect(() => {
-    // TV Player / Kiosk é um consumidor de transmissão: nunca deve recomprimir imagens ou gravar na nuvem
-    if (isDirectTvMode) return;
-    // Não salva antes de completar o carregamento inicial
-    if (!initialLoadDoneRef.current) return;
-    // Se a alteração veio da própria nuvem, não devolve para o Firestore (evita loop)
-    if (isRemoteUpdateRef.current) {
-      isRemoteUpdateRef.current = false;
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setCloudSyncStatus('syncing');
-      const now = new Date().toISOString();
-      const saveId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
-      lastSavedTimestampRef.current = now;
-      lastSavedIdRef.current = saveId;
-
-      const campaignToSave = {
-        ...campaign,
-        _syncTimestamp: now,
-        _lastSaveId: saveId,
-        _senderTabId: tabIdRef.current,
-      };
-
-      saveCampaignToCloud(campaignToSave as any)
-        .then(() => {
-          setCloudSyncStatus('saved');
-        })
-        .catch(() => {
-          setCloudSyncStatus('saved');
-        });
-      try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(campaignToSave));
-      } catch (e) {
-        console.warn('Aviso: localStorage cheio, backup mantido no IndexedDB e Firestore:', e);
-      }
-      if (typeof BroadcastChannel !== 'undefined') {
-        try {
-          const ch = new BroadcastChannel('playcomunique_sync_channel');
-          ch.postMessage({ type: 'SYNC_CAMPAIGN', campaign: campaignToSave, senderTabId: tabIdRef.current });
-          ch.close();
-        } catch (_) {}
-      }
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, [campaign]);
-
   // Saved clients list with local storage persistence and per-client banners
   const [clients, setClients] = useState<ClientProfile[]>(() => {
     try {
       const saved = localStorage.getItem('playcomunique_clientes');
-      const savedCampaignRaw = localStorage.getItem('playcomunique_campanha');
-      const savedCampaign = savedCampaignRaw ? JSON.parse(savedCampaignRaw) : null;
-
       if (saved) {
         const parsed: ClientProfile[] = JSON.parse(saved);
         return parsed.map((c) => {
           const predefined = CLIENTES_PREDEFINIDOS.find((p) => p.id === c.id || p.name.toLowerCase() === c.name.toLowerCase());
-          
           let clientProducts = c.products;
           if ((c.name === 'Belíssima Casa di Frutas' || c.id === 'cli-belissima') && (!clientProducts || clientProducts.length < 15)) {
             clientProducts = predefined?.products || INITIAL_PRODUCTS;
@@ -591,7 +226,480 @@ export default function App() {
     return CLIENTES_PREDEFINIDOS;
   });
 
-  // 3. Sincronização periódica suave da lista de clientes no Firestore
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'syncing' | 'saved' | 'idle'>('saved');
+  const isRemoteUpdateRef = useRef<boolean>(false);
+  const initialLoadDoneRef = useRef<boolean>(false);
+  const lastSavedTimestampRef = useRef<string>('');
+  const lastSavedIdRef = useRef<string>('');
+  const lastLocalEditTimeRef = useRef<number>(0);
+  const hasUnsavedChangesRef = useRef<boolean>(false);
+  const tabIdRef = useRef<string>(Math.random().toString(36).substring(2, 9));
+  const campaignRef = useRef<BannerCampaign>(campaign);
+  const clientsRef = useRef<ClientProfile[]>(clients);
+
+  useEffect(() => {
+    campaignRef.current = campaign;
+  }, [campaign]);
+
+  useEffect(() => {
+    clientsRef.current = clients;
+  }, [clients]);
+
+  // Sincronização instantânea entre abas no mesmo navegador (0ms de latência)
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel('playcomunique_sync_channel');
+
+    channel.onmessage = (event) => {
+      if (!event.data || event.data.senderTabId === tabIdRef.current) return;
+      if (event.data.type === 'SYNC_CAMPAIGN' && event.data.campaign) {
+        isRemoteUpdateRef.current = true;
+        setCampaign(event.data.campaign);
+        safeSaveCampaignToLocalStorage(event.data.campaign);
+      }
+      if (event.data.type === 'SYNC_CLIENTS' && event.data.clients) {
+        setClients(event.data.clients);
+        safeSaveClientsToLocalStorage(event.data.clients);
+      }
+    };
+
+    return () => {
+      channel.close();
+    };
+  }, []);
+
+  // Proteção ao fechar/recarregar aba: se houver edição pendente no debounce, força disparo imediato
+  useEffect(() => {
+    const flushPendingChanges = () => {
+      if (hasUnsavedChangesRef.current && initialLoadDoneRef.current) {
+        hasUnsavedChangesRef.current = false;
+        const currentCamp = campaignRef.current;
+        const currentCli = clientsRef.current;
+        saveLocalCampaign(currentCamp).catch(() => {});
+        safeSaveCampaignToLocalStorage(currentCamp);
+        saveCampaignToCloud(currentCamp).catch(() => {});
+        saveLocalClients(currentCli).catch(() => {});
+        safeSaveClientsToLocalStorage(currentCli);
+        saveClientsToCloud(currentCli).catch(() => {});
+      }
+    };
+    window.addEventListener('beforeunload', flushPendingChanges);
+    window.addEventListener('pagehide', flushPendingChanges);
+    return () => {
+      window.removeEventListener('beforeunload', flushPendingChanges);
+      window.removeEventListener('pagehide', flushPendingChanges);
+    };
+  }, []);
+
+  // 1. Carregamento inicial da Nuvem (Firebase Firestore) + Restauração de Imagens
+  useEffect(() => {
+    let isMounted = true;
+
+    // Restaura imediatamente eventuais ponteiros cloud-img do estado inicial local
+    restoreCampaignData(campaignRef.current).then((restoredLocal) => {
+      if (isMounted && !initialLoadDoneRef.current) {
+        isRemoteUpdateRef.current = true;
+        setCampaign(restoredLocal);
+      }
+    }).catch(() => {});
+
+    (async () => {
+      setCloudSyncStatus('syncing');
+      const [cloudCampaign, cloudClients] = await Promise.all([
+        loadCampaignFromCloud(),
+        loadClientsFromCloud(),
+      ]);
+
+      if (!isMounted) return;
+
+      let resolvedCampaign: BannerCampaign | null = null;
+
+      if (cloudCampaign) {
+        setCampaign((prev) => {
+          // Se o usuário já começou a editar localmente após abrir a página, ou se o cache local deste mesmo cliente é mais novo, preserva local e sobe pra nuvem
+          const localTs = (prev as any)._syncTimestamp || '';
+          const remoteTs = (cloudCampaign as any)._syncTimestamp || '';
+          if (
+            lastLocalEditTimeRef.current > 0 ||
+            (prev.clientId === cloudCampaign.clientId && localTs && remoteTs && new Date(localTs).getTime() > new Date(remoteTs).getTime())
+          ) {
+            resolvedCampaign = prev;
+            saveCampaignToCloud(prev).catch(() => {});
+            return prev;
+          }
+
+          const remoteProducts = cloudCampaign.products || [];
+          const localProducts = prev.products || [];
+          const finalProducts = remoteProducts.length > 0 ? remoteProducts : localProducts;
+
+          // Busca perfil do cliente para garantir contatos completos
+          let clientPhone = '';
+          let clientAddress = '';
+          const sourceClients = cloudClients && cloudClients.length > 0 ? cloudClients : clientsRef.current;
+          const matchedClient = sourceClients.find(
+            (c) =>
+              c.id === (cloudCampaign.clientId || prev.clientId) ||
+              c.name.toLowerCase() === (cloudCampaign.clientName || prev.clientName).toLowerCase()
+          );
+          if (matchedClient) {
+            clientPhone = matchedClient.phoneWhatsapp || '';
+            clientAddress = matchedClient.storeAddress || '';
+          }
+
+          const finalPhone = cloudCampaign.phoneWhatsapp || prev.phoneWhatsapp || clientPhone || '';
+          const finalAddress = cloudCampaign.storeAddress || prev.storeAddress || clientAddress || '';
+
+          isRemoteUpdateRef.current = true;
+          if ((cloudCampaign as any)._syncTimestamp) {
+            lastSavedTimestampRef.current = (cloudCampaign as any)._syncTimestamp;
+          }
+
+          let finalLogo = cloudCampaign.clientLogoUrl || prev.clientLogoUrl || '';
+          if (
+            prev.clientLogoUrl &&
+            !prev.clientLogoUrl.startsWith('/logos/belissima') &&
+            !prev.clientLogoUrl.startsWith('cloud-img:') &&
+            (!cloudCampaign.clientLogoUrl || cloudCampaign.clientLogoUrl.startsWith('/logos/belissima'))
+          ) {
+            finalLogo = prev.clientLogoUrl;
+          } else if (
+            !finalLogo &&
+            (cloudCampaign.clientName === 'Belíssima Casa di Frutas' || cloudCampaign.id === 'camp-1')
+          ) {
+            finalLogo = '/logos/belissima-casa-di-frutas.png';
+          }
+
+          const targetFormat = cloudCampaign.format || prev.format || '16:9';
+          const formatsData =
+            cloudCampaign.formatsData && Object.keys(cloudCampaign.formatsData).length > 0
+              ? cloudCampaign.formatsData
+              : prev.formatsData && Object.keys(prev.formatsData).length > 0
+              ? prev.formatsData
+              : initFormatsData(cloudCampaign);
+
+          ALL_BANNER_FORMATS.forEach((fmt) => {
+            if (formatsData[fmt]) {
+              if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
+              if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
+              formatsData[fmt]!.products = finalProducts.map((mp, idx) => {
+                if (fmt === '16:9') return { ...mp };
+                const fp = formatsData[fmt]!.products?.find((p) => p && p.id === mp.id) || formatsData[fmt]!.products?.[idx];
+                if (!fp || fp.id !== mp.id) return { ...mp };
+                return {
+                  ...mp,
+                  ...fp,
+                  imageUrl: fp.imageUrl && !fp.imageUrl.startsWith('cloud-img:') ? fp.imageUrl : mp.imageUrl,
+                };
+              });
+            }
+          });
+
+          const activeFormatData = formatsData[targetFormat] || extractFormatData(cloudCampaign);
+
+          const mergedCampaign: BannerCampaign = {
+            ...prev,
+            ...cloudCampaign,
+            format: targetFormat,
+            phoneWhatsapp: finalPhone,
+            storeAddress: finalAddress,
+            campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : cloudCampaign.campaignTitle,
+            campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
+            validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
+            customStyles: activeFormatData.customStyles
+              ? JSON.parse(JSON.stringify(activeFormatData.customStyles))
+              : cloudCampaign.customStyles || prev.customStyles,
+            products: finalProducts,
+            clientLogoUrl: finalLogo,
+            formatsData,
+          };
+
+          resolvedCampaign = mergedCampaign;
+          safeSaveCampaignToLocalStorage(mergedCampaign);
+          saveLocalCampaign(mergedCampaign).catch(() => {});
+          return mergedCampaign;
+        });
+      }
+
+      // Sincroniza a lista de clientes garantindo que o cliente ativo tenha exatamente os mesmos produtos da campanha ativa
+      if (cloudClients && cloudClients.length > 0 && isMounted) {
+        setClients((prev) => {
+          const activeCamp = resolvedCampaign || campaignRef.current;
+          const mergedCloud = cloudClients.map((cc) => {
+            const lc = prev.find((p) => p.id === cc.id || p.name.toLowerCase() === cc.name.toLowerCase());
+            const isActiveClient =
+              activeCamp &&
+              (cc.id === activeCamp.clientId || cc.name.toLowerCase() === activeCamp.clientName.toLowerCase());
+
+            let finalLogo = cc.logoUrl || lc?.logoUrl || '';
+            if (
+              lc?.logoUrl &&
+              !lc.logoUrl.startsWith('/logos/belissima') &&
+              !lc.logoUrl.startsWith('cloud-img:') &&
+              (!cc.logoUrl || cc.logoUrl.startsWith('/logos/belissima'))
+            ) {
+              finalLogo = lc.logoUrl;
+            }
+
+            // Se este for o cliente ativo na campanha, garante sincronia total com os produtos e formatos da campanha ativa
+            const finalProducts =
+              isActiveClient && activeCamp.products && activeCamp.products.length > 0
+                ? activeCamp.products
+                : cc.products && cc.products.length > 0
+                ? cc.products
+                : lc?.products || [];
+
+            const finalFormats =
+              isActiveClient && activeCamp.formatsData
+                ? activeCamp.formatsData
+                : cc.formatsData || lc?.formatsData;
+
+            const finalPhone = cc.phoneWhatsapp || lc?.phoneWhatsapp || (isActiveClient ? activeCamp.phoneWhatsapp : '') || '';
+            const finalAddress = cc.storeAddress || lc?.storeAddress || (isActiveClient ? activeCamp.storeAddress : '') || '';
+            const finalCustomStyles = (isActiveClient ? activeCamp.customStyles : undefined) || cc.customStyles || lc?.customStyles;
+
+            return {
+              ...(lc || {}),
+              ...cc,
+              phoneWhatsapp: finalPhone,
+              storeAddress: finalAddress,
+              products: finalProducts,
+              formatsData: finalFormats,
+              customStyles: finalCustomStyles,
+              logoUrl: finalLogo,
+            };
+          });
+
+          const localOnlyClients = prev.filter(
+            (lc) => !cloudClients.some((cc) => cc.id === lc.id || cc.name.toLowerCase() === lc.name.toLowerCase())
+          );
+
+          const finalClients = [...mergedCloud, ...localOnlyClients];
+          safeSaveClientsToLocalStorage(finalClients);
+          saveLocalClients(finalClients).catch(() => {});
+          return finalClients;
+        });
+      }
+
+      initialLoadDoneRef.current = true;
+      setCloudSyncStatus('saved');
+    })();
+
+    // Ouve alterações em tempo real do Firestore (para múltiplos computadores, navegadores e TVs sincronizarem instantaneamente)
+    const unsubscribe = subscribeToCloudCampaign((updatedCampaign) => {
+      if (!isMounted || !updatedCampaign) return;
+      const remoteTimestamp = (updatedCampaign as any)._syncTimestamp;
+      const remoteSaveId = (updatedCampaign as any)._lastSaveId;
+      const remoteSenderTabId = (updatedCampaign as any)._senderTabId;
+
+      // 1. Ignora eco de alterações geradas nesta mesma aba/sessão
+      if (remoteSaveId && remoteSaveId === lastSavedIdRef.current) return;
+      if (remoteSenderTabId && remoteSenderTabId === tabIdRef.current) return;
+      if (remoteTimestamp && remoteTimestamp === lastSavedTimestampRef.current) return;
+
+      // 2. Proteção de digitação e edição local ativa (4 segundos)
+      if (Date.now() - lastLocalEditTimeRef.current < 4000 || hasUnsavedChangesRef.current) {
+        return;
+      }
+
+      if (remoteTimestamp) lastSavedTimestampRef.current = remoteTimestamp;
+      if (remoteSaveId) lastSavedIdRef.current = remoteSaveId;
+      isRemoteUpdateRef.current = true;
+
+      setCampaign((prev) => {
+        const localTs = (prev as any)._syncTimestamp || '';
+        if (lastLocalEditTimeRef.current > 0 && localTs && remoteTimestamp && new Date(localTs).getTime() > new Date(remoteTimestamp).getTime()) {
+          return prev;
+        }
+
+        const targetFormat = updatedCampaign.format || prev.format || '16:9';
+        const formatsData =
+          updatedCampaign.formatsData && Object.keys(updatedCampaign.formatsData).length > 0
+            ? updatedCampaign.formatsData
+            : prev.formatsData && Object.keys(prev.formatsData).length > 0
+            ? prev.formatsData
+            : initFormatsData(updatedCampaign);
+
+        const activeFormatData = formatsData[targetFormat] || extractFormatData(updatedCampaign);
+        const finalPhone = updatedCampaign.phoneWhatsapp || prev.phoneWhatsapp || '';
+        const finalAddress = updatedCampaign.storeAddress || prev.storeAddress || '';
+
+        const remoteProducts = updatedCampaign.products && updatedCampaign.products.length > 0 ? updatedCampaign.products : [];
+        const localProducts = prev.products || [];
+
+        // Usa a lista remota como fonte da verdade (permitindo adições, edições e exclusões entre navegadores),
+        // preservando apenas imagem base64 local se o mesmo ID vier com cloud-img não resolvido
+        const finalProducts =
+          remoteProducts.length > 0
+            ? remoteProducts.map((rp) => {
+                const lp = localProducts.find((p) => p.id === rp.id);
+                if (!lp) return rp;
+                const bestImage =
+                  rp.imageUrl && !rp.imageUrl.startsWith('cloud-img:')
+                    ? rp.imageUrl
+                    : lp.imageUrl && !lp.imageUrl.startsWith('cloud-img:')
+                    ? lp.imageUrl
+                    : rp.imageUrl || lp.imageUrl || '';
+                return {
+                  ...rp,
+                  imageUrl: bestImage,
+                };
+              })
+            : localProducts;
+
+        ALL_BANNER_FORMATS.forEach((fmt) => {
+          if (formatsData[fmt]) {
+            if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
+            if (!formatsData[fmt]!.storeAddress && finalAddress) formatsData[fmt]!.storeAddress = finalAddress;
+            formatsData[fmt]!.products = finalProducts.map((mp, idx) => {
+              if (fmt === '16:9') return { ...mp };
+              const fp = formatsData[fmt]!.products?.find((p) => p && p.id === mp.id) || formatsData[fmt]!.products?.[idx];
+              if (!fp || fp.id !== mp.id) return { ...mp };
+              return {
+                ...mp,
+                ...fp,
+                imageUrl: fp.imageUrl && !fp.imageUrl.startsWith('cloud-img:') ? fp.imageUrl : mp.imageUrl,
+              };
+            });
+          }
+        });
+
+        const nextSynced: BannerCampaign = {
+          ...prev,
+          ...updatedCampaign,
+          format: targetFormat,
+          phoneWhatsapp: finalPhone,
+          storeAddress: finalAddress,
+          campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : updatedCampaign.campaignTitle,
+          campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : updatedCampaign.campaignSubtitle,
+          validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : updatedCampaign.validityText,
+          customStyles: activeFormatData.customStyles
+            ? JSON.parse(JSON.stringify(activeFormatData.customStyles))
+            : updatedCampaign.customStyles || prev.customStyles,
+          products: finalProducts,
+          formatsData,
+        };
+
+        safeSaveCampaignToLocalStorage(nextSynced);
+        saveLocalCampaign(nextSynced).catch(() => {});
+
+        // Atualiza simultaneamente o cliente correspondente na lista de clientes
+        setClients((prevClients) => {
+          const updatedCli = prevClients.map((c) =>
+            c.id === nextSynced.clientId || c.name.toLowerCase() === nextSynced.clientName.toLowerCase()
+              ? {
+                  ...c,
+                  products: finalProducts,
+                  formatsData,
+                  campaignTitle: nextSynced.campaignTitle,
+                  validityText: nextSynced.validityText,
+                  customStyles: nextSynced.customStyles,
+                }
+              : c
+          );
+          safeSaveClientsToLocalStorage(updatedCli);
+          return updatedCli;
+        });
+
+        return nextSynced;
+      });
+    });
+
+    // Ouve alterações de clientes em tempo real no Firestore
+    const unsubscribeClients = subscribeToCloudClients((remoteClients) => {
+      if (!isMounted || !remoteClients || remoteClients.length === 0) return;
+      if (Date.now() - lastLocalEditTimeRef.current < 4000 || hasUnsavedChangesRef.current) return;
+
+      setClients((prevClients) => {
+        const activeCamp = campaignRef.current;
+        const merged = remoteClients.map((rc) => {
+          const isCurrentActive =
+            activeCamp &&
+            (rc.id === activeCamp.clientId || rc.name.toLowerCase() === activeCamp.clientName.toLowerCase());
+          if (isCurrentActive && activeCamp.products && activeCamp.products.length > 0) {
+            return {
+              ...rc,
+              products: activeCamp.products,
+              formatsData: activeCamp.formatsData || rc.formatsData,
+            };
+          }
+          return rc;
+        });
+        safeSaveClientsToLocalStorage(merged);
+        return merged;
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      unsubscribeClients();
+    };
+  }, []);
+
+  // 2. Persistência contínua e imediata na Nuvem (Firebase) + Backup Local
+  useEffect(() => {
+    // TV Player / Kiosk é um consumidor de transmissão: nunca deve recomprimir imagens ou gravar na nuvem
+    if (isDirectTvMode) return;
+    // Não salva antes de completar o carregamento inicial
+    if (!initialLoadDoneRef.current) return;
+    // Se a alteração veio da própria nuvem, não devolve para o Firestore (evita loop)
+    if (isRemoteUpdateRef.current) {
+      isRemoteUpdateRef.current = false;
+      return;
+    }
+
+    // Indica IMEDIATAMENTE na barra superior que há salvamento em andamento
+    setCloudSyncStatus('syncing');
+    hasUnsavedChangesRef.current = true;
+
+    const timer = setTimeout(() => {
+      const now = new Date().toISOString();
+      const saveId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+      lastSavedTimestampRef.current = now;
+      lastSavedIdRef.current = saveId;
+
+      const campaignToSave = {
+        ...campaign,
+        _syncTimestamp: now,
+        _lastSaveId: saveId,
+        _senderTabId: tabIdRef.current,
+      };
+
+      safeSaveCampaignToLocalStorage(campaignToSave);
+      saveLocalCampaign(campaignToSave).catch(() => {});
+
+      saveCampaignToCloud(campaignToSave as any)
+        .then((ok) => {
+          if (ok) {
+            hasUnsavedChangesRef.current = false;
+            setCloudSyncStatus('saved');
+          } else {
+            // Retry automático em caso de oscilação de rede
+            setTimeout(() => {
+              saveCampaignToCloud(campaignRef.current as any).then((retryOk) => {
+                hasUnsavedChangesRef.current = false;
+                setCloudSyncStatus(retryOk ? 'saved' : 'idle');
+              });
+            }, 1500);
+          }
+        })
+        .catch(() => {
+          setCloudSyncStatus('idle');
+        });
+
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          const ch = new BroadcastChannel('playcomunique_sync_channel');
+          ch.postMessage({ type: 'SYNC_CAMPAIGN', campaign: campaignToSave, senderTabId: tabIdRef.current });
+          ch.close();
+        } catch (_) {}
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [campaign]);
+
+  // 3. Sincronização rápida da lista de clientes no Firestore (600ms)
   useEffect(() => {
     if (isDirectTvMode || !initialLoadDoneRef.current) return;
     const timer = setTimeout(() => {
@@ -603,30 +711,44 @@ export default function App() {
           ch.close();
         } catch (_) {}
       }
-    }, 2500);
+    }, 600);
     return () => clearTimeout(timer);
   }, [clients]);
 
-  // Força sincronização imediata com a Nuvem (Firestore) ao clicar no botão NC
+  // Força sincronização imediata com a Nuvem (Firestore) ao clicar no botão Nuvem Salva
   const handleForceCloudSync = async () => {
     setCloudSyncStatus('syncing');
     try {
+      // Se houver alterações locais pendentes, envia primeiro para a nuvem
+      if (hasUnsavedChangesRef.current) {
+        await saveCampaignToCloud(campaignRef.current);
+        await saveClientsToCloud(clientsRef.current);
+        hasUnsavedChangesRef.current = false;
+      }
+
       const cloudCampaign = await loadCampaignFromCloud();
       if (cloudCampaign) {
         const targetFormat = cloudCampaign.format || campaign.format || '16:9';
-        const formatsData = cloudCampaign.formatsData && Object.keys(cloudCampaign.formatsData).length > 0
-          ? cloudCampaign.formatsData
-          : initFormatsData(cloudCampaign);
+        const formatsData =
+          cloudCampaign.formatsData && Object.keys(cloudCampaign.formatsData).length > 0
+            ? cloudCampaign.formatsData
+            : initFormatsData(cloudCampaign);
         const activeFormatData = formatsData[targetFormat] || extractFormatData(cloudCampaign);
-        const masterProducts = (cloudCampaign.products && cloudCampaign.products.length > 0) ? cloudCampaign.products : campaign.products;
+        const masterProducts =
+          cloudCampaign.products && cloudCampaign.products.length > 0 ? cloudCampaign.products : campaign.products;
 
-        // Garante que todo formato tenha as imagens dos produtos mestres
         ALL_BANNER_FORMATS.forEach((fmt) => {
-          if (formatsData[fmt] && Array.isArray(formatsData[fmt]!.products)) {
-            formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
-              ...p,
-              imageUrl: p.imageUrl || masterProducts[idx]?.imageUrl || ''
-            }));
+          if (formatsData[fmt]) {
+            formatsData[fmt]!.products = masterProducts.map((mp, idx) => {
+              if (fmt === '16:9') return { ...mp };
+              const fp = formatsData[fmt]!.products?.find((p) => p && p.id === mp.id) || formatsData[fmt]!.products?.[idx];
+              if (!fp || fp.id !== mp.id) return { ...mp };
+              return {
+                ...mp,
+                ...fp,
+                imageUrl: fp.imageUrl && !fp.imageUrl.startsWith('cloud-img:') ? fp.imageUrl : mp.imageUrl,
+              };
+            });
           }
         });
 
@@ -637,22 +759,21 @@ export default function App() {
           campaignTitle: activeFormatData.campaignTitle !== undefined ? activeFormatData.campaignTitle : cloudCampaign.campaignTitle,
           campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : cloudCampaign.campaignSubtitle,
           validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : cloudCampaign.validityText,
-          customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (cloudCampaign.customStyles || campaign.customStyles),
+          customStyles: activeFormatData.customStyles
+            ? JSON.parse(JSON.stringify(activeFormatData.customStyles))
+            : cloudCampaign.customStyles || campaign.customStyles,
           products: masterProducts,
           formatsData,
         };
+        isRemoteUpdateRef.current = true;
         setCampaign(updated);
-        try {
-          localStorage.setItem('playcomunique_campanha', JSON.stringify(updated));
-        } catch (_) {}
+        safeSaveCampaignToLocalStorage(updated);
       }
 
       const cloudClients = await loadClientsFromCloud();
       if (cloudClients && cloudClients.length > 0) {
         setClients(cloudClients);
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(cloudClients));
-        } catch (_) {}
+        safeSaveClientsToLocalStorage(cloudClients);
       }
       setCloudSyncStatus('saved');
     } catch (e) {
@@ -661,7 +782,9 @@ export default function App() {
     }
   };
 
+
   const handleSaveClient = (newOrUpdatedClient: ClientProfile) => {
+    lastLocalEditTimeRef.current = Date.now();
     // 1. Salva imediatamente o logotipo no IndexedDB e em documento dedicado do Firestore
     if (newOrUpdatedClient.logoUrl) {
       saveLocalImage(`logo_${newOrUpdatedClient.id}`, newOrUpdatedClient.logoUrl).catch(() => {});
@@ -720,12 +843,10 @@ export default function App() {
         };
         updated = [withProducts, ...prev];
       }
+      safeSaveClientsToLocalStorage(updated);
       try {
-        localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
-      } catch (e) {
-        console.warn('Aviso: localStorage cheio, backup mantido no IndexedDB e Nuvem:', e);
-      }
+      } catch (_) {}
       saveLocalClients(updated).catch(() => {});
       saveClientsToCloud(updated).catch(() => {});
       return updated;
@@ -764,11 +885,12 @@ export default function App() {
           formatsData: updatedFormats,
           _syncTimestamp: now,
         };
+        safeSaveCampaignToLocalStorage(nextCamp);
         try {
-          localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCamp));
           localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
         } catch (_) {}
         saveLocalCampaign(nextCamp).catch(() => {});
+        setCloudSyncStatus('syncing');
         saveCampaignToCloud(nextCamp).then((ok) => {
           if (ok) {
             lastSavedTimestampRef.current = now;
@@ -781,6 +903,7 @@ export default function App() {
   };
 
   const handleDeleteClient = (clientId: string) => {
+    lastLocalEditTimeRef.current = Date.now();
     setClients((prev) => {
       const clientToTrash = prev.find((c) => c.id === clientId);
       if (clientToTrash) {
@@ -798,9 +921,7 @@ export default function App() {
       }
 
       const updated = prev.filter((c) => c.id !== clientId);
-      try {
-        localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
-      } catch (e) {}
+      safeSaveClientsToLocalStorage(updated);
       saveLocalClients(updated).catch(() => {});
       saveClientsToCloud(updated).catch(() => {});
 
@@ -813,7 +934,12 @@ export default function App() {
   };
 
   const handleSelectClient = (client: ClientProfile) => {
-    // 1. Salva os banners atuais no perfil do cliente anterior
+    lastLocalEditTimeRef.current = Date.now();
+    // 1. Salva os banners atuais no perfil do cliente anterior (local e nuvem)
+    const currentCampaignSnapshot = campaignRef.current;
+    saveLocalCampaign(currentCampaignSnapshot).catch(() => {});
+    saveCampaignToCloud(currentCampaignSnapshot).catch(() => {});
+
     setClients((prevClients) => {
       const updated = prevClients.map((c) => {
         if (c.name.toLowerCase() === campaign.clientName.toLowerCase() || c.id === campaign.clientId) {
@@ -829,9 +955,7 @@ export default function App() {
         }
         return c;
       });
-      try {
-        localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
-      } catch (e) {}
+      safeSaveClientsToLocalStorage(updated);
       saveLocalClients(updated).catch(() => {});
       saveClientsToCloud(updated).catch(() => {});
       return updated;
@@ -862,7 +986,7 @@ export default function App() {
 
     // 3. Atualiza a campanha com os dados e banners exclusivos deste cliente
     setCampaign((prev) => {
-      let nextFormats = target.formatsData;
+      let nextFormats = target.formatsData ? JSON.parse(JSON.stringify(target.formatsData)) : undefined;
       const initialTargetCampaign: BannerCampaign = {
         ...prev,
         clientId: client.id,
@@ -888,11 +1012,36 @@ export default function App() {
         nextFormats = initFormatsData(initialTargetCampaign);
       }
 
-      // Propaga o telefone e endereço do cliente para todos os formatos salvos para nunca perder
+      // Propaga telefone, endereço e reconcilia produtos/imagens em todos os formatos salvos
       ALL_BANNER_FORMATS.forEach((fmt) => {
         if (nextFormats[fmt]) {
+          let fmtProducts: ProductItem[] = nextFormats[fmt]!.products && nextFormats[fmt]!.products.length > 0
+            ? [...nextFormats[fmt]!.products]
+            : [...targetProducts];
+
+          if (targetProducts.length > fmtProducts.length) {
+            const existingIds = new Set(fmtProducts.map((p) => p.id));
+            for (let i = 0; i < targetProducts.length; i++) {
+              const tp = targetProducts[i];
+              if (tp && !existingIds.has(tp.id)) {
+                fmtProducts.push({ ...tp, customizedFields: [] });
+              }
+            }
+          }
+
+          fmtProducts = fmtProducts.map((fp, idx) => {
+            if (!fp.imageUrl) {
+              const match = targetProducts.find((tp) => tp.id === fp.id) || targetProducts[idx];
+              if (match?.imageUrl) {
+                return { ...fp, imageUrl: match.imageUrl };
+              }
+            }
+            return fp;
+          });
+
           nextFormats[fmt] = {
             ...nextFormats[fmt]!,
+            products: fmtProducts,
             phoneWhatsapp: client.phoneWhatsapp || target.phoneWhatsapp || nextFormats[fmt]!.phoneWhatsapp || '',
             storeAddress: client.storeAddress || target.storeAddress || nextFormats[fmt]!.storeAddress || '',
             legalNotice: client.legalNotice || target.legalNotice || nextFormats[fmt]!.legalNotice || '',
@@ -923,13 +1072,14 @@ export default function App() {
         formatsData: nextFormats,
       };
 
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_active_client_id', client.id);
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
 
       saveLocalCampaign(nextCampaign).catch(() => {});
+      setCloudSyncStatus('syncing');
       saveCampaignToCloud(nextCampaign).then((ok) => {
         if (ok) {
           lastSavedTimestampRef.current = now;
@@ -938,6 +1088,22 @@ export default function App() {
       }).catch(() => {});
       return nextCampaign;
     });
+
+    // 4. Verifica no Firestore se há uma campanha dedicada mais recente para este cliente (ex: salva em outro PC)
+    loadClientCampaignFromCloud(client.id).then((cloudClientCamp) => {
+      if (cloudClientCamp && cloudClientCamp.products && cloudClientCamp.products.length > 0) {
+        setCampaign((curr) => {
+          if (curr.clientId !== client.id) return curr;
+          // Se a nuvem tiver mais produtos ou um timestamp mais recente do que o que estava em clients[], aplica!
+          if (cloudClientCamp.products.length > curr.products.length) {
+            safeSaveCampaignToLocalStorage(cloudClientCamp);
+            saveLocalCampaign(cloudClientCamp).catch(() => {});
+            return cloudClientCamp;
+          }
+          return curr;
+        });
+      }
+    }).catch(() => {});
   };
 
   // Check if running in direct standalone TV Kiosk mode (?mode=tv or ?player=1 or ?kiosk=1)
@@ -1042,11 +1208,12 @@ export default function App() {
         },
       };
 
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
+      setCloudSyncStatus('syncing');
       saveCampaignToCloud(nextCampaign).then((ok) => {
         if (ok) {
           lastSavedTimestampRef.current = now;
@@ -1060,9 +1227,7 @@ export default function App() {
             ? { ...c, formatsData: nextCampaign.formatsData }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updatedClients);
         saveLocalClients(updatedClients).catch(() => {});
         saveClientsToCloud(updatedClients).catch(() => {});
         return updatedClients;
@@ -1143,11 +1308,11 @@ export default function App() {
         formatsData: nextFormatsData,
       };
 
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
-      } catch (e) {
-        console.warn('Erro ao salvar campanha localmente:', e);
-      }
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
+      } catch (e) {}
+      saveLocalCampaign(nextCampaign).catch(() => {});
 
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
@@ -1155,13 +1320,13 @@ export default function App() {
             ? { ...c, products: nextProducts, formatsData: nextFormatsData }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updated);
+        saveLocalClients(updated).catch(() => {});
         saveClientsToCloud(updated).catch(() => {});
         return updated;
       });
 
+      setCloudSyncStatus('syncing');
       saveCampaignToCloud(nextCampaign).then((ok) => {
         if (ok) {
           lastSavedTimestampRef.current = now;
@@ -1240,8 +1405,8 @@ export default function App() {
         saveProductImageToCloud(updatedProduct.id, updated.imageUrl).catch(() => {});
       }
 
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
@@ -1252,9 +1417,7 @@ export default function App() {
             ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updatedClients);
         saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
@@ -1268,7 +1431,6 @@ export default function App() {
     const now = new Date().toISOString();
     setCampaign((prev) => {
       const nextProducts = [...prev.products, newProduct];
-      const currentFormat = prev.format || '16:9';
 
       const updatedFormats: Record<BannerFormat, FormatCampaignData> = prev.formatsData && Object.keys(prev.formatsData).length > 0
         ? { ...(prev.formatsData as Record<BannerFormat, FormatCampaignData>) }
@@ -1297,8 +1459,8 @@ export default function App() {
         saveProductImageToCloud(newProduct.id, newProduct.imageUrl).catch(() => {});
       }
 
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
@@ -1309,9 +1471,7 @@ export default function App() {
             ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updatedClients);
         saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
@@ -1365,8 +1525,9 @@ export default function App() {
         _syncTimestamp: now,
       };
 
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
+        localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
 
@@ -1376,9 +1537,7 @@ export default function App() {
             ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updatedClients);
         saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
@@ -1434,8 +1593,8 @@ export default function App() {
         _syncTimestamp: now,
       };
 
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
@@ -1446,9 +1605,7 @@ export default function App() {
             ? { ...c, products: next, formatsData: updatedFormats }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updated));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updated);
         saveLocalClients(updated).catch(() => {});
         return updated;
       });
@@ -1462,7 +1619,6 @@ export default function App() {
     const now = new Date().toISOString();
     setCampaign((prev) => {
       const nextProducts = [...prev.products, productToRestore];
-      const currentFormat = prev.format || '16:9';
 
       const updatedFormats: Record<BannerFormat, FormatCampaignData> = prev.formatsData && Object.keys(prev.formatsData).length > 0
         ? { ...(prev.formatsData as Record<BannerFormat, FormatCampaignData>) }
@@ -1486,8 +1642,13 @@ export default function App() {
         _syncTimestamp: now,
       };
 
+      if (productToRestore.imageUrl && (productToRestore.imageUrl.startsWith('data:image') || productToRestore.imageUrl.startsWith('http'))) {
+        saveLocalImage(productToRestore.id, productToRestore.imageUrl).catch(() => {});
+        saveProductImageToCloud(productToRestore.id, productToRestore.imageUrl).catch(() => {});
+      }
+
+      safeSaveCampaignToLocalStorage(nextCampaign);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
@@ -1498,9 +1659,7 @@ export default function App() {
             ? { ...c, products: nextProducts, formatsData: updatedFormats }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updatedClients);
         saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
@@ -1540,8 +1699,8 @@ export default function App() {
         formatsData: nextFormatsData,
       };
 
+      safeSaveCampaignToLocalStorage(next);
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(next));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(next).catch(() => {});
@@ -1561,9 +1720,7 @@ export default function App() {
               }
             : c
         );
-        try {
-          localStorage.setItem('playcomunique_clientes', JSON.stringify(updatedClients));
-        } catch (e) {}
+        safeSaveClientsToLocalStorage(updatedClients);
         saveLocalClients(updatedClients).catch(() => {});
         return updatedClients;
       });
@@ -1587,9 +1744,7 @@ export default function App() {
         activeProductIndex: idx,
         formatsData: updatedFormats,
       };
-      try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(next));
-      } catch (e) {}
+      safeSaveCampaignToLocalStorage(next);
       return next;
     });
   };
