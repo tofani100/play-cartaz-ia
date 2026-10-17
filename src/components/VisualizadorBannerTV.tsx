@@ -29,7 +29,7 @@ import {
   getScaledValidityFontSize 
 } from '../tiposGeradorBanner';
 import { LogoBelissimaEmblem } from './LogoBelissimaEmblem';
-import { handleImageError } from '../utils/imageFallback';
+import { handleImageError, getProductFallbackImage } from '../utils/imageFallback';
 import { buildCommercialProductPrompts, copyTextToClipboard } from '../utils/commercialPromptEngine';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
 import { formatarTelefoneWhatsapp } from '../utils/mascaraTelefone';

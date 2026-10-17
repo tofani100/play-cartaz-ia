@@ -156,7 +156,6 @@ export default function App() {
             restored.storeAddress = fmtData.storeAddress || matchedClientAddress || restored.storeAddress || '';
             if (fmtData.themeId) restored.themeId = fmtData.themeId;
             if (fmtData.customStyles !== undefined) restored.customStyles = fmtData.customStyles;
-            if (fmtData.products && fmtData.products.length > 0) restored.products = fmtData.products;
           }
         }
 
@@ -184,6 +183,7 @@ export default function App() {
   const isRemoteUpdateRef = useRef<boolean>(false);
   const initialLoadDoneRef = useRef<boolean>(false);
   const lastSavedTimestampRef = useRef<string>('');
+  const lastSavedIdRef = useRef<string>('');
   const lastLocalEditTimeRef = useRef<number>(0);
   const tabIdRef = useRef<string>(Math.random().toString(36).substring(2, 9));
 
@@ -279,7 +279,7 @@ export default function App() {
               if (Array.isArray(formatsData[fmt]!.products)) {
                 formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
                   ...p,
-                  imageUrl: p.imageUrl || finalProducts[idx]?.imageUrl || getProductFallbackImage(p.title, p.category)
+                  imageUrl: p.imageUrl || finalProducts[idx]?.imageUrl || ''
                 }));
               }
             }
@@ -387,18 +387,31 @@ export default function App() {
     const unsubscribe = subscribeToCloudCampaign((updatedCampaign) => {
       if (!isMounted || !updatedCampaign) return;
       const remoteTimestamp = (updatedCampaign as any)._syncTimestamp;
+      const remoteSaveId = (updatedCampaign as any)._lastSaveId;
+      const remoteSenderTabId = (updatedCampaign as any)._senderTabId;
+
+      // 1. Ignora eco de alterações geradas nesta mesma aba/sessão
+      if (remoteSaveId && remoteSaveId === lastSavedIdRef.current) {
+        return;
+      }
+      if (remoteSenderTabId && remoteSenderTabId === tabIdRef.current) {
+        return;
+      }
       if (remoteTimestamp && remoteTimestamp === lastSavedTimestampRef.current) {
-        // Ignora eco de alterações geradas localmente nesta mesma aba
         return;
       }
 
-      // Se o usuário nesta aba específica estiver digitando nos últimos 2 segundos, não interrompe a digitação
-      if (Date.now() - lastLocalEditTimeRef.current < 2000) {
+      // 2. Proteção de digitação e edição local ativa:
+      // Se o usuário nesta aba fez qualquer alteração nos últimos 5 segundos, NÃO sobrescreve!
+      if (Date.now() - lastLocalEditTimeRef.current < 5000) {
         return;
       }
 
       if (remoteTimestamp) {
         lastSavedTimestampRef.current = remoteTimestamp;
+      }
+      if (remoteSaveId) {
+        lastSavedIdRef.current = remoteSaveId;
       }
       isRemoteUpdateRef.current = true;
       setCampaign((prev) => {
@@ -417,8 +430,30 @@ export default function App() {
         const finalPhone = updatedCampaign.phoneWhatsapp || prev.phoneWhatsapp || '';
         const finalAddress = updatedCampaign.storeAddress || prev.storeAddress || '';
 
+        // RECONCILIAÇÃO SEGURA DE PRODUTOS:
+        // Garante que NENHUM produto criado ou editado localmente seja apagado por snapshot remoto defasado!
+        const remoteProducts = (updatedCampaign.products && updatedCampaign.products.length > 0) ? updatedCampaign.products : [];
+        const localProducts = prev.products || [];
+
+        const remoteIds = new Set(remoteProducts.map((p) => p.id));
+        const localOnlyProducts = localProducts.filter((p) => !remoteIds.has(p.id));
+
+        const mergedProducts = remoteProducts.map((rp) => {
+          const lp = localProducts.find((p) => p.id === rp.id);
+          if (!lp) return rp;
+          // Se o produto local possui imagem válida (base64 ou caminho estático) e a remota veio vazia ou cloud-img, preserva local
+          const bestImage = (lp.imageUrl && !lp.imageUrl.startsWith('cloud-img:'))
+            ? lp.imageUrl
+            : (rp.imageUrl || lp.imageUrl || '');
+          return {
+            ...rp,
+            imageUrl: bestImage,
+          };
+        });
+
+        const finalProducts = [...mergedProducts, ...localOnlyProducts];
+
         // Garante que nenhum formato fique sem telefone e endereço e que produtos herdem as imagens da lista mestre
-        const masterProducts = (updatedCampaign.products && updatedCampaign.products.length > 0) ? updatedCampaign.products : prev.products;
         ALL_BANNER_FORMATS.forEach((fmt) => {
           if (formatsData[fmt]) {
             if (!formatsData[fmt]!.phoneWhatsapp && finalPhone) formatsData[fmt]!.phoneWhatsapp = finalPhone;
@@ -426,7 +461,7 @@ export default function App() {
             if (Array.isArray(formatsData[fmt]!.products)) {
               formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
                 ...p,
-                imageUrl: p.imageUrl || masterProducts[idx]?.imageUrl || getProductFallbackImage(p.title, p.category)
+                imageUrl: p.imageUrl || finalProducts[idx]?.imageUrl || ''
               }));
             }
           }
@@ -442,7 +477,7 @@ export default function App() {
           campaignSubtitle: activeFormatData.campaignSubtitle !== undefined ? activeFormatData.campaignSubtitle : updatedCampaign.campaignSubtitle,
           validityText: activeFormatData.validityText !== undefined ? activeFormatData.validityText : updatedCampaign.validityText,
           customStyles: activeFormatData.customStyles ? JSON.parse(JSON.stringify(activeFormatData.customStyles)) : (updatedCampaign.customStyles || prev.customStyles),
-          products: (updatedCampaign.products && updatedCampaign.products.length > 0) ? updatedCampaign.products : prev.products,
+          products: finalProducts,
           formatsData,
         };
 
@@ -485,26 +520,33 @@ export default function App() {
     setCloudSyncStatus('syncing');
     const timer = setTimeout(() => {
       const now = new Date().toISOString();
-      saveCampaignToCloud({
+      const saveId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+      lastSavedTimestampRef.current = now;
+      lastSavedIdRef.current = saveId;
+
+      const campaignToSave = {
         ...campaign,
         _syncTimestamp: now,
-      } as any).then((success) => {
+        _lastSaveId: saveId,
+        _senderTabId: tabIdRef.current,
+      };
+
+      saveCampaignToCloud(campaignToSave as any).then((success) => {
         if (success) {
-          lastSavedTimestampRef.current = now;
           setCloudSyncStatus('saved');
         } else {
           setCloudSyncStatus('idle');
         }
       });
       try {
-        localStorage.setItem('playcomunique_campanha', JSON.stringify(campaign));
+        localStorage.setItem('playcomunique_campanha', JSON.stringify(campaignToSave));
       } catch (e) {
         console.warn('Aviso: localStorage cheio, backup mantido no IndexedDB e Firestore:', e);
       }
       if (typeof BroadcastChannel !== 'undefined') {
         try {
           const ch = new BroadcastChannel('playcomunique_sync_channel');
-          ch.postMessage({ type: 'SYNC_CAMPAIGN', campaign: { ...campaign, _syncTimestamp: now }, senderTabId: tabIdRef.current });
+          ch.postMessage({ type: 'SYNC_CAMPAIGN', campaign: campaignToSave, senderTabId: tabIdRef.current });
           ch.close();
         } catch (_) {}
       }
@@ -583,7 +625,7 @@ export default function App() {
           if (formatsData[fmt] && Array.isArray(formatsData[fmt]!.products)) {
             formatsData[fmt]!.products = formatsData[fmt]!.products!.map((p, idx) => ({
               ...p,
-              imageUrl: p.imageUrl || masterProducts[idx]?.imageUrl || getProductFallbackImage(p.title, p.category)
+              imageUrl: p.imageUrl || masterProducts[idx]?.imageUrl || ''
             }));
           }
         });
@@ -1193,17 +1235,16 @@ export default function App() {
         _syncTimestamp: now,
       };
 
+      if (updated.imageUrl && (updated.imageUrl.startsWith('data:image') || updated.imageUrl.startsWith('http'))) {
+        saveLocalImage(updatedProduct.id, updated.imageUrl).catch(() => {});
+        saveProductImageToCloud(updatedProduct.id, updated.imageUrl).catch(() => {});
+      }
+
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
-      saveCampaignToCloud(nextCampaign).then((ok) => {
-        if (ok) {
-          lastSavedTimestampRef.current = now;
-          setCloudSyncStatus('saved');
-        }
-      }).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -1252,17 +1293,16 @@ export default function App() {
         _syncTimestamp: now,
       };
 
+      if (newProduct.imageUrl && (newProduct.imageUrl.startsWith('data:image') || newProduct.imageUrl.startsWith('http'))) {
+        saveLocalImage(newProduct.id, newProduct.imageUrl).catch(() => {});
+        saveProductImageToCloud(newProduct.id, newProduct.imageUrl).catch(() => {});
+      }
+
       try {
         localStorage.setItem('playcomunique_campanha', JSON.stringify(nextCampaign));
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
-      saveCampaignToCloud(nextCampaign).then((ok) => {
-        if (ok) {
-          lastSavedTimestampRef.current = now;
-          setCloudSyncStatus('saved');
-        }
-      }).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>
@@ -1346,13 +1386,6 @@ export default function App() {
         return updatedClients;
       });
 
-      saveCampaignToCloud(nextCampaign).then((ok) => {
-        if (ok) {
-          lastSavedTimestampRef.current = now;
-          setCloudSyncStatus('saved');
-        }
-      }).catch(() => {});
-
       return nextCampaign;
     });
   };
@@ -1409,12 +1442,6 @@ export default function App() {
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(nextCampaign).catch(() => {});
-      saveCampaignToCloud(nextCampaign).then((ok) => {
-        if (ok) {
-          lastSavedTimestampRef.current = now;
-          setCloudSyncStatus('saved');
-        }
-      }).catch(() => {});
 
       setClients((prevClients) => {
         const updated = prevClients.map((c) =>
@@ -1483,13 +1510,6 @@ export default function App() {
         return updatedClients;
       });
 
-      saveCampaignToCloud(nextCampaign).then((ok) => {
-        if (ok) {
-          lastSavedTimestampRef.current = now;
-          setCloudSyncStatus('saved');
-        }
-      }).catch(() => {});
-
       return nextCampaign;
     });
   };
@@ -1530,12 +1550,6 @@ export default function App() {
         localStorage.setItem('playcomunique_last_local_edit_time', String(Date.now()));
       } catch (e) {}
       saveLocalCampaign(next).catch(() => {});
-      saveCampaignToCloud(next).then((ok) => {
-        if (ok) {
-          lastSavedTimestampRef.current = now;
-          setCloudSyncStatus('saved');
-        }
-      }).catch(() => {});
 
       setClients((prevClients) => {
         const updatedClients = prevClients.map((c) =>

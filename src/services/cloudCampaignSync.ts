@@ -5,9 +5,8 @@
 
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { BannerCampaign, ClientProfile, ProductItem } from '../tiposGeradorBanner';
+import { BannerCampaign, ClientProfile, ProductItem, BannerFormat } from '../tiposGeradorBanner';
 import { compressImageToDataUrl } from '../utils/imageCompressor';
-import { getProductFallbackImage } from '../utils/imageFallback';
 import {
   saveLocalImage,
   getLocalImage,
@@ -197,6 +196,8 @@ export async function saveCampaignToCloud(campaign: BannerCampaign): Promise<boo
       JSON.stringify({
         ...payloadToSave,
         _syncTimestamp: (payloadToSave as any)._syncTimestamp || new Date().toISOString(),
+        _lastSaveId: (payloadToSave as any)._lastSaveId || '',
+        _senderTabId: (payloadToSave as any)._senderTabId || '',
         _version: '2.6.1',
       })
     );
@@ -244,10 +245,7 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
               saveLocalImage(prodId, cloud).catch(() => {});
               return { ...p, imageUrl: cloud };
             }
-            return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
-          }
-          if (!p.imageUrl) {
-            return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
+            return p;
           }
           return p;
         })
@@ -271,7 +269,7 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
       let restoredFormatsData = data.formatsData;
       if (restoredFormatsData) {
         restoredFormatsData = { ...restoredFormatsData };
-        for (const fmtKey of Object.keys(restoredFormatsData)) {
+        for (const fmtKey of Object.keys(restoredFormatsData) as BannerFormat[]) {
           const fmt = restoredFormatsData[fmtKey];
           if (fmt && Array.isArray(fmt.products)) {
             const restoredFmtProducts = await Promise.all(
@@ -290,7 +288,7 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
                     const cloud = await loadProductImageFromCloud(prodId);
                     if (cloud) return { ...p, imageUrl: cloud };
                   }
-                  return { ...p, imageUrl: masterImg || getProductFallbackImage(p.title, p.category) };
+                  return { ...p, imageUrl: masterImg || p.imageUrl || '' };
                 }
                 return p;
               })
@@ -298,7 +296,7 @@ export async function loadCampaignFromCloud(): Promise<BannerCampaign | null> {
 
             // Se o formato tem menos produtos do que a lista mestre (ex: novo produto adicionado), sincroniza
             if (restoredFmtProducts.length < restoredProducts.length) {
-              const existingIds = new Set(restoredFmtProducts.map((p) => p.id));
+              const existingIds = new Set(restoredFmtProducts.map((p: ProductItem) => p.id));
               restoredProducts.forEach((mp) => {
                 if (!existingIds.has(mp.id)) {
                   restoredFmtProducts.push({ ...mp });
@@ -383,10 +381,7 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
                   saveLocalImage(prodId, cloud).catch(() => {});
                   return { ...p, imageUrl: cloud };
                 }
-                return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
-              }
-              if (!p.imageUrl) {
-                return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
+                return p;
               }
               return p;
             })
@@ -403,7 +398,7 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
           let restoredFormatsData = data.formatsData;
           if (restoredFormatsData) {
             restoredFormatsData = { ...restoredFormatsData };
-            for (const fmtKey of Object.keys(restoredFormatsData)) {
+            for (const fmtKey of Object.keys(restoredFormatsData) as BannerFormat[]) {
               const fmt = restoredFormatsData[fmtKey];
               if (fmt && Array.isArray(fmt.products)) {
                 const restoredFmtProducts = await Promise.all(
@@ -422,14 +417,14 @@ export function subscribeToCloudCampaign(onUpdate: (campaign: BannerCampaign) =>
                         const cloud = await loadProductImageFromCloud(prodId);
                         if (cloud) return { ...p, imageUrl: cloud };
                       }
-                      return { ...p, imageUrl: masterImg || getProductFallbackImage(p.title, p.category) };
+                      return { ...p, imageUrl: masterImg || p.imageUrl || '' };
                     }
                     return p;
                   })
                 );
 
                 if (restoredFmtProducts.length < restoredProducts.length) {
-                  const existingIds = new Set(restoredFmtProducts.map((p) => p.id));
+                  const existingIds = new Set(restoredFmtProducts.map((p: ProductItem) => p.id));
                   restoredProducts.forEach((mp) => {
                     if (!existingIds.has(mp.id)) {
                       restoredFmtProducts.push({ ...mp });
@@ -501,9 +496,9 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
 
         let sanitizedClientFormats = c.formatsData;
         if (sanitizedClientFormats) {
-          sanitizedClientFormats = JSON.parse(JSON.stringify(sanitizedClientFormats));
-          Object.keys(sanitizedClientFormats).forEach((fmtKey) => {
-            const fmt = sanitizedClientFormats[fmtKey];
+          const clonedFormats: Partial<Record<BannerFormat, any>> = JSON.parse(JSON.stringify(sanitizedClientFormats));
+          (Object.keys(clonedFormats) as BannerFormat[]).forEach((fmtKey) => {
+            const fmt = clonedFormats[fmtKey];
             if (fmt && Array.isArray(fmt.products)) {
               fmt.products = fmt.products.filter(Boolean).map((p: ProductItem) => {
                 if (p && p.imageUrl && (p.imageUrl.startsWith('data:image') || p.imageUrl.startsWith('cloud-img:'))) {
@@ -513,6 +508,7 @@ export async function saveClientsToCloud(clients: ClientProfile[]): Promise<bool
               });
             }
           });
+          sanitizedClientFormats = clonedFormats as any;
         }
 
         return {
@@ -585,7 +581,7 @@ export async function loadClientsFromCloud(): Promise<ClientProfile[] | null> {
                   saveLocalImage(prodId, cloud).catch(() => {});
                   return { ...p, imageUrl: cloud };
                 }
-                return { ...p, imageUrl: getProductFallbackImage(p.title, p.category) };
+                return p;
               }
               return p;
             })

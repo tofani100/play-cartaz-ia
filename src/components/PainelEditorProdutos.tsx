@@ -967,6 +967,89 @@ export const PainelEditorProdutos: React.FC<PainelEditorProdutosProps> = ({
                 </div>
               </div>
 
+              {/* Foto Comercial do Produto (Packshot) */}
+              <div className="p-3 bg-neutral-900/80 rounded-xl border border-neutral-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                      Foto do Produto (Packshot)
+                    </span>
+                  </div>
+                  {activeProduct.imageUrl && (
+                    <span className="text-[8px] font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                      {activeProduct.imageUrl.startsWith('data:image') ? 'Foto Personalizada' : 'Foto Carregada'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <img
+                    src={(activeProduct.imageUrl && !activeProduct.imageUrl.startsWith('cloud-img:')) ? activeProduct.imageUrl : getProductFallbackImage(activeProduct.title, activeProduct.category)}
+                    alt={activeProduct.title}
+                    onError={(e) => handleImageError(e, activeProduct.title, activeProduct.category)}
+                    className="w-16 h-16 object-contain rounded-lg bg-neutral-950 border border-neutral-800 p-1 shrink-0 shadow-inner"
+                    referrerPolicy="no-referrer"
+                  />
+
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = (ev: Event) => {
+                            const file = (ev.target as HTMLInputElement)?.files?.[0];
+                            if (file) {
+                              compressImageToDataUrl(file, 800, 800, 0.76).then((compressed) => {
+                                if (compressed) {
+                                  onUpdateProduct(currentProductIndex, {
+                                    imageUrl: compressed,
+                                    imageDisplayMode: 'ambient',
+                                  });
+                                }
+                              });
+                            }
+                          };
+                          input.click();
+                        }}
+                        className="flex-1 py-1.5 px-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-[11px] rounded-lg flex items-center justify-center gap-1 shadow cursor-pointer transition-colors"
+                        title="Fazer upload de foto do seu computador"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Trocar Foto</span>
+                      </button>
+
+                      {activeProduct.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUpdateProduct(currentProductIndex, {
+                              imageUrl: '',
+                              imageDisplayMode: 'ambient',
+                            });
+                          }}
+                          className="py-1.5 px-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-bold text-[10px] rounded-lg border border-neutral-700 cursor-pointer transition-colors"
+                          title="Limpar foto customizada deste produto"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={activeProduct.imageUrl?.startsWith('data:image') ? '' : (activeProduct.imageUrl || '')}
+                      onChange={(e) => onUpdateProduct(currentProductIndex, { imageUrl: e.target.value.trim(), imageDisplayMode: 'ambient' })}
+                      placeholder="Ou cole o link de uma imagem (URL)..."
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* 2. Preços e Unidade + Cores dos Preços */}
               <div className="p-2.5 bg-neutral-900/70 rounded-xl border border-neutral-800/80 space-y-2">
                 <div className="grid grid-cols-3 gap-2">
